@@ -81,6 +81,7 @@ Roadmap items are tracked in [`ROADMAP.md`](ROADMAP.md).
 - [x] `mark` — done/incomplete/canceled (multi-ID supported)
 - [x] `mark --check/--uncheck/--check-cancel` for checklist toggles
 - [x] `schedule` — when/start date, deadline, today/evening/someday
+- [ ] Read and update recurrence schedules
 - [x] `reorder` — reorder tasks within lists
 - [x] `delete` — trash tasks
 

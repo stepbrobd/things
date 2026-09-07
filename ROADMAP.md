@@ -17,5 +17,15 @@ See the supported feature list in `README.md` for the current baseline.
 ## Additional feature work
 
 - [ ] Add/remove/rename headers for projects
+- [ ] Add reminder support
+  - [ ] Read reminder settings
+  - [ ] Set reminders
+  - [ ] Edit reminders
+  - [ ] Remove reminders
 - [ ] Resolve recurring items
 - [ ] Mark items as recurring
+- [ ] Add recurring scheduling support
+  - [ ] Read recurrence rules
+  - [ ] Create recurrence rules
+  - [ ] Edit recurrence rules
+  - [ ] Remove recurrence rules
