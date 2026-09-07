@@ -3,7 +3,7 @@
 [files]
 extend-exclude = ["trycmd/**/journal.json"]
 
-# `pn` is the Things cloud wire key for parent tag IDs; typos otherwise
-# "corrects" it to `on`.
+# Things cloud wire keys and ordinal suffixes are valid domain terms.
 [default.extend-words]
 pn = "pn"
+nd = "nd"

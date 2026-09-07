@@ -275,6 +275,7 @@ mod tests {
     #[test]
     fn recurrence_frequency_units_match_wire_values() {
         for (wire_value, expected) in [
+            (4, FrequencyUnit::Yearly),
             (8, FrequencyUnit::Monthly),
             (16, FrequencyUnit::Daily),
             (256, FrequencyUnit::Weekly),
