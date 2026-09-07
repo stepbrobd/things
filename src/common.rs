@@ -11,7 +11,11 @@ use crate::{
 
 /// Return today as a UTC midnight `DateTime<Utc>`.
 pub fn today_utc() -> DateTime<Utc> {
-    let today = Utc::now().date_naive().and_hms_opt(0, 0, 0).unwrap();
+    local_date_as_utc_midnight(Local::now())
+}
+
+fn local_date_as_utc_midnight<Tz: TimeZone>(now: DateTime<Tz>) -> DateTime<Utc> {
+    let today = now.date_naive().and_hms_opt(0, 0, 0).unwrap();
     Utc.from_utc_datetime(&today)
 }
 
@@ -251,4 +255,22 @@ fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> 
     }
 
     Err(format!("Tag not found: {token}"))
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{FixedOffset, TimeZone, Utc};
+
+    use super::local_date_as_utc_midnight;
+
+    #[test]
+    fn today_uses_the_local_date_after_utc_midnight() {
+        let eastern = FixedOffset::west_opt(4 * 60 * 60).unwrap();
+        let local_now = eastern.with_ymd_and_hms(2026, 8, 27, 21, 23, 0).unwrap();
+
+        assert_eq!(
+            local_date_as_utc_midnight(local_now),
+            Utc.with_ymd_and_hms(2026, 8, 27, 0, 0, 0).unwrap()
+        );
+    }
 }
