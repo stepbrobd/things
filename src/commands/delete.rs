@@ -112,10 +112,8 @@ impl Command for DeleteArgs {
             return Ok(());
         }
 
-        if let Err(e) = ctx.commit_changes(plan.changes, None) {
-            eprintln!("Failed to delete items: {e}");
-            return Ok(());
-        }
+        ctx.commit_changes(plan.changes, None)
+            .map_err(|e| anyhow::anyhow!("Failed to delete items: {e}"))?;
 
         for (uuid, _entity, title) in plan.targets {
             writeln!(
@@ -133,6 +131,8 @@ impl Command for DeleteArgs {
 
 #[cfg(test)]
 mod tests {
+    use clap::Parser;
+
     use super::*;
     use crate::{
         store::{ThingsStore, fold_items},
@@ -145,6 +145,60 @@ mod tests {
     const TASK_A: &str = "A7h5eCi24RvAWKC3Hv3muf";
     const TASK_B: &str = "KGvAPpMrzHAKMdgMiERP1V";
     const AREA_A: &str = "MpkEei6ybkFS2n6SXvwfLf";
+
+    struct FailingCtx;
+
+    impl crate::cmd_ctx::CmdCtx for FailingCtx {
+        fn now_timestamp(&self) -> f64 {
+            unreachable!()
+        }
+
+        fn today_timestamp(&self) -> i64 {
+            unreachable!()
+        }
+
+        fn next_id(&mut self) -> String {
+            unreachable!()
+        }
+
+        fn current_head_index(&self) -> i64 {
+            unreachable!()
+        }
+
+        fn commit_changes(
+            &mut self,
+            _changes: BTreeMap<String, WireObject>,
+            _ancestor_index: Option<i64>,
+        ) -> Result<i64> {
+            anyhow::bail!("cloud unavailable")
+        }
+    }
+
+    #[test]
+    fn delete_propagates_commit_failure_without_success_output() {
+        let journal = tempfile::NamedTempFile::new().expect("journal file");
+        let item = BTreeMap::from([task(TASK_A, "Alpha", false)]);
+        serde_json::to_writer(&journal, &vec![item]).expect("write journal");
+        let cli = Cli::parse_from([
+            "things3",
+            "--load-journal",
+            journal.path().to_str().expect("journal path"),
+        ]);
+        let args = DeleteArgs {
+            item_ids: vec![IdentifierToken::from(TASK_A)],
+        };
+        let mut out = Vec::new();
+
+        let error = args
+            .run_with_ctx(&cli, &mut out, &mut FailingCtx)
+            .expect_err("failed commit must fail the command");
+
+        assert_eq!(
+            error.to_string(),
+            "Failed to delete items: cloud unavailable"
+        );
+        assert!(out.is_empty());
+    }
 
     fn build_store(entries: Vec<(String, WireObject)>) -> ThingsStore {
         let mut item = BTreeMap::new();
