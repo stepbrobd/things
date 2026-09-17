@@ -219,7 +219,7 @@ mod tests {
 
         assert_eq!(parsed.frequency_unit, FrequencyUnit::Weekly);
         assert_eq!(parsed.frequency_amount, 1);
-        assert_eq!(parsed.end_date, 64_092_211_200);
+        assert_eq!(parsed.end_date, Some(64_092_211_200));
         assert_eq!(parsed.version, 4);
     }
 
@@ -252,7 +252,7 @@ mod tests {
         );
         assert_eq!(parsed.start_date, Some(1_700_000_000));
         assert_eq!(parsed.interval_anchor, Some(1_700_086_400));
-        assert_eq!(parsed.end_date, 1_700_172_800);
+        assert_eq!(parsed.end_date, Some(1_700_172_800));
         assert_eq!(parsed.repeat_count, 5);
         assert_eq!(parsed.time_span_in_days, -1);
         assert_eq!(parsed.version, 3);

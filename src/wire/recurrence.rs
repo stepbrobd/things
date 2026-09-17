@@ -36,9 +36,13 @@ pub struct RecurrenceRule {
     #[serde(rename = "ia", default)]
     pub interval_anchor: Option<i64>,
 
-    /// `ed`: recurrence end day timestamp (`64092211200` ~= effectively never).
-    #[serde(rename = "ed", default = "default_recurrence_end_date")]
-    pub end_date: i64,
+    /// `ed`: recurrence end day timestamp (`64092211200` ~= effectively never), absent when a repeat count bounds the rule.
+    #[serde(
+        rename = "ed",
+        default = "default_recurrence_end_date",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub end_date: Option<i64>,
 
     /// `rc`: repeat count.
     #[serde(rename = "rc", default)]
@@ -258,11 +262,10 @@ impl RecurrenceRule {
                 format_day(timestamp).ok_or(RecurrenceDescriptionError::InvalidStartDate(timestamp))
             })
             .transpose()?;
-        let end = (self.end_date != default_recurrence_end_date())
-            .then(|| {
-                format_day(self.end_date)
-                    .ok_or(RecurrenceDescriptionError::InvalidEndDate(self.end_date))
-            })
+        let end = self
+            .end_date
+            .filter(|end| *end != RECURRENCE_END_NEVER)
+            .map(|end| format_day(end).ok_or(RecurrenceDescriptionError::InvalidEndDate(end)))
             .transpose()?;
 
         if end.is_some() && self.repeat_count > 0 {
@@ -537,8 +540,10 @@ const fn default_frequency_amount() -> i32 {
 }
 
 /// Default recurrence end date (`rr.ed`) far in the future (~year 4001).
-const fn default_recurrence_end_date() -> i64 {
-    64_092_211_200
+pub const RECURRENCE_END_NEVER: i64 = 64_092_211_200;
+
+const fn default_recurrence_end_date() -> Option<i64> {
+    Some(RECURRENCE_END_NEVER)
 }
 
 /// Sentinel used when a recurrence has no explicit start date.
@@ -687,7 +692,7 @@ mod tests {
         let dated_rule = RecurrenceRule {
             frequency_unit: FrequencyUnit::Daily,
             start_date: Some(1_787_443_200),
-            end_date: 1_798_675_200,
+            end_date: Some(1_798_675_200),
             ..Default::default()
         };
         let counted_rule = RecurrenceRule {
@@ -710,7 +715,7 @@ mod tests {
     #[test]
     fn rejects_invalid_end_conditions_and_dates() {
         let conflicting_rule = RecurrenceRule {
-            end_date: 1_798_675_200,
+            end_date: Some(1_798_675_200),
             repeat_count: 5,
             ..Default::default()
         };
