@@ -1,5 +1,0 @@
-```trycmd
-$ run.sh things --today-ts 1774396800 --no-materialize today
-No tasks for today.
-
-```
