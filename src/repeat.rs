@@ -47,6 +47,15 @@ pub enum Bound {
 
 const WEEKDAYS: [&str; 7] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
+/// the largest interval accepted from the command line or the wire, which keeps every date step representable
+pub const MAX_EVERY: i32 = 999;
+
+fn parse_every(text: &str) -> Option<i32> {
+    text.parse::<i32>()
+        .ok()
+        .filter(|every| (1..=MAX_EVERY).contains(every))
+}
+
 impl FromStr for RepeatSpec {
     type Err = String;
 
@@ -58,13 +67,11 @@ impl FromStr for RepeatSpec {
         let (unit, every) = match head.split_once('/') {
             Some((unit, every)) => (
                 unit,
-                every
-                    .parse::<i32>()
-                    .ok()
-                    .filter(|every| *every >= 1)
-                    .ok_or_else(|| {
-                        format!("Invalid --repeat {spec}: expected a positive number after /")
-                    })?,
+                parse_every(every).ok_or_else(|| {
+                    format!(
+                        "Invalid --repeat {spec}: expected a number from 1 to {MAX_EVERY} after /"
+                    )
+                })?,
             ),
             None => (head, 1),
         };
@@ -136,22 +143,22 @@ fn parse_month_and_day(date: &str) -> Result<(u32, u32), String> {
 }
 
 fn parse_interval(interval: &str) -> Result<(i32, FrequencyUnit), String> {
-    let invalid =
-        || format!("Invalid interval {interval}: expected a number and d, w, m or y, such as 2w");
-    let (amount, unit) = interval.split_at(interval.len().saturating_sub(1));
-    let amount = amount
-        .parse::<i32>()
-        .ok()
-        .filter(|amount| *amount >= 1)
-        .ok_or_else(invalid)?;
-    let unit = match unit {
-        "d" => FrequencyUnit::Daily,
-        "w" => FrequencyUnit::Weekly,
-        "m" => FrequencyUnit::Monthly,
-        "y" => FrequencyUnit::Yearly,
-        _ => return Err(invalid()),
+    let invalid = || {
+        format!(
+            "Invalid interval {interval}: expected a number from 1 to {MAX_EVERY} and d, w, m or y, such as 2w"
+        )
     };
-    Ok((amount, unit))
+    let units = [
+        ("d", FrequencyUnit::Daily),
+        ("w", FrequencyUnit::Weekly),
+        ("m", FrequencyUnit::Monthly),
+        ("y", FrequencyUnit::Yearly),
+    ];
+    let (amount, unit) = units
+        .into_iter()
+        .find_map(|(suffix, unit)| interval.strip_suffix(suffix).map(|amount| (amount, unit)))
+        .ok_or_else(invalid)?;
+    Ok((parse_every(amount).ok_or_else(invalid)?, unit))
 }
 
 /// the end condition from `--times` and `--until`
@@ -175,23 +182,24 @@ fn week_start(day: NaiveDate) -> NaiveDate {
     day - Days::new(u64::from(weekday_index(day)))
 }
 
-/// the day of the month, -1 for the last, clamped to the month's length
-fn day_in_month(year: i32, month: u32, day: i32) -> NaiveDate {
-    let first_of_next = NaiveDate::from_ymd_opt(year, month, 1).expect("month") + Months::new(1);
-    let last = first_of_next.pred_opt().expect("day before the first");
+/// the day of the month, -1 for the last, clamped to the month's length, None outside the representable years
+fn day_in_month(year: i32, month: u32, day: i32) -> Option<NaiveDate> {
+    let last = NaiveDate::from_ymd_opt(year, month, 1)?
+        .checked_add_months(Months::new(1))?
+        .pred_opt()?;
     if day < 0 {
-        return last;
+        return Some(last);
     }
-    NaiveDate::from_ymd_opt(year, month, (day as u32).min(last.day())).expect("clamped day")
+    NaiveDate::from_ymd_opt(year, month, (day as u32).min(last.day()))
 }
 
-fn minus_interval(day: NaiveDate, unit: FrequencyUnit, every: i32) -> NaiveDate {
+fn minus_interval(day: NaiveDate, unit: FrequencyUnit, every: i32) -> Option<NaiveDate> {
     let every = every as u32;
     match unit {
-        FrequencyUnit::Daily => day - Days::new(u64::from(every)),
-        FrequencyUnit::Weekly => day - Days::new(u64::from(7 * every)),
-        FrequencyUnit::Monthly => day - Months::new(every),
-        _ => day - Months::new(12 * every),
+        FrequencyUnit::Daily => day.checked_sub_days(Days::new(u64::from(every))),
+        FrequencyUnit::Weekly => day.checked_sub_days(Days::new(u64::from(7 * every))),
+        FrequencyUnit::Monthly => day.checked_sub_months(Months::new(every)),
+        _ => day.checked_sub_months(Months::new(12 * every)),
     }
 }
 
@@ -203,33 +211,27 @@ fn offset(fields: &[(&str, i64)]) -> BTreeMap<String, Value> {
 }
 
 impl RepeatSpec {
-    /// the first occurrence on or after `from`
+    /// the first occurrence on or after `from`, or `from` itself when no day is representable
     pub fn first_occurrence(&self, from: NaiveDate) -> NaiveDate {
-        match &self.cadence {
+        let found = match &self.cadence {
             Cadence::Weekly(days) if !days.is_empty() => (0..7)
-                .map(|ahead| from + Days::new(ahead))
-                .find(|day| days.contains(&weekday_index(*day)))
-                .expect("a weekday within seven days"),
-            Cadence::Monthly(Some(day)) => {
-                let this_month = day_in_month(from.year(), from.month(), *day);
-                if this_month >= from {
-                    return this_month;
-                }
-                let next = from + Months::new(1);
-                day_in_month(next.year(), next.month(), *day)
-            }
-            Cadence::Yearly(Some((month, day))) => {
-                let this_year = day_in_month(from.year(), *month, *day as i32);
-                if this_year >= from {
-                    return this_year;
-                }
-                day_in_month(from.year() + 1, *month, *day as i32)
-            }
-            _ => from,
-        }
+                .filter_map(|ahead| from.checked_add_days(Days::new(ahead)))
+                .find(|day| days.contains(&weekday_index(*day))),
+            Cadence::Monthly(Some(day)) => day_in_month(from.year(), from.month(), *day)
+                .filter(|this_month| *this_month >= from)
+                .or_else(|| {
+                    let next = from.checked_add_months(Months::new(1))?;
+                    day_in_month(next.year(), next.month(), *day)
+                }),
+            Cadence::Yearly(Some((month, day))) => day_in_month(from.year(), *month, *day as i32)
+                .filter(|this_year| *this_year >= from)
+                .or_else(|| day_in_month(from.year().checked_add(1)?, *month, *day as i32)),
+            _ => Some(from),
+        };
+        found.unwrap_or(from)
     }
 
-    /// the occurrence after `after`, counting intervals from `anchor`, which need not be an occurrence itself, None after completion
+    /// the occurrence after `after`, counting intervals from `anchor`, which need not be an occurrence itself, None after completion or past the representable years
     pub fn next_occurrence(&self, anchor: NaiveDate, after: NaiveDate) -> Option<NaiveDate> {
         let every = i64::from(self.every);
         match &self.cadence {
@@ -238,7 +240,7 @@ impl RepeatSpec {
                     return Some(anchor);
                 }
                 let elapsed = (after - anchor).num_days();
-                Some(anchor + Days::new((elapsed / every * every + every) as u64))
+                anchor.checked_add_days(Days::new((elapsed / every * every + every) as u64))
             }
             Cadence::Weekly(days) => {
                 let days = if days.is_empty() {
@@ -250,10 +252,10 @@ impl RepeatSpec {
                 let start = if after < anchor {
                     anchor
                 } else {
-                    after + Days::new(1)
+                    after.checked_add_days(Days::new(1))?
                 };
                 (0..=7 * every + 7)
-                    .map(|ahead| start + Days::new(ahead as u64))
+                    .filter_map(|ahead| start.checked_add_days(Days::new(ahead as u64)))
                     .find(|day| {
                         days.contains(&weekday_index(*day))
                             && ((week_start(*day) - base).num_days() / 7) % every == 0
@@ -261,19 +263,26 @@ impl RepeatSpec {
             }
             Cadence::Monthly(day) => {
                 let day = day.unwrap_or(anchor.day() as i32);
-                (0..)
+                (0u32..)
                     .map(|steps| {
-                        let month = anchor + Months::new(steps * self.every as u32);
+                        let month = anchor.checked_add_months(Months::new(
+                            steps.checked_mul(self.every as u32)?,
+                        ))?;
                         day_in_month(month.year(), month.month(), day)
                     })
+                    .take_while(Option::is_some)
+                    .flatten()
                     .find(|candidate| *candidate > after && *candidate >= anchor)
             }
             Cadence::Yearly(month_day) => {
                 let (month, day) = month_day.unwrap_or((anchor.month(), anchor.day()));
-                (0..)
+                (0i32..)
                     .map(|steps| {
-                        day_in_month(anchor.year() + steps * self.every, month, day as i32)
+                        let year = anchor.year().checked_add(steps.checked_mul(self.every)?)?;
+                        day_in_month(year, month, day as i32)
                     })
+                    .take_while(Option::is_some)
+                    .flatten()
                     .find(|candidate| *candidate > after && *candidate >= anchor)
             }
             Cadence::AfterCompletion(_) => None,
@@ -287,7 +296,9 @@ impl RepeatSpec {
     /// is shown but never projected or materialized, since a guess would put
     /// instances on the wrong days
     pub fn from_rule(rule: &RecurrenceRule) -> Option<(Self, NaiveDate)> {
-        if rule.recurrence_type != RecurrenceType::FixedSchedule || rule.frequency_amount < 1 {
+        if rule.recurrence_type != RecurrenceType::FixedSchedule
+            || !(1..=MAX_EVERY).contains(&rule.frequency_amount)
+        {
             return None;
         }
         let anchor = rule
@@ -572,13 +583,15 @@ pub fn template(
     source: TemplateSource,
     now: f64,
 ) -> TaskProps {
+    // parsed days have four digit years, the day after one is representable
+    let day_after_first = first.succ_opt().expect("the day after a parsed day");
     let next = match &spec.cadence {
-        Cadence::AfterCompletion(_) => Some(first + Days::new(1)),
+        Cadence::AfterCompletion(_) => Some(day_after_first),
         _ => next_occurrence_of_rule(&rule, first, 1),
     };
     let after_completion_reference_date = match &spec.cadence {
         Cadence::AfterCompletion(unit) => {
-            Some(day_timestamp(minus_interval(first, *unit, spec.every)))
+            minus_interval(first, *unit, spec.every).map(day_timestamp)
         }
         _ => None,
     };
@@ -595,9 +608,7 @@ pub fn template(
         sort_index: source.sort_index,
         today_sort_index: source.today_sort_index,
         recurrence_rule: Some(rule),
-        instance_creation_start_date: Some(day_timestamp(
-            next.unwrap_or_else(|| first + Days::new(1)),
-        )),
+        instance_creation_start_date: Some(day_timestamp(next.unwrap_or(day_after_first))),
         instance_creation_count: 1,
         instance_creation_paused: false,
         after_completion_reference_date,
@@ -734,6 +745,31 @@ mod tests {
         assert!("daily:mon".parse::<RepeatSpec>().is_err());
         assert!("monthly:32".parse::<RepeatSpec>().is_err());
         assert!("after".parse::<RepeatSpec>().is_err());
+        // intervals past the bound and suffixes that are not a unit are errors, not panics
+        assert!("daily/2147483647".parse::<RepeatSpec>().is_err());
+        assert!("daily/1000".parse::<RepeatSpec>().is_err());
+        assert!("daily/0".parse::<RepeatSpec>().is_err());
+        assert!("after:2w\u{e9}".parse::<RepeatSpec>().is_err());
+        assert!("after:\u{e9}".parse::<RepeatSpec>().is_err());
+        assert!("after:2147483648d".parse::<RepeatSpec>().is_err());
+        assert_eq!(spec("daily/999").every, 999);
+    }
+
+    #[test]
+    fn occurrences_past_the_representable_years_are_none() {
+        let far = NaiveDate::MAX;
+        assert_eq!(spec("daily").next_occurrence(far, far), None);
+        assert_eq!(spec("monthly:15").next_occurrence(far, far), None);
+        assert_eq!(spec("yearly:12-31").next_occurrence(far, far), None);
+        assert_eq!(spec("weekly:mon").next_occurrence(far, far), None);
+        assert_eq!(spec("monthly:15").first_occurrence(far), far);
+        // a wire rule with an interval past the bound is not evaluated
+        assert!(
+            RepeatSpec::from_rule(&rule(
+                r#"{"fa":1000,"fu":16,"ia":1789603200,"of":[{"dy":0}],"rc":0,"sr":1789603200,"tp":0}"#
+            ))
+            .is_none()
+        );
     }
 
     #[test]
