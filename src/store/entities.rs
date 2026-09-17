@@ -54,6 +54,7 @@ pub struct TaskStateProps {
     pub instance_creation_count: i32,
     pub instance_creation_paused: bool,
     pub evening_bit: i32,
+    pub alarm_time_offset: Option<i64>,
     pub leaves_tombstone: bool,
     pub trashed: bool,
     pub creation_date: Option<f64>,
@@ -155,6 +156,7 @@ pub struct Task {
     pub leaves_tombstone: bool,
     pub instance_creation_paused: bool,
     pub evening: bool,
+    pub alarm_time_offset: Option<i64>,
     pub recurrence_rule: Option<RecurrenceRule>,
     pub repeater: Option<serde_json::Value>,
     pub recurrence_templates: Vec<ThingsId>,
@@ -162,6 +164,11 @@ pub struct Task {
 }
 
 impl Task {
+    pub fn reminder(&self) -> Option<String> {
+        self.alarm_time_offset
+            .map(|secs| format!("{:02}:{:02}", secs / 3600, secs % 3600 / 60))
+    }
+
     /// Neither a title nor notes: a blank row, not a notes-only capture.
     pub fn is_blank(&self) -> bool {
         self.title.trim().is_empty() && self.notes.as_deref().unwrap_or("").trim().is_empty()
@@ -259,6 +266,7 @@ impl From<TaskProps> for TaskStateProps {
             instance_creation_count: props.instance_creation_count,
             instance_creation_paused: props.instance_creation_paused,
             evening_bit: props.evening_bit,
+            alarm_time_offset: props.alarm_time_offset,
             leaves_tombstone: props.leaves_tombstone,
             trashed: props.trashed,
             creation_date: props.creation_date,

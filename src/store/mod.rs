@@ -208,6 +208,7 @@ impl ThingsStore {
             leaves_tombstone: p.leaves_tombstone,
             instance_creation_paused: p.instance_creation_paused,
             evening: p.evening_bit != 0,
+            alarm_time_offset: p.alarm_time_offset,
             recurrence_rule: p.recurrence_rule.clone(),
             repeater: p.repeater.clone(),
             recurrence_templates: p.recurrence_template_ids.clone(),

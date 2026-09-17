@@ -226,6 +226,15 @@ pub struct TaskPatch {
     #[serde(rename = "sb", skip_serializing_if = "Option::is_none")]
     pub evening_bit: Option<i32>,
 
+    /// `ato`: alarm time offset in seconds from day start (`null` clears the reminder).
+    #[serde(
+        rename = "ato",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub alarm_time_offset: Option<Option<i64>>,
+
     /// `tp`: task type.
     #[serde(rename = "tp", skip_serializing_if = "Option::is_none")]
     pub item_type: Option<TaskType>,
@@ -341,6 +350,7 @@ impl TaskPatch {
             && self.notes.is_none()
             && self.start_location.is_none()
             && self.scheduled_date.is_none()
+            && self.alarm_time_offset.is_none()
             && self.today_index_reference.is_none()
             && self.parent_project_ids.is_none()
             && self.area_ids.is_none()

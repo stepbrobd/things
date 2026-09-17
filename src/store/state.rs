@@ -50,6 +50,9 @@ fn apply_task_patch(task: &mut TaskStateProps, patch: TaskPatch) {
     if let Some(evening_bit) = patch.evening_bit {
         task.evening_bit = evening_bit;
     }
+    if let Some(alarm_time_offset) = patch.alarm_time_offset {
+        task.alarm_time_offset = alarm_time_offset;
+    }
     if let Some(modification_date) = patch.modification_date {
         task.modification_date = modification_date;
     }
