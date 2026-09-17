@@ -23,7 +23,8 @@ impl Command for AuthArgs {
 
         let password = rpassword::prompt_password("Things Cloud password: ")?;
 
-        let path = write_auth(email.trim(), password.trim_end())?;
+        // the prompt strips the newline, trailing spaces are part of the password
+        let path = write_auth(email.trim(), &password)?;
         writeln!(out, "Saved auth to {}", path.display())?;
         Ok(())
     }
