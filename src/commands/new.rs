@@ -326,6 +326,12 @@ fn build_new_plan(
 
     let mut repeat = None;
     if let Some(rule_text) = &args.repeat {
+        if args.deadline_date.is_some() {
+            return Err(
+                "A repeating to-do keeps its deadline as an offset the CLI does not write yet, --deadline and --repeat cannot be combined."
+                    .to_string(),
+            );
+        }
         let spec: RepeatSpec = rule_text.parse()?;
         let bound = bound(args.times, args.until.as_deref())?;
         let Some(when_day) = props.scheduled_date.and_then(day_of) else {
@@ -504,6 +510,7 @@ fn build_new_plan(
             sort_index: props.sort_index,
             today_sort_index: props.today_sort_index,
             conflict_overrides: props.conflict_overrides.clone(),
+            checklist: Vec::new(),
         };
         template_change = Some((template_uuid, template(&spec, rule, first, source, now)));
     }

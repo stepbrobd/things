@@ -16,7 +16,7 @@ use crate::{
         parse_reminder, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
-    repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
+    repeat::{Bound, ChecklistCopy, RepeatSpec, TemplateSource, bound, checklist_items, template},
     store::Task,
     wire::{
         checklist::{ChecklistItemPatch, ChecklistItemProps},
@@ -178,6 +178,9 @@ fn unschedule(update: &mut TaskPatch, task: &Task) {
 }
 
 /// when, deadline, reminder and repeat, the fields the app's popovers edit
+///
+/// `checklist` is the to-do's checklist as this edit leaves it, which a new
+/// template copies
 #[allow(clippy::too_many_arguments)]
 fn apply_schedule(
     args: &EditArgs,
@@ -185,6 +188,7 @@ fn apply_schedule(
     update: &mut TaskPatch,
     changes: &mut BTreeMap<String, WireObject>,
     labels: &mut Vec<String>,
+    checklist: &[ChecklistCopy],
     now: f64,
     today_ts: i64,
     next_id: &mut dyn FnMut() -> String,
@@ -315,18 +319,41 @@ fn apply_schedule(
                 "--until {until} is before the first occurrence {first}"
             ));
         }
+        let deadline = match update.deadline {
+            Some(deadline) => deadline.is_some(),
+            None => task.deadline.is_some(),
+        };
+        if deadline {
+            return Err(
+                "A repeating to-do keeps its deadline as an offset the CLI does not write yet, clear the deadline before adding --repeat."
+                    .to_string(),
+            );
+        }
         let rule = spec.rule(first, day_of(today_ts).expect("today"), bound);
         label(format!(
             "repeat={}",
             rule.human_readable().unwrap_or_else(|_| rule_text.clone())
         ));
+        // the template mirrors the to-do as this edit leaves it, not as it was
         let source = TemplateSource {
-            title: task.title.clone(),
-            notes: task.notes.as_deref().map(task6_note),
-            tag_ids: task.tags.clone(),
-            parent_project_ids: task.project.iter().cloned().collect(),
-            area_ids: task.area.iter().cloned().collect(),
-            action_group_ids: task.action_group.iter().cloned().collect(),
+            title: update.title.clone().unwrap_or_else(|| task.title.clone()),
+            notes: update
+                .notes
+                .clone()
+                .or_else(|| task.notes.as_deref().map(task6_note)),
+            tag_ids: update.tag_ids.clone().unwrap_or_else(|| task.tags.clone()),
+            parent_project_ids: update
+                .parent_project_ids
+                .clone()
+                .unwrap_or_else(|| task.project.iter().cloned().collect()),
+            area_ids: update
+                .area_ids
+                .clone()
+                .unwrap_or_else(|| task.area.iter().cloned().collect()),
+            action_group_ids: update
+                .action_group_ids
+                .clone()
+                .unwrap_or_else(|| task.action_group.iter().cloned().collect()),
             alarm_time_offset: match update.alarm_time_offset {
                 Some(alarm) => alarm,
                 None => task.alarm_time_offset,
@@ -334,15 +361,16 @@ fn apply_schedule(
             sort_index: task.index,
             today_sort_index: task.today_index,
             conflict_overrides: Some(json!({"_t": "oo", "sn": {}})),
+            checklist: checklist.to_vec(),
         };
         let template_uuid = next_id();
-        update.recurrence_template_ids = Some(vec![
-            ThingsId::from_str(&template_uuid).map_err(|e| e.to_string())?,
-        ]);
+        let template_id = ThingsId::from_str(&template_uuid).map_err(|e| e.to_string())?;
+        update.recurrence_template_ids = Some(vec![template_id.clone()]);
         changes.insert(
             template_uuid,
             WireObject::create(EntityType::Task7, template(&spec, rule, first, source, now)),
         );
+        changes.extend(checklist_items(checklist, &template_id, now, next_id));
     } else if args.times.is_some() || args.until.is_some() {
         return Err("--times and --until need --repeat".to_string());
     }
@@ -621,17 +649,26 @@ fn build_edit_plan(
             update.tag_ids = Some(current);
         }
 
+        // the checklist as this edit leaves it, kept alongside the changes for a template to copy
+        let mut checklist = task
+            .checklist_items
+            .iter()
+            .map(|item| (item.uuid.clone(), item.title.clone(), item.index))
+            .collect::<Vec<_>>();
+
         if let Some(remove_raw) = &args.remove_checklist {
             let (items, err) = resolve_checklist_items(task, remove_raw);
             if !err.is_empty() {
                 return Err(err);
             }
-            for uuid in items.into_iter().map(|i| i.uuid).collect::<HashSet<_>>() {
+            let removed = items.into_iter().map(|i| i.uuid).collect::<HashSet<_>>();
+            for uuid in &removed {
                 changes.insert(
                     uuid.to_string(),
                     WireObject::delete(EntityType::ChecklistItem3),
                 );
             }
+            checklist.retain(|(uuid, _, _)| !removed.contains(uuid));
             if !labels.iter().any(|l| l == "remove-checklist") {
                 labels.push("remove-checklist".to_string());
             }
@@ -662,6 +699,11 @@ fn build_edit_plan(
                         },
                     ),
                 );
+                for (uuid, title, _) in checklist.iter_mut() {
+                    if *uuid == matches[0].uuid {
+                        *title = new_title.to_string();
+                    }
+                }
             }
             if !labels.iter().any(|l| l == "rename-checklist") {
                 labels.push("rename-checklist".to_string());
@@ -680,33 +722,45 @@ fn build_edit_plan(
                 if title.is_empty() {
                     return Err("Checklist item title cannot be empty.".to_string());
                 }
+                let index = max_ix + idx as i32 + 1;
+                let uuid = next_id();
                 changes.insert(
-                    next_id(),
+                    uuid.clone(),
                     WireObject::create(
                         EntityType::ChecklistItem3,
                         ChecklistItemProps {
                             title: title.to_string(),
                             task_ids: vec![task.uuid.clone()],
                             status: TaskStatus::Incomplete,
-                            sort_index: max_ix + idx as i32 + 1,
+                            sort_index: index,
                             creation_date: Some(now),
                             modification_date: Some(now),
                             ..Default::default()
                         },
                     ),
                 );
+                checklist.push((
+                    ThingsId::from_str(&uuid).map_err(|e| e.to_string())?,
+                    title.to_string(),
+                    index,
+                ));
             }
             if !labels.iter().any(|l| l == "add-checklist") {
                 labels.push("add-checklist".to_string());
             }
         }
 
+        let checklist = checklist
+            .into_iter()
+            .map(|(_, title, index)| ChecklistCopy { title, index })
+            .collect::<Vec<_>>();
         apply_schedule(
             args,
             task,
             &mut update,
             &mut changes,
             &mut labels,
+            &checklist,
             now,
             today_ts,
             next_id,
@@ -1040,6 +1094,65 @@ mod tests {
     }
 
     #[test]
+    fn a_repeat_added_by_an_edit_mirrors_the_edited_to_do() {
+        let store = build_store(vec![
+            task(TASK_UUID, "Old title"),
+            checklist(CHECK_A, TASK_UUID, "Step one", 1),
+            checklist(CHECK_B, TASK_UUID, "Step two", 2),
+        ]);
+        let args = EditArgs {
+            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            title: Some("New title".to_string()),
+            notes: Some("New notes".to_string()),
+            move_target: None,
+            tag_delta: TagDeltaArgs {
+                add_tags: None,
+                remove_tags: None,
+            },
+            add_checklist: vec!["Step three".to_string()],
+            remove_checklist: Some(CHECK_B[..6].to_string()),
+            rename_checklist: vec![format!("{}:Step won", &CHECK_A[..6])],
+            completed_on: None,
+            created_on: None,
+            when: Some("today".to_string()),
+            deadline_date: None,
+            clear_deadline: false,
+            reminder: None,
+            clear_reminder: false,
+            repeat: Some("daily".to_string()),
+            times: None,
+            until: None,
+        };
+        let id = |n: u128| ThingsId::from_u128(n).to_string();
+        let mut ids = (1..).map(id);
+        let mut id_gen = || ids.next().expect("id");
+        let plan = build_edit_plan(&args, &store, NOW, TODAY, &mut id_gen).expect("plan");
+
+        // the first id is the added item on the to-do, the second the template, the third and fourth its checklist copies
+        let template = plan.changes.get(&id(2)).expect("template").properties_map();
+        assert_eq!(template.get("tt"), Some(&json!("New title")));
+        assert_eq!(template["nt"]["v"], json!("New notes"));
+        assert!(template.get("rr").is_some_and(|rule| !rule.is_null()));
+        let copies = [3, 4]
+            .iter()
+            .map(|n| plan.changes.get(&id(*n)).expect("copy").properties_map())
+            .collect::<Vec<_>>();
+        assert_eq!(copies[0].get("tt"), Some(&json!("Step won")));
+        assert_eq!(copies[0].get("ts"), Some(&json!([id(2)])));
+        assert_eq!(copies[1].get("tt"), Some(&json!("Step three")));
+        assert_eq!(copies[1].get("ix"), Some(&json!(3)));
+        assert!(!plan.changes.contains_key(&id(5)));
+
+        // a deadline has no place on the template yet, the edit is refused
+        let dated = EditArgs {
+            deadline_date: Some("2027-01-15".to_string()),
+            ..args
+        };
+        let err = build_edit_plan(&dated, &store, NOW, TODAY, &mut id_gen).expect_err("deadline");
+        assert!(err.contains("clear the deadline"));
+    }
+
+    #[test]
     fn moving_to_the_inbox_clears_the_day_and_the_reminder() {
         let scheduled = (
             TASK_UUID.to_string(),
@@ -1237,7 +1350,8 @@ mod tests {
             checklist(CHECK_B, TASK_UUID, "Step two", 2),
         ]);
 
-        let mut ids = vec!["NEW_CHECK_1".to_string(), "NEW_CHECK_2".to_string()].into_iter();
+        let new_check = |n: u128| ThingsId::from_u128(n).to_string();
+        let mut ids = vec![new_check(1), new_check(2)].into_iter();
         let mut id_gen = || ids.next().expect("next id");
         let plan = build_edit_plan(
             &EditArgs {
@@ -1278,8 +1392,8 @@ mod tests {
             plan.changes.get(CHECK_B).map(|o| o.operation_type),
             Some(OperationType::Delete)
         ));
-        assert!(plan.changes.contains_key("NEW_CHECK_1"));
-        assert!(plan.changes.contains_key("NEW_CHECK_2"));
+        assert!(plan.changes.contains_key(&new_check(1)));
+        assert!(plan.changes.contains_key(&new_check(2)));
     }
 
     #[test]

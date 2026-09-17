@@ -10,6 +10,7 @@ use crate::{
     ids::ThingsId,
     store::{Task, ThingsStore},
     wire::{
+        checklist::ChecklistItemProps,
         notes::TaskNotes,
         recurrence::{FrequencyUnit, RECURRENCE_END_NEVER, RecurrenceRule, RecurrenceType},
         task::{TaskPatch, TaskProps, TaskStart, TaskStatus, TaskType},
@@ -509,6 +510,9 @@ pub fn due_instances(
             let resume = today.succ_opt()?;
             let following = next_occurrence_of_rule(rule, today, created);
             let instance_id = next_id();
+            let instance_uuid: ThingsId = instance_id
+                .parse()
+                .expect("the id generator yields Things ids");
             let day_ts = day_timestamp(due);
             let instance = TaskProps {
                 title: template.title.clone(),
@@ -547,6 +551,16 @@ pub fn due_instances(
                 template.uuid.to_string(),
                 WireObject::update(EntityType::Task7, advance),
             );
+            // the instance gets its own copy of the template's checklist, open again
+            let checklist = template
+                .checklist_items
+                .iter()
+                .map(|item| ChecklistCopy {
+                    title: item.title.clone(),
+                    index: item.index,
+                })
+                .collect::<Vec<_>>();
+            changes.extend(checklist_items(&checklist, &instance_uuid, now, next_id));
             Some(Materialized {
                 title: template.title.clone(),
                 day: due,
@@ -569,6 +583,44 @@ pub struct TemplateSource {
     pub sort_index: i32,
     pub today_sort_index: i32,
     pub conflict_overrides: Option<Value>,
+    /// the checklist as the to-do has it after the edit, copied with fresh ids onto the template and from there onto every instance
+    pub checklist: Vec<ChecklistCopy>,
+}
+
+/// one checklist item to copy, every copy starts open
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ChecklistCopy {
+    pub title: String,
+    pub index: i32,
+}
+
+/// fresh checklist items for `owner`, one create per copy
+pub fn checklist_items(
+    checklist: &[ChecklistCopy],
+    owner: &ThingsId,
+    now: f64,
+    next_id: &mut dyn FnMut() -> String,
+) -> Vec<(String, WireObject)> {
+    checklist
+        .iter()
+        .map(|item| {
+            (
+                next_id(),
+                WireObject::create(
+                    EntityType::ChecklistItem3,
+                    ChecklistItemProps {
+                        title: item.title.clone(),
+                        task_ids: vec![owner.clone()],
+                        status: TaskStatus::Incomplete,
+                        sort_index: item.index,
+                        creation_date: Some(now),
+                        modification_date: Some(now),
+                        ..Default::default()
+                    },
+                ),
+            )
+        })
+        .collect()
 }
 
 /// the hidden template behind a repeating to-do whose first instance is on `first`
@@ -692,8 +744,13 @@ mod tests {
         ThingsStore::from_raw_state(&fold_items([objects.into_iter().collect::<WireItem>()]))
     }
 
+    /// the nth id the test generator hands out
+    fn id(n: u128) -> String {
+        ThingsId::from_u128(n).to_string()
+    }
+
     fn due_on(store: &ThingsStore, today: &str) -> Vec<Materialized> {
-        let mut ids = (1..).map(|n| format!("N{n}"));
+        let mut ids = (1..).map(id);
         let mut next_id = || ids.next().expect("id");
         due_instances(store, day(today), 2.0, &mut next_id)
     }
@@ -1062,6 +1119,40 @@ mod tests {
     }
 
     #[test]
+    fn an_instance_gets_a_fresh_copy_of_the_template_checklist() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        let item_id = "Ck11111111111111111111";
+        let store = store_of(vec![
+            template_object(daily, "2026-03-25", 1),
+            (
+                item_id.to_string(),
+                WireObject::create(
+                    EntityType::ChecklistItem3,
+                    ChecklistItemProps {
+                        title: "Stretch".to_string(),
+                        task_ids: vec![TEMPLATE.parse().expect("id")],
+                        status: TaskStatus::Completed,
+                        sort_index: 7,
+                        ..Default::default()
+                    },
+                ),
+            ),
+        ]);
+        let made = due_on(&store, "2026-03-25");
+        assert_eq!(made.len(), 1);
+        let copy = made[0]
+            .changes
+            .get(&id(2))
+            .expect("the copy takes the id after the instance")
+            .properties_map();
+        assert_eq!(copy.get("tt"), Some(&json!("Stretch")));
+        assert_eq!(copy.get("ts"), Some(&json!([id(1)])));
+        assert_eq!(copy.get("ss"), Some(&json!(0)));
+        assert_eq!(copy.get("ix"), Some(&json!(7)));
+        assert!(!made[0].changes.contains_key(item_id));
+    }
+
+    #[test]
     fn a_missed_stretch_yields_one_instance_on_the_first_missed_day() {
         let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
         let store = store_of(vec![template_object(daily, "2026-03-20", 1)]);
@@ -1101,6 +1192,7 @@ mod tests {
             sort_index: 0,
             today_sort_index: 0,
             conflict_overrides: None,
+            checklist: Vec::new(),
         };
         let daily = spec("daily");
         for bound in [Bound::Times(1), Bound::Until(today)] {
@@ -1144,6 +1236,7 @@ mod tests {
             sort_index: -844,
             today_sort_index: -520,
             conflict_overrides: None,
+            checklist: Vec::new(),
         };
         let weekly = spec("weekly:mon,thu");
         let made = template(
