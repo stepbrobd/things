@@ -280,7 +280,12 @@ impl RepeatSpec {
         }
     }
 
-    /// the spec and anchor behind a fixed schedule rule from the wire, None for after completion or shapes the CLI cannot evaluate
+    /// the spec and anchor behind a fixed schedule rule from the wire
+    ///
+    /// None for after completion and for every offset shape other than the
+    /// ones the app was seen to write: a rule the CLI cannot evaluate exactly
+    /// is shown but never projected or materialized, since a guess would put
+    /// instances on the wrong days
     pub fn from_rule(rule: &RecurrenceRule) -> Option<(Self, NaiveDate)> {
         if rule.recurrence_type != RecurrenceType::FixedSchedule || rule.frequency_amount < 1 {
             return None;
@@ -290,46 +295,67 @@ impl RepeatSpec {
             .filter(|anchor| *anchor > 0)
             .or(rule.start_date)
             .and_then(day_of)?;
-        let field = |key: &str| -> Vec<i64> {
-            rule.offsets
-                .iter()
-                .filter_map(|offset| offset.get(key).and_then(Value::as_i64))
-                .collect()
-        };
+        fn keys(offset: &BTreeMap<String, Value>) -> Vec<&str> {
+            offset.keys().map(String::as_str).collect()
+        }
+        fn field(offset: &BTreeMap<String, Value>, key: &str) -> Option<i64> {
+            offset.get(key).and_then(Value::as_i64)
+        }
         let cadence = match rule.frequency_unit {
-            FrequencyUnit::Daily => Cadence::Daily,
-            FrequencyUnit::Weekly => Cadence::Weekly(
-                field("wd")
-                    .into_iter()
-                    .filter_map(|day| u32::try_from(day).ok())
-                    .collect(),
-            ),
-            FrequencyUnit::Monthly => {
-                // the nth weekday of a month is not evaluated
-                if !field("wd").is_empty() {
+            FrequencyUnit::Daily => {
+                if !rule
+                    .offsets
+                    .iter()
+                    .all(|offset| keys(offset) == ["dy"] && field(offset, "dy") == Some(0))
+                {
                     return None;
                 }
-                Cadence::Monthly(
-                    field("dy")
-                        .first()
-                        .map(|day| if *day < 0 { -1 } else { *day as i32 + 1 }),
-                )
+                Cadence::Daily
             }
-            FrequencyUnit::Yearly => {
-                Cadence::Yearly(match (field("mo").first(), field("dy").first()) {
-                    (Some(month), Some(day)) => Some((*month as u32 + 1, *day as u32 + 1)),
-                    _ => None,
-                })
+            FrequencyUnit::Weekly => {
+                let mut days = rule
+                    .offsets
+                    .iter()
+                    .map(|offset| {
+                        (keys(offset) == ["wd"])
+                            .then(|| field(offset, "wd"))
+                            .flatten()
+                            .filter(|day| (0..=6).contains(day))
+                            .map(|day| day as u32)
+                    })
+                    .collect::<Option<Vec<u32>>>()?;
+                days.sort_unstable();
+                days.dedup();
+                Cadence::Weekly(days)
             }
+            FrequencyUnit::Monthly => Cadence::Monthly(match rule.offsets.as_slice() {
+                [] => None,
+                [offset] if keys(offset) == ["dy"] => {
+                    let day = field(offset, "dy").filter(|day| (-1..=30).contains(day))?;
+                    Some(if day < 0 { -1 } else { day as i32 + 1 })
+                }
+                _ => return None,
+            }),
+            FrequencyUnit::Yearly => Cadence::Yearly(match rule.offsets.as_slice() {
+                [] => None,
+                [offset] if keys(offset) == ["dy", "mo"] => {
+                    let day = field(offset, "dy").filter(|day| (0..=30).contains(day))?;
+                    let month = field(offset, "mo").filter(|month| (0..=11).contains(month))?;
+                    Some((month as u32 + 1, day as u32 + 1))
+                }
+                _ => return None,
+            }),
             FrequencyUnit::Unknown(_) => return None,
         };
-        Some((
-            Self {
-                cadence,
-                every: rule.frequency_amount,
-            },
-            anchor,
-        ))
+        let spec = Self {
+            cadence,
+            every: rule.frequency_amount,
+        };
+        // an interval counts from its anchor, which has to be an occurrence, otherwise the phase of the rule is unknown
+        if spec.every > 1 && spec.first_occurrence(anchor) != anchor {
+            return None;
+        }
+        Some((spec, anchor))
     }
 
     /// the wire rule as the app writes it, `sr` the day the rule was made, `ia` the first occurrence
@@ -599,6 +625,75 @@ mod tests {
         text.parse().expect("spec")
     }
 
+    fn rule(json: &str) -> RecurrenceRule {
+        serde_json::from_str(json).expect("rule")
+    }
+
+    // a yearly rule on september 17 that ends on 2027-09-17, as the app wrote it
+    const YEARLY_SEP_17: &str = r#"{"ed":1821139200,"fa":1,"fu":4,"ia":1789603200,"of":[{"dy":16,"mo":8}],"rc":0,"rrv":4,"sr":1789603200,"tp":0,"ts":0}"#;
+    // a daily rule anchored on 2026-03-16 that ends on 2026-03-25
+    const DAILY_UNTIL_MAR_25: &str = r#"{"ed":1774396800,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+    const TEMPLATE: &str = "Tt11111111111111111111";
+    const INSTANCE: &str = "Ji11111111111111111111";
+
+    fn template_object(
+        rule_json: &str,
+        search_from: &str,
+        instances_created: i32,
+    ) -> (String, WireObject) {
+        (
+            TEMPLATE.to_string(),
+            WireObject::create(
+                EntityType::Task7,
+                TaskProps {
+                    title: "Renew".to_string(),
+                    start_location: TaskStart::Someday,
+                    recurrence_rule: Some(rule(rule_json)),
+                    instance_creation_start_date: Some(day_timestamp(day(search_from))),
+                    instance_creation_count: instances_created,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
+            ),
+        )
+    }
+
+    fn instance_object(uuid: &str, on: &str) -> (String, WireObject) {
+        (
+            uuid.to_string(),
+            WireObject::create(
+                EntityType::Task7,
+                TaskProps {
+                    title: "Renew".to_string(),
+                    start_location: TaskStart::Anytime,
+                    scheduled_date: Some(day_timestamp(day(on))),
+                    recurrence_template_ids: vec![TEMPLATE.parse().expect("template id")],
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
+            ),
+        )
+    }
+
+    fn store_of(objects: Vec<(String, WireObject)>) -> ThingsStore {
+        ThingsStore::from_raw_state(&fold_items([objects.into_iter().collect::<WireItem>()]))
+    }
+
+    fn due_on(store: &ThingsStore, today: &str) -> Vec<Materialized> {
+        let mut ids = (1..).map(|n| format!("N{n}"));
+        let mut next_id = || ids.next().expect("id");
+        due_instances(store, day(today), 2.0, &mut next_id)
+    }
+
+    fn template_patch(made: &Materialized) -> BTreeMap<String, Value> {
+        made.changes
+            .get(TEMPLATE)
+            .expect("the template advances")
+            .properties_map()
+    }
+
     #[test]
     fn parses_every_form() {
         assert_eq!(
@@ -772,6 +867,57 @@ mod tests {
     }
 
     #[test]
+    fn from_rule_declines_shapes_it_cannot_evaluate() {
+        let evaluates = |json: &str| RepeatSpec::from_rule(&rule(json)).is_some();
+        // the captured shapes
+        assert!(evaluates(
+            r#"{"fa":1,"fu":16,"ia":1789603200,"of":[{"dy":0}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        assert!(evaluates(
+            r#"{"fa":2,"fu":256,"ia":1789603200,"of":[{"wd":1},{"wd":4}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        assert!(evaluates(
+            r#"{"fa":1,"fu":8,"ia":1789603200,"of":[{"dy":-1}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        assert!(evaluates(YEARLY_SEP_17));
+        // the last thursday of november, a weekday ordinal the CLI does not compute
+        assert!(!evaluates(
+            r#"{"fa":1,"fu":4,"ia":1767225600,"of":[{"mo":10,"wd":4,"wdo":-1}],"rc":0,"sr":1767225600,"tp":0}"#
+        ));
+        assert!(!evaluates(
+            r#"{"fa":1,"fu":8,"ia":1789603200,"of":[{"wd":5,"wdo":-1}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        // two days a month, which a single day selector cannot carry
+        assert!(!evaluates(
+            r#"{"fa":1,"fu":8,"ia":1789603200,"of":[{"dy":0},{"dy":14}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        // values outside the app's ranges and keys it never writes
+        assert!(!evaluates(
+            r#"{"fa":1,"fu":256,"ia":1789603200,"of":[{"wd":7}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        assert!(!evaluates(
+            r#"{"fa":1,"fu":4,"ia":1789603200,"of":[{"dy":16,"mo":12}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        assert!(!evaluates(
+            r#"{"fa":1,"fu":16,"ia":1789603200,"of":[{"dy":3}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+        assert!(!evaluates(
+            r#"{"fa":0,"fu":16,"ia":1789603200,"of":[{"dy":0}],"rc":0,"sr":1789603200,"tp":0}"#
+        ));
+    }
+
+    #[test]
+    fn an_unsupported_rule_is_never_materialized() {
+        let store = store_of(vec![template_object(
+            r#"{"fa":1,"fu":4,"ia":1767225600,"of":[{"mo":10,"wd":4,"wdo":-1}],"rc":0,"sr":1767225600,"tp":0}"#,
+            "2026-11-26",
+            1,
+        )]);
+        assert!(due_on(&store, "2026-11-27").is_empty());
+        assert!(store.projected_repeats(day("2026-11-27")).is_empty());
+    }
+
+    #[test]
     fn the_day_after_an_app_made_instance_is_not_due() {
         // the app created the 2026-09-17 instance and moved icsd to the next day
         let store = store_of(vec![
@@ -838,6 +984,45 @@ mod tests {
         let made = due_on(&store, "2026-03-25");
         assert_eq!(made.len(), 1);
         assert_eq!(made[0].day, day("2026-03-25"));
+    }
+
+    #[test]
+    fn an_interval_rule_counts_from_an_anchor_that_is_an_occurrence() {
+        // every two weeks on monday, anchored on a thursday, the phase is unknown
+        assert!(
+            RepeatSpec::from_rule(&rule(
+                r#"{"fa":2,"fu":256,"ia":1789603200,"of":[{"wd":1}],"rc":0,"sr":1789603200,"tp":0}"#
+            ))
+            .is_none()
+        );
+        // anchored on a monday it counts from there
+        assert!(
+            RepeatSpec::from_rule(&rule(
+                r#"{"fa":2,"fu":256,"ia":1789948800,"of":[{"wd":1}],"rc":0,"sr":1789603200,"tp":0}"#
+            ))
+            .is_some()
+        );
+        // every week the phase does not matter
+        assert!(
+            RepeatSpec::from_rule(&rule(
+                r#"{"fa":1,"fu":256,"ia":1789603200,"of":[{"wd":1}],"rc":0,"sr":1789603200,"tp":0}"#
+            ))
+            .is_some()
+        );
+        // every third month on the 22nd, anchored on the 17th
+        assert!(
+            RepeatSpec::from_rule(&rule(
+                r#"{"fa":3,"fu":8,"ia":1789603200,"of":[{"dy":21}],"rc":0,"sr":1789603200,"tp":0}"#
+            ))
+            .is_none()
+        );
+        // every two days counts from any anchor
+        assert!(
+            RepeatSpec::from_rule(&rule(
+                r#"{"fa":2,"fu":16,"ia":1789603200,"of":[{"dy":0}],"rc":0,"sr":1789603200,"tp":0}"#
+            ))
+            .is_some()
+        );
     }
 
     #[test]
