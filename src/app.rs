@@ -1,6 +1,6 @@
 use std::{
     cell::{Cell, RefCell},
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     io::{IsTerminal, Read},
     path::PathBuf,
     rc::Rc,
@@ -8,6 +8,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use tracing::warn;
 
 use crate::{
     auth::load_auth,
@@ -16,9 +17,10 @@ use crate::{
     commands::{Command, Commands},
     common::ICONS,
     dirs::append_log_dir,
+    ids::ThingsId,
     log_cache::{fold_state_from_append_log, get_state_with_append_log},
     logging, repeat,
-    store::{RawState, ThingsStore, fold_item, fold_items},
+    store::{RawState, ThingsStore, degraded_ids, fold_item, fold_items},
     wire::wire_object::WireItem,
 };
 
@@ -63,6 +65,9 @@ pub struct Cli {
     /// the client that synchronized this run's state: writes commit against its history and head
     #[arg(skip)]
     pub cloud: Rc<RefCell<Option<ThingsCloudClient>>>,
+    /// the objects whose replay did not complete, which the writer refuses to touch
+    #[arg(skip)]
+    pub degraded: Rc<RefCell<HashSet<ThingsId>>>,
 }
 
 impl Cli {
@@ -77,6 +82,22 @@ impl Cli {
             return Ok(state.clone());
         }
         let state = self.load_state_fresh()?;
+        let degraded = degraded_ids(&state);
+        if !degraded.is_empty() {
+            for id in &degraded {
+                warn!(target: "things::replay", uuid = %id, "did not replay completely, writes to it are refused");
+            }
+            let noun = if degraded.len() == 1 {
+                "object"
+            } else {
+                "objects"
+            };
+            eprintln!(
+                "{} {noun} did not replay completely and will not be written, THINGS_LOG=warn lists the ids",
+                degraded.len()
+            );
+        }
+        *self.degraded.borrow_mut() = degraded.into_iter().collect();
         *self.state_cache.borrow_mut() = Some(state.clone());
         Ok(state)
     }
@@ -133,8 +154,11 @@ pub fn run() -> Result<()> {
         .take()
         .unwrap_or(Commands::Today(Default::default()));
     let mut ctx = DefaultCmdCtx::from_cli(&cli);
-    if !matches!(command, Commands::Auth(_) | Commands::Completions(_)) {
-        materialize_due(&cli, &mut ctx)?;
+    if !matches!(command, Commands::Auth(_) | Commands::Completions(_))
+        && let Err(err) = materialize_due(&cli, &mut ctx)
+    {
+        // the pass stands in for the Apple clients, its failure is reported and the command still runs
+        eprintln!("{err:#}");
     }
     command.run_with_ctx(&cli, &mut std::io::stdout(), &mut ctx)
 }

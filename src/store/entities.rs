@@ -18,6 +18,9 @@ use crate::{
 pub struct StateObject {
     pub entity_type: Option<EntityType>,
     pub properties: StateProperties,
+    /// an update to this object could not be applied, or its create did not parse, and what is shown may be behind the history
+    #[serde(default)]
+    pub degraded: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -162,6 +165,8 @@ pub struct Task {
     pub recurrence_rule: Option<RecurrenceRule>,
     pub repeater: Option<serde_json::Value>,
     pub recurrence_templates: Vec<ThingsId>,
+    /// the object's replay did not complete, what is shown may be behind the history and no write goes through it
+    pub degraded: bool,
     pub checklist_items: Vec<ChecklistItem>,
 }
 

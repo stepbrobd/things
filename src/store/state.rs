@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use tracing::warn;
+
 use crate::{
     ids::ThingsId,
     store::entities::{
@@ -9,22 +11,29 @@ use crate::{
     wire::{
         area::AreaPatch,
         checklist::ChecklistItemPatch,
+        notes::TaskNotesApplyError,
         tags::TagPatch,
         task::TaskPatch,
-        wire_object::{OperationType, Properties, WireItem, WireObject},
+        wire_object::{EntityType, OperationType, Properties, WireItem, WireObject},
     },
 };
 
 pub type RawState = HashMap<ThingsId, StateObject>;
 
-fn apply_task_patch(task: &mut TaskStateProps, patch: TaskPatch) {
+/// apply a task patch, keeping the old note when a note delta does not apply
+fn apply_task_patch(
+    task: &mut TaskStateProps,
+    patch: TaskPatch,
+) -> Result<(), TaskNotesApplyError> {
+    let mut outcome = Ok(());
     if let Some(title) = patch.title {
         task.title = title;
     }
-    if let Some(notes) = patch.notes
-        && let Ok(updated) = notes.apply_to(task.notes.as_deref())
-    {
-        task.notes = updated;
+    if let Some(notes) = patch.notes {
+        match notes.apply_to(task.notes.as_deref()) {
+            Ok(updated) => task.notes = updated,
+            Err(error) => outcome = Err(error),
+        }
     }
     if let Some(start_location) = patch.start_location {
         task.start_location = start_location;
@@ -105,6 +114,7 @@ fn apply_task_patch(task: &mut TaskStateProps, patch: TaskPatch) {
     if let Some(creation_date) = patch.creation_date {
         task.creation_date = creation_date;
     }
+    outcome
 }
 
 fn apply_checklist_patch(item: &mut ChecklistItemStateProps, patch: ChecklistItemPatch) {
@@ -159,35 +169,65 @@ fn wire_object_properties(obj: &WireObject) -> StateProperties {
     }
 }
 
-fn insert_state_object(state: &mut RawState, uuid: ThingsId, obj: WireObject) {
+/// a task entity the CLI knows whose payload did not parse is kept as an opaque object and marked, as is a task an update reaches before any create, while a future entity is opaque by design
+fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
     let properties = wire_object_properties(&obj);
+    let known_task = obj.entity_type.as_ref().is_some_and(EntityType::is_task);
+    let unparsed = known_task && matches!(properties, StateProperties::Other);
+    let create_less = known_task && obj.operation_type == OperationType::Update;
+    let degraded = unparsed || create_less;
+    if unparsed {
+        warn!(target: "things::replay", uuid = %uuid, "the object's payload did not parse, it is kept opaque");
+    } else if create_less {
+        warn!(target: "things::replay", uuid = %uuid, "an update reached the object before any create, it is kept partial");
+    }
     state.insert(
-        uuid,
+        uuid.clone(),
         StateObject {
             entity_type: obj.entity_type,
             properties,
+            degraded,
         },
     );
 }
 
-fn apply_update_payload(existing: &mut StateObject, payload: Properties) {
-    match (&mut existing.properties, payload) {
+/// an update the object cannot take leaves it marked: a note delta that does not apply, a patch for a known entity that did not parse, or a payload of another kind than the object holds
+fn apply_update_payload(
+    uuid: &ThingsId,
+    existing: &mut StateObject,
+    payload: Properties,
+    entity_type: Option<&EntityType>,
+) {
+    let failure = match (&mut existing.properties, payload) {
         (StateProperties::Task(task), Properties::TaskUpdate(patch)) => {
-            apply_task_patch(task, *patch);
+            apply_task_patch(task, *patch)
+                .err()
+                .map(|error| format!("note delta not applied: {error:?}"))
         }
         (StateProperties::ChecklistItem(item), Properties::ChecklistUpdate(patch)) => {
             apply_checklist_patch(item, patch);
+            None
         }
         (StateProperties::Area(area), Properties::AreaUpdate(patch)) => {
             apply_area_patch(area, patch);
+            None
         }
         (StateProperties::Tag(tag), Properties::TagUpdate(patch)) => {
             apply_tag_patch(tag, patch);
+            None
         }
-        (_, Properties::Ignored(_) | Properties::Unknown(_)) => {}
+        (_, Properties::Ignored(_)) => None,
+        (_, Properties::Unknown(_)) => entity_type
+            .is_some_and(EntityType::is_task)
+            .then(|| "the patch did not parse".to_string()),
         (_, payload) => {
             existing.properties = payload.into();
+            Some("the payload is of another kind than the object".to_string())
         }
+    };
+    if let Some(failure) = failure {
+        warn!(target: "things::replay", uuid = %uuid, "{failure}");
+        existing.degraded = true;
     }
 }
 
@@ -198,18 +238,24 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
         };
         match obj.operation_type {
             OperationType::Create => {
-                insert_state_object(state, uuid, obj);
+                insert_state_object(state, &uuid, obj);
             }
             OperationType::Update => {
                 if let Some(existing) = state.get_mut(&uuid) {
-                    if let Ok(payload) = obj.properties() {
-                        apply_update_payload(existing, payload);
+                    match obj.properties() {
+                        Ok(payload) => {
+                            apply_update_payload(&uuid, existing, payload, obj.entity_type.as_ref())
+                        }
+                        Err(error) => {
+                            warn!(target: "things::replay", uuid = %uuid, "the patch did not parse: {error}");
+                            existing.degraded = true;
+                        }
                     }
                     if obj.entity_type.is_some() {
                         existing.entity_type = obj.entity_type.clone();
                     }
                 } else {
-                    insert_state_object(state, uuid, obj);
+                    insert_state_object(state, &uuid, obj);
                 }
             }
             OperationType::Delete => {
@@ -218,6 +264,17 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
             OperationType::Unknown(_) => {}
         }
     }
+}
+
+/// the objects whose replay did not complete, which no command may write through
+pub fn degraded_ids(state: &RawState) -> Vec<ThingsId> {
+    let mut ids: Vec<ThingsId> = state
+        .iter()
+        .filter(|(_, object)| object.degraded)
+        .map(|(uuid, _)| uuid.clone())
+        .collect();
+    ids.sort();
+    ids
 }
 
 pub fn fold_items(items: impl IntoIterator<Item = WireItem>) -> RawState {
@@ -295,6 +352,9 @@ mod tests {
                 .get_task(TASK_ID)
                 .is_some()
         );
+        // a future entity is opaque by design, not a failure
+        assert!(!object.degraded);
+        assert!(degraded_ids(&state).is_empty());
     }
 
     #[test]
@@ -312,6 +372,40 @@ mod tests {
         };
         assert_eq!(properties.title, "Send tracking number");
         assert_eq!(properties.status, TaskStatus::Incomplete);
+        // the object is marked, what is shown may be behind the history
+        assert!(state[&task_id].degraded);
+        assert_eq!(degraded_ids(&state), vec![task_id]);
+    }
+
+    #[test]
+    fn an_update_before_any_create_leaves_a_marked_partial_task() {
+        let update = wire_item(&format!(
+            r#"{{"{TASK_ID}":{{"t":1,"e":"Task7","p":{{"tt":"Partial","md":2.0}}}}}}"#
+        ));
+        let state = fold_items([update]);
+        let task_id = TASK_ID.parse::<ThingsId>().expect("valid task id");
+        let StateProperties::Task(properties) = &state[&task_id].properties else {
+            panic!("the patch becomes a partial task");
+        };
+        assert_eq!(properties.title, "Partial");
+        assert!(state[&task_id].degraded);
+        // a settings object without a create is not a task and carries no mark
+        let settings = wire_item(
+            r#"{"3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A":{"t":1,"e":"Settings5","p":{"x":1}}}"#,
+        );
+        let state = fold_items([settings]);
+        assert!(state.values().all(|object| !object.degraded));
+    }
+
+    #[test]
+    fn an_unparseable_create_of_a_known_task_is_kept_opaque_and_marked() {
+        let create = wire_item(&format!(
+            r#"{{"{TASK_ID}":{{"t":0,"e":"Task7","p":{{"tt":"Odd","ss":"future"}}}}}}"#
+        ));
+        let state = fold_items([create]);
+        let task_id = TASK_ID.parse::<ThingsId>().expect("valid task id");
+        assert!(matches!(state[&task_id].properties, StateProperties::Other));
+        assert!(state[&task_id].degraded);
     }
 
     #[test]
@@ -331,6 +425,7 @@ mod tests {
         };
 
         assert_eq!(properties.notes.as_deref(), Some("café! todo"));
+        assert!(!state[&task_id].degraded);
     }
 
     #[test]
@@ -349,6 +444,7 @@ mod tests {
         };
 
         assert_eq!(properties.notes.as_deref(), Some("original"));
+        assert!(state[&task_id].degraded);
     }
 
     #[test]

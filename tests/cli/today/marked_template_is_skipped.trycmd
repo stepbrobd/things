@@ -1,0 +1,6 @@
+```trycmd
+$ run.sh things --id-seed 7 --today-ts 1774396800 --now-ts 1774400000.0 today
+No tasks for today.
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```

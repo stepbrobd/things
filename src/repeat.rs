@@ -489,6 +489,8 @@ pub fn due_instances(
                 && !template.trashed
                 && template.status == TaskStatus::Incomplete
                 && !template.instance_creation_paused
+                // a template whose replay failed is never written through
+                && !template.degraded
         })
         .collect();
     templates.sort_by(|a, b| a.uuid.cmp(&b.uuid));

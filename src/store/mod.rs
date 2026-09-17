@@ -11,7 +11,7 @@ pub use entities::{
     Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateObject,
     StateProperties, Tag, TagStateProps, Task, TaskStateProps,
 };
-pub use state::{RawState, fold_item, fold_items};
+pub use state::{RawState, degraded_ids, fold_item, fold_items};
 
 use crate::{
     common::day_timestamp,
@@ -128,7 +128,7 @@ impl ThingsStore {
                     let StateProperties::Task(props) = &obj.properties else {
                         continue;
                     };
-                    let task = self.parse_task(uuid, props, entity);
+                    let task = self.parse_task(uuid, props, entity, obj.degraded);
                     self.tasks_by_uuid.insert(uuid.clone(), task);
                 }
                 Some(EntityType::Area2 | EntityType::Area3) => {
@@ -180,7 +180,13 @@ impl ThingsStore {
         }
     }
 
-    fn parse_task(&self, uuid: &ThingsId, p: &TaskStateProps, entity: &EntityType) -> Task {
+    fn parse_task(
+        &self,
+        uuid: &ThingsId,
+        p: &TaskStateProps,
+        entity: &EntityType,
+        degraded: bool,
+    ) -> Task {
         Task {
             uuid: uuid.clone(),
             title: p.title.clone(),
@@ -208,6 +214,7 @@ impl ThingsStore {
             instance_creation_count: p.instance_creation_count,
             evening: p.evening_bit != 0,
             alarm_time_offset: p.alarm_time_offset,
+            degraded,
             recurrence_rule: p.recurrence_rule.clone(),
             repeater: p.repeater.clone(),
             recurrence_templates: p.recurrence_template_ids.clone(),

@@ -1,4 +1,8 @@
-use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
+use std::{
+    cell::RefCell,
+    collections::{BTreeMap, HashSet},
+    rc::Rc,
+};
 
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, TimeZone, Utc};
@@ -42,6 +46,8 @@ pub struct DefaultCmdCtx {
     ids_issued: u64,
     /// the client that synchronized this run's state, taken by the first write: commits go to the history and head the state came from
     cloud: Rc<RefCell<Option<ThingsCloudClient>>>,
+    /// the objects whose replay did not complete, never written through
+    degraded: Rc<RefCell<HashSet<ThingsId>>>,
     writer: Option<Box<dyn CloudWriter>>,
 }
 
@@ -54,6 +60,7 @@ impl DefaultCmdCtx {
             id_seed: cli.id_seed,
             ids_issued: 0,
             cloud: Rc::clone(&cli.cloud),
+            degraded: Rc::clone(&cli.degraded),
             writer: None,
         }
     }
@@ -98,10 +105,59 @@ impl CmdCtx for DefaultCmdCtx {
         changes: BTreeMap<String, WireObject>,
         ancestor_index: Option<i64>,
     ) -> Result<i64> {
+        // a write on top of a state that is behind the history would overwrite what the CLI never saw
+        for uuid in changes.keys() {
+            if uuid
+                .parse::<ThingsId>()
+                .is_ok_and(|id| self.degraded.borrow().contains(&id))
+            {
+                return Err(anyhow!(
+                    "Not writing {uuid}: its history did not replay completely, THINGS_LOG=warn has the reason."
+                ));
+            }
+        }
         self.writer_mut()?.commit(changes, ancestor_index)
     }
 
     fn current_head_index(&self) -> i64 {
         self.writer.as_deref().map_or(0, CloudWriter::head_index)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use super::*;
+    use crate::wire::{task::TaskPatch, wire_object::EntityType};
+
+    #[test]
+    fn a_write_to_an_object_that_did_not_replay_is_refused() {
+        let cli = Cli::parse_from(["things", "--no-cloud"]);
+        let id = ThingsId::from_u128(7);
+        cli.degraded.borrow_mut().insert(id.clone());
+        let mut ctx = DefaultCmdCtx::from_cli(&cli);
+        let patch = || {
+            WireObject::update(
+                EntityType::Task7,
+                TaskPatch {
+                    title: Some("x".to_string()),
+                    ..Default::default()
+                },
+            )
+        };
+
+        let refused = ctx
+            .commit_changes(BTreeMap::from([(id.to_string(), patch())]), None)
+            .expect_err("refused");
+        assert!(
+            refused
+                .to_string()
+                .starts_with(&format!("Not writing {id}"))
+        );
+
+        let other = ThingsId::from_u128(8).to_string();
+        ctx.commit_changes(BTreeMap::from([(other, patch())]), None)
+            .expect("another object writes");
     }
 }
