@@ -1,13 +1,24 @@
 use anyhow::Result;
-use clap::{Args, CommandFactory};
+use clap::{Args, CommandFactory, ValueEnum};
 use clap_complete::{Shell, generate};
+use clap_complete_nushell::Nushell;
 
 use crate::{app::Cli, commands::Command};
+
+#[derive(Debug, Clone, Copy, ValueEnum)]
+pub enum CompletionShell {
+    Bash,
+    Elvish,
+    Fish,
+    Nushell,
+    Powershell,
+    Zsh,
+}
 
 #[derive(Debug, Clone, Args)]
 pub struct CompletionsArgs {
     #[arg(value_enum)]
-    pub shell: Shell,
+    pub shell: CompletionShell,
 }
 
 impl Command for CompletionsArgs {
@@ -19,7 +30,14 @@ impl Command for CompletionsArgs {
     ) -> Result<()> {
         let mut cmd = Cli::command();
         let bin_name = cmd.get_name().to_string();
-        generate(self.shell, &mut cmd, bin_name, out);
+        match self.shell {
+            CompletionShell::Bash => generate(Shell::Bash, &mut cmd, bin_name, out),
+            CompletionShell::Elvish => generate(Shell::Elvish, &mut cmd, bin_name, out),
+            CompletionShell::Fish => generate(Shell::Fish, &mut cmd, bin_name, out),
+            CompletionShell::Nushell => generate(Nushell, &mut cmd, bin_name, out),
+            CompletionShell::Powershell => generate(Shell::PowerShell, &mut cmd, bin_name, out),
+            CompletionShell::Zsh => generate(Shell::Zsh, &mut cmd, bin_name, out),
+        }
         Ok(())
     }
 }

@@ -120,7 +120,7 @@ pub enum Commands {
     Auth(auth::AuthArgs),
     #[command(about = "Search and filter tasks")]
     Find(find::FindArgs),
-    #[command(hide = true, about = "Generate shell completion scripts")]
+    #[command(about = "Generate shell completion scripts")]
     Completions(completions::CompletionsArgs),
 }
 
