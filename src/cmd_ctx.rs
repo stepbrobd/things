@@ -1,10 +1,11 @@
-use std::collections::BTreeMap;
+use std::{cell::RefCell, collections::BTreeMap, rc::Rc};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use chrono::{DateTime, TimeZone, Utc};
 
 use crate::{
     app::Cli,
+    client::ThingsCloudClient,
     cloud_writer::{CloudWriter, DryRunCloudWriter, LiveCloudWriter, LoggingCloudWriter},
     ids::ThingsId,
     wire::wire_object::WireObject,
@@ -39,6 +40,8 @@ pub struct DefaultCmdCtx {
     now_ts_override: Option<f64>,
     id_seed: Option<u64>,
     ids_issued: u64,
+    /// the client that synchronized this run's state, taken by the first write: commits go to the history and head the state came from
+    cloud: Rc<RefCell<Option<ThingsCloudClient>>>,
     writer: Option<Box<dyn CloudWriter>>,
 }
 
@@ -50,6 +53,7 @@ impl DefaultCmdCtx {
             now_ts_override: cli.now_ts,
             id_seed: cli.id_seed,
             ids_issued: 0,
+            cloud: Rc::clone(&cli.cloud),
             writer: None,
         }
     }
@@ -59,7 +63,10 @@ impl DefaultCmdCtx {
             let inner: Box<dyn CloudWriter> = if self.no_cloud {
                 Box::new(DryRunCloudWriter::new())
             } else {
-                Box::new(LiveCloudWriter::new()?)
+                let client = self.cloud.borrow_mut().take().ok_or_else(|| {
+                    anyhow!("Not writing to Things Cloud: this run did not synchronize with it.")
+                })?;
+                Box::new(LiveCloudWriter::new(client))
             };
             self.writer = Some(Box::new(LoggingCloudWriter::new(inner)));
         }

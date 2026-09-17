@@ -4,10 +4,7 @@ use anyhow::Result;
 use serde_json::json;
 use tracing::{debug, error};
 
-use crate::{
-    auth::load_auth, client::ThingsCloudClient, dirs::append_log_dir,
-    log_cache::read_cached_head_index, wire::wire_object::WireObject,
-};
+use crate::{client::ThingsCloudClient, wire::wire_object::WireObject};
 
 pub trait CloudWriter {
     fn commit(
@@ -85,6 +82,7 @@ impl CloudWriter for LoggingCloudWriter {
     }
 }
 
+/// commits against the history and head of the client that synchronized this run's state
 pub struct LiveCloudWriter {
     client: ThingsCloudClient,
 }
@@ -101,12 +99,8 @@ impl DryRunCloudWriter {
 }
 
 impl LiveCloudWriter {
-    pub fn new() -> Result<Self> {
-        let (email, password) = load_auth()?;
-        let mut client = ThingsCloudClient::new(email, password)?;
-        let _ = client.authenticate();
-        client.head_index = read_cached_head_index(&append_log_dir());
-        Ok(Self { client })
+    pub fn new(client: ThingsCloudClient) -> Self {
+        Self { client }
     }
 }
 

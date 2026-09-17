@@ -3,6 +3,7 @@ use std::{
     collections::BTreeMap,
     io::{IsTerminal, Read},
     path::PathBuf,
+    rc::Rc,
 };
 
 use anyhow::{Context, Result};
@@ -59,6 +60,9 @@ pub struct Cli {
     /// set when the sync failed and the cached state is in use
     #[arg(skip)]
     pub offline: Cell<bool>,
+    /// the client that synchronized this run's state: writes commit against its history and head
+    #[arg(skip)]
+    pub cloud: Rc<RefCell<Option<ThingsCloudClient>>>,
 }
 
 impl Cli {
@@ -102,8 +106,11 @@ impl Cli {
 
         let (email, password) = load_auth()?;
         let mut client = ThingsCloudClient::new(email, password)?;
-        match get_state_with_append_log(&mut client, cache_dir.clone()) {
-            Ok(state) => Ok(state),
+        match get_state_with_append_log(&mut client, &cache_dir) {
+            Ok(state) => {
+                *self.cloud.borrow_mut() = Some(client);
+                Ok(state)
+            }
             Err(err) => {
                 eprintln!("Sync failed, showing the cached state: {err:#}");
                 self.offline.set(true);
