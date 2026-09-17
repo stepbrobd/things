@@ -1,4 +1,7 @@
-use std::{cmp::Ordering, collections::BTreeMap};
+use std::{
+    cmp::{Ordering, Reverse},
+    collections::BTreeMap,
+};
 
 use anyhow::{Result, anyhow};
 use chrono::{TimeZone, Utc};
@@ -8,6 +11,8 @@ use crate::{
     app::Cli,
     commands::Command,
     common::{DIM, GREEN, ICONS, colored},
+    ids::ThingsId,
+    ordering::allocate,
     wire::{
         task::{TaskPatch, TaskStart, TaskStatus},
         wire_object::{EntityType, WireObject},
@@ -90,11 +95,37 @@ fn build_reorder_plan(
             .today_index_reference
             .or_else(|| anchor.start_date.map(|d| d.timestamp()))
             .unwrap_or(today_ts);
-        let new_ti = if args.before_id.is_some() {
-            anchor.today_index - 1
+        // the item joins the anchor's day group and takes a slot next to the anchor among that group's today indexes
+        let mut group: Vec<&crate::store::Task> = store
+            .tasks_by_uuid
+            .values()
+            .filter(|task| {
+                task.uuid != item.uuid
+                    && !task.trashed
+                    && task.status == TaskStatus::Incomplete
+                    && is_today_orderable(task)
+                    && task
+                        .today_index_reference
+                        .or_else(|| task.start_date.map(|d| d.timestamp()))
+                        .unwrap_or(today_ts)
+                        == anchor_tir
+            })
+            .collect();
+        group.sort_by_key(|task| (task.today_index, Reverse(task.index), task.uuid.clone()));
+        let anchor_pos = group
+            .iter()
+            .position(|task| task.uuid == anchor.uuid)
+            .ok_or_else(|| "Anchor not found in reorder list.".to_string())?;
+        let hole = if args.before_id.is_some() {
+            anchor_pos
         } else {
-            anchor.today_index + 1
+            anchor_pos + 1
         };
+        let run: Vec<(ThingsId, i32)> = group
+            .iter()
+            .map(|task| (task.uuid.clone(), task.today_index))
+            .collect();
+        let (new_ti, moved) = allocate(&run, hole);
 
         let sb = if item.evening != anchor.evening {
             Some(if anchor.evening { 1 } else { 0 })
@@ -102,6 +133,19 @@ fn build_reorder_plan(
             None
         };
         let mut changes = BTreeMap::new();
+        for (uuid, today_index) in moved {
+            changes.insert(
+                uuid.to_string(),
+                WireObject::update(
+                    EntityType::Task7,
+                    TaskPatch {
+                        today_sort_index: Some(today_index),
+                        modification_date: Some(Some(now)),
+                        ..Default::default()
+                    },
+                ),
+            );
+        }
         changes.insert(
             item.uuid.to_string(),
             WireObject::update(
@@ -210,54 +254,27 @@ fn build_reorder_plan(
         anchor_pos + 1
     };
     order.insert(insert_at, item.clone());
-
-    let moved_pos = order.iter().position(|t| t.uuid == item.uuid).unwrap_or(0);
-    let prev_ix = if moved_pos > 0 {
-        Some(order[moved_pos - 1].index)
-    } else {
-        None
-    };
-    let next_ix = if moved_pos + 1 < order.len() {
-        Some(order[moved_pos + 1].index)
-    } else {
-        None
-    };
-
-    let mut index_updates: Vec<(String, i32)> = Vec::new();
-    let new_index = if prev_ix.is_none() && next_ix.is_none() {
-        0
-    } else if prev_ix.is_none() {
-        next_ix.unwrap_or(0) - 1
-    } else if next_ix.is_none() {
-        prev_ix.unwrap_or(0) + 1
-    } else if prev_ix.unwrap_or(0) + 1 < next_ix.unwrap_or(0) {
-        (prev_ix.unwrap_or(0) + next_ix.unwrap_or(0)) / 2
-    } else {
-        if let Some(task) = order
+    let run: Vec<(ThingsId, i32)> = order
+        .iter()
+        .filter(|task| task.uuid != item.uuid)
+        .map(|task| (task.uuid.clone(), task.index))
+        .collect();
+    let (new_index, moved) = allocate(&run, insert_at);
+    if !moved.is_empty()
+        && let Some(task) = order
             .iter()
             .find(|task| !task.entity.can_upgrade_to_task7())
-        {
-            return Err(format!(
-                "Cannot rebalance around unsupported task entity: {}",
-                task.entity
-            ));
-        }
-
-        let stride = 1024;
-        for (idx, task) in order.iter().enumerate() {
-            let target_ix = (idx as i32 + 1) * stride;
-            if task.index != target_ix {
-                index_updates.push((task.uuid.to_string(), target_ix));
-            }
-        }
-        index_updates
-            .iter()
-            .find(|(uid, _)| uid == &item.uuid.to_string())
-            .map(|(_, ix)| *ix)
-            .unwrap_or(item.index)
-    };
-
-    if index_updates.is_empty() && new_index != item.index {
+    {
+        return Err(format!(
+            "Cannot rebalance around unsupported task entity: {}",
+            task.entity
+        ));
+    }
+    let mut index_updates: Vec<(String, i32)> = moved
+        .into_iter()
+        .map(|(uuid, index)| (uuid.to_string(), index))
+        .collect();
+    if new_index != item.index {
         index_updates.push((item.uuid.to_string(), new_index));
     }
 

@@ -13,10 +13,11 @@ use crate::{
         resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
+    ordering::allocate,
     repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
     store::Task,
     wire::{
-        task::{TaskProps, TaskStart, TaskStatus, TaskType},
+        task::{TaskPatch, TaskProps, TaskStart, TaskStatus, TaskType},
         wire_object::{EntityType, WireObject},
     },
 };
@@ -161,52 +162,13 @@ fn props_bucket(props: &TaskProps) -> Vec<String> {
     vec!["task-root".to_string(), st.to_string()]
 }
 
-fn plan_ix_insert(ordered: &[Task], insert_at: usize) -> (i32, Vec<(String, i32)>) {
-    let prev_ix = if insert_at > 0 {
-        Some(ordered[insert_at - 1].index)
-    } else {
-        None
-    };
-    let next_ix = if insert_at < ordered.len() {
-        Some(ordered[insert_at].index)
-    } else {
-        None
-    };
-    let mut updates = Vec::new();
-
-    if prev_ix.is_none() && next_ix.is_none() {
-        return (0, updates);
-    }
-    if prev_ix.is_none() {
-        return (next_ix.unwrap_or(0) - 1, updates);
-    }
-    if next_ix.is_none() {
-        return (prev_ix.unwrap_or(0) + 1, updates);
-    }
-    if prev_ix.unwrap_or(0) + 1 < next_ix.unwrap_or(0) {
-        return ((prev_ix.unwrap_or(0) + next_ix.unwrap_or(0)) / 2, updates);
-    }
-
-    let stride = 1024;
-    let mut new_index = stride;
-    let mut idx = 1;
-    for i in 0..=ordered.len() {
-        let target_ix = idx * stride;
-        if i == insert_at {
-            new_index = target_ix;
-            idx += 1;
-            continue;
-        }
-        let source_idx = if i < insert_at { i } else { i - 1 };
-        if source_idx < ordered.len() {
-            let entry = &ordered[source_idx];
-            if entry.index != target_ix {
-                updates.push((entry.uuid.to_string(), target_ix));
-            }
-            idx += 1;
-        }
-    }
-    (new_index, updates)
+/// the structural index for a newcomer at `insert_at` among `ordered`, and the siblings that move when the run respaces
+fn plan_ix_insert(ordered: &[Task], insert_at: usize) -> (i32, Vec<(ThingsId, i32)>) {
+    let run: Vec<(ThingsId, i32)> = ordered
+        .iter()
+        .map(|task| (task.uuid.clone(), task.index))
+        .collect();
+    allocate(&run, insert_at)
 }
 
 #[derive(Debug, Clone)]
@@ -398,7 +360,8 @@ fn build_new_plan(
         );
     }
 
-    let mut index_updates: Vec<(String, i32)> = Vec::new();
+    let mut index_updates: Vec<(ThingsId, i32)> = Vec::new();
+    let mut today_updates: Vec<(ThingsId, i32)> = Vec::new();
     let mut siblings = store
         .tasks_by_uuid
         .values()
@@ -471,25 +434,27 @@ fn build_new_plan(
             };
         }
 
-        let prev_today = if today_insert_at > 0 {
-            today_siblings.get(today_insert_at - 1)
-        } else {
-            None
-        };
+        // the newcomer joins the day group of its neighbor, and takes a slot among that group's today indexes
+        let prev_today = today_insert_at
+            .checked_sub(1)
+            .and_then(|at| today_siblings.get(at));
         let next_today = today_siblings.get(today_insert_at);
-
-        if let Some(next_today) = next_today {
-            let next_tir = next_today.today_index_reference.unwrap_or(today_ts);
-            props.today_index_reference = Some(next_tir);
-            props.today_sort_index = next_today.today_index - 1;
-        } else if let Some(prev_today) = prev_today {
-            let prev_tir = prev_today.today_index_reference.unwrap_or(today_ts);
-            props.today_index_reference = Some(prev_tir);
-            props.today_sort_index = prev_today.today_index + 1;
-        } else {
-            props.today_index_reference = Some(today_ts);
-            props.today_sort_index = 0;
-        }
+        let tir = next_today.or(prev_today).map_or(today_ts, |task| {
+            task.today_index_reference.unwrap_or(today_ts)
+        });
+        let group: Vec<(ThingsId, i32)> = today_siblings
+            .iter()
+            .filter(|task| task.today_index_reference.unwrap_or(today_ts) == tir)
+            .map(|task| (task.uuid.clone(), task.today_index))
+            .collect();
+        let hole = today_siblings[..today_insert_at]
+            .iter()
+            .filter(|task| task.today_index_reference.unwrap_or(today_ts) == tir)
+            .count();
+        let (today_index, moved) = allocate(&group, hole);
+        props.today_index_reference = Some(tir);
+        props.today_sort_index = today_index;
+        today_updates = moved;
     }
 
     let new_uuid = next_id();
@@ -533,18 +498,19 @@ fn build_new_plan(
         );
     }
 
+    // a sibling may move in both runs, it gets one patch
+    let mut patches: BTreeMap<ThingsId, TaskPatch> = BTreeMap::new();
     for (task_uuid, task_index) in index_updates {
-        use crate::wire::task::TaskPatch;
+        patches.entry(task_uuid).or_default().sort_index = Some(task_index);
+    }
+    for (task_uuid, today_index) in today_updates {
+        patches.entry(task_uuid).or_default().today_sort_index = Some(today_index);
+    }
+    for (task_uuid, mut patch) in patches {
+        patch.modification_date = Some(Some(now));
         changes.insert(
-            task_uuid,
-            WireObject::update(
-                EntityType::Task7,
-                TaskPatch {
-                    sort_index: Some(task_index),
-                    modification_date: Some(Some(now)),
-                    ..Default::default()
-                },
-            ),
+            task_uuid.to_string(),
+            WireObject::update(EntityType::Task7, patch),
         );
     }
 
@@ -862,6 +828,45 @@ mod tests {
         let rb = serde_json::to_value(rebalance.changes).expect("to value");
         assert_eq!(rb[NEW_UUID]["p"]["ix"], json!(2048));
         assert_eq!(rb[INBOX_OTHER_UUID]["p"], json!({"ix":3072,"md":NOW}));
+    }
+
+    #[test]
+    fn adjacent_today_indexes_respace_the_day_group() {
+        let mut id_gen = || NEW_UUID.to_string();
+        // the day stamps are midnights, as the app writes them
+        let day = 1_699_920_000;
+        let store = build_store(vec![
+            task(INBOX_ANCHOR_UUID, "First", 1, 100, Some(day), Some(day), 5),
+            task(INBOX_OTHER_UUID, "Second", 1, 200, Some(day), Some(day), 6),
+        ]);
+        let plan = build_new_plan(
+            &NewArgs {
+                title: "Between".to_string(),
+                in_target: "inbox".to_string(),
+                when: Some("today".to_string()),
+                before_id: None,
+                after_id: Some(INBOX_ANCHOR_UUID.to_string()),
+                notes: String::new(),
+                tags: None,
+                deadline_date: None,
+                reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
+            },
+            &store,
+            NOW,
+            TODAY,
+            &mut id_gen,
+        )
+        .expect("today insert");
+        let changes = serde_json::to_value(plan.changes).expect("to value");
+        assert_eq!(changes[NEW_UUID]["p"]["ti"], json!(2048));
+        assert_eq!(changes[NEW_UUID]["p"]["tir"], json!(day));
+        assert_eq!(changes[INBOX_ANCHOR_UUID]["p"]["ti"], json!(1024));
+        assert_eq!(changes[INBOX_OTHER_UUID]["p"]["ti"], json!(3072));
+        // the structural run had room, so no sort index moved
+        assert!(changes[INBOX_ANCHOR_UUID]["p"].get("ix").is_none());
     }
 
     #[test]
