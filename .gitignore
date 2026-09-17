@@ -1,2 +1,4 @@
-/target
-/tools/demo-gif/.env
+.direnv
+result
+result-*
+target
