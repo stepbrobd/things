@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::Args;
 use iocraft::prelude::*;
 
@@ -37,16 +37,15 @@ impl Command for ProjectArgs {
         let today = ctx.today();
         let (task_opt, err, ambiguous) = store.resolve_mark_identifier(&self.project_id);
         let Some(project) = task_opt else {
-            eprintln!("{err}");
-            for match_task in ambiguous {
-                eprintln!("  {}", match_task.title);
-            }
-            return Ok(());
+            let candidates = ambiguous
+                .iter()
+                .map(|task| format!("\n  {}", task.title))
+                .collect::<String>();
+            bail!("{err}{candidates}");
         };
 
         if !project.is_project() {
-            eprintln!("Not a project: {}", project.title);
-            return Ok(());
+            bail!("Not a project: {}", project.title);
         }
 
         let children = store
@@ -60,9 +59,7 @@ impl Command for ProjectArgs {
 
         let json = cli.json;
         if json {
-            if detailed_json_conflict(json, self.detailed) {
-                return Ok(());
-            }
+            detailed_json_conflict(json, self.detailed)?;
 
             let mut sorted_children = children.clone();
             sorted_children.sort_by_key(|t| t.index);

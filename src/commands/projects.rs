@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use iocraft::prelude::*;
 
@@ -242,9 +242,7 @@ impl Command for ProjectsArgs {
                 let projects = store.projects(Some(TaskStatus::Incomplete));
 
                 if effective_json {
-                    if detailed_json_conflict(effective_json, effective_detailed) {
-                        return Ok(());
-                    }
+                    detailed_json_conflict(effective_json, effective_detailed)?;
                     write_json(out, &build_tasks_json(&projects, &store, &today))?;
                     return Ok(());
                 }
@@ -301,8 +299,7 @@ impl Command for ProjectsArgs {
             Some(ProjectsSubcommand::New(args)) => {
                 let title = args.title.trim();
                 if title.is_empty() {
-                    eprintln!("Project title cannot be empty.");
-                    return Ok(());
+                    bail!("Project title cannot be empty.");
                 }
 
                 let store = cli.load_store()?;
@@ -323,8 +320,7 @@ impl Command for ProjectsArgs {
                 if let Some(area_id) = &args.area {
                     let (area_opt, err, _) = store.resolve_area_identifier(area_id);
                     let Some(area) = area_opt else {
-                        eprintln!("{err}");
-                        return Ok(());
+                        bail!("{err}");
                     };
                     props.area_ids = vec![area.uuid];
                 }
@@ -345,8 +341,7 @@ impl Command for ProjectsArgs {
                             Ok(Some(day)) => day,
                             Ok(None) => return Ok(()),
                             Err(e) => {
-                                eprintln!("{e}");
-                                return Ok(());
+                                bail!("{e}");
                             }
                         };
                         let ts = day_timestamp(day);
@@ -359,8 +354,7 @@ impl Command for ProjectsArgs {
                 if let Some(tags) = &args.tags {
                     let (tag_ids, err) = resolve_tag_ids(&store, tags);
                     if !err.is_empty() {
-                        eprintln!("{err}");
-                        return Ok(());
+                        bail!("{err}");
                     }
                     props.tag_ids = tag_ids;
                 }
@@ -370,8 +364,7 @@ impl Command for ProjectsArgs {
                         Ok(Some(day)) => day,
                         Ok(None) => return Ok(()),
                         Err(e) => {
-                            eprintln!("{e}");
-                            return Ok(());
+                            bail!("{e}");
                         }
                     };
                     props.deadline = Some(day_timestamp(day));
@@ -381,10 +374,8 @@ impl Command for ProjectsArgs {
 
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Task7, props));
-                if let Err(e) = ctx.commit_changes(changes, None) {
-                    eprintln!("Failed to create project: {e}");
-                    return Ok(());
-                }
+                ctx.commit_changes(changes, None)
+                    .map_err(|e| anyhow!("Failed to create project: {e}"))?;
 
                 writeln!(
                     out,
@@ -396,23 +387,16 @@ impl Command for ProjectsArgs {
             }
             Some(ProjectsSubcommand::Edit(args)) => {
                 let store = cli.load_store()?;
-                let plan = match build_projects_edit_plan(args, &store, ctx.now_timestamp()) {
-                    Ok(plan) => plan,
-                    Err(err) => {
-                        eprintln!("{err}");
-                        return Ok(());
-                    }
-                };
+                let plan = build_projects_edit_plan(args, &store, ctx.now_timestamp())
+                    .map_err(anyhow::Error::msg)?;
 
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     plan.project.uuid.to_string(),
                     WireObject::update(EntityType::Task7, plan.update.clone()),
                 );
-                if let Err(e) = ctx.commit_changes(changes, None) {
-                    eprintln!("Failed to edit project: {e}");
-                    return Ok(());
-                }
+                ctx.commit_changes(changes, None)
+                    .map_err(|e| anyhow!("Failed to edit project: {e}"))?;
 
                 let title = plan.update.title.as_deref().unwrap_or(&plan.project.title);
                 writeln!(

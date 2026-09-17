@@ -32,9 +32,7 @@ impl Command for SomedayArgs {
 
         let json = cli.json;
         if json {
-            if detailed_json_conflict(json, self.detailed.detailed) {
-                return Ok(());
-            }
+            detailed_json_conflict(json, self.detailed.detailed)?;
             write_json(out, &build_tasks_json(&items, &store, &today))?;
             return Ok(());
         }

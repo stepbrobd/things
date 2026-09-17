@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow, bail};
 use clap::{ArgGroup, Args};
 
 use crate::{
@@ -21,6 +21,7 @@ use crate::{
 #[command(group(ArgGroup::new("status").args(["done", "incomplete", "canceled", "check_ids", "uncheck_ids", "check_cancel_ids"]).required(true).multiple(false)))]
 pub struct MarkArgs {
     /// Task UUID(s) (or unique UUID prefixes)
+    #[arg(required = true)]
     pub task_ids: Vec<IdentifierToken>,
     #[arg(long, short = 'd', help = "Mark task(s) as completed")]
     pub done: bool,
@@ -202,10 +203,11 @@ fn build_mark_status_plan(
 
     let mut targets = Vec::new();
     let mut seen = HashSet::new();
+    let mut errors = Vec::new();
     for identifier in &args.task_ids {
         let (task_opt, err, _) = store.resolve_mark_identifier(identifier.as_str());
         let Some(task) = task_opt else {
-            eprintln!("{err}");
+            errors.push(err);
             continue;
         };
         if !seen.insert(task.uuid.clone()) {
@@ -216,7 +218,6 @@ fn build_mark_status_plan(
 
     let mut updates = Vec::new();
     let mut successes = Vec::new();
-    let mut errors = Vec::new();
 
     for task in targets {
         let validation_error = validate_mark_target(&task, action, store);
@@ -309,36 +310,26 @@ impl Command for MarkArgs {
 
         if let Some(checklist_raw) = checklist_raw {
             if self.task_ids.len() != 1 {
-                eprintln!(
+                bail!(
                     "Checklist flags (--check, --uncheck, --check-cancel) require exactly one task ID."
                 );
-                return Ok(());
             }
 
             let (task_opt, err, _) = store.resolve_mark_identifier(self.task_ids[0].as_str());
             let Some(task) = task_opt else {
-                eprintln!("{err}");
-                return Ok(());
+                bail!("{err}");
             };
 
             if task.checklist_items.is_empty() {
-                eprintln!("Task has no checklist items: {}", task.title);
-                return Ok(());
+                bail!("Task has no checklist items: {}", task.title);
             }
 
             let (plan, items, label) =
-                match build_mark_checklist_plan(self, &task, checklist_raw, ctx.now_timestamp()) {
-                    Ok(v) => v,
-                    Err(err) => {
-                        eprintln!("{err}");
-                        return Ok(());
-                    }
-                };
+                build_mark_checklist_plan(self, &task, checklist_raw, ctx.now_timestamp())
+                    .map_err(anyhow::Error::msg)?;
 
-            if let Err(e) = ctx.commit_changes(plan.changes, None) {
-                eprintln!("Failed to mark checklist items: {e}");
-                return Ok(());
-            }
+            ctx.commit_changes(plan.changes, None)
+                .map_err(|e| anyhow!("Failed to mark checklist items: {e}"))?;
 
             let title = match label.as_str() {
                 "checked" => format!("{} Checked", ICONS.checklist_done),
@@ -367,18 +358,13 @@ impl Command for MarkArgs {
         };
 
         let (plan, successes, errors) = build_mark_status_plan(self, &store, ctx.now_timestamp());
-        for err in errors {
-            eprintln!("{err}");
+        // every target is checked before any is written, a batch lands whole or not at all
+        if !errors.is_empty() {
+            bail!("{}", errors.join("\n"));
         }
 
-        if plan.changes.is_empty() {
-            return Ok(());
-        }
-
-        if let Err(e) = ctx.commit_changes(plan.changes, None) {
-            eprintln!("Failed to mark items {}: {}", action, e);
-            return Ok(());
-        }
+        ctx.commit_changes(plan.changes, None)
+            .map_err(|e| anyhow!("Failed to mark items {action}: {e}"))?;
 
         let label = match action {
             "done" => format!("{} Done", ICONS.done),

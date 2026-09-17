@@ -47,9 +47,7 @@ impl Command for TodayArgs {
 
         let json = cli.json;
         if json {
-            if detailed_json_conflict(json, self.detailed.detailed) {
-                return Ok(());
-            }
+            detailed_json_conflict(json, self.detailed.detailed)?;
             write_json(out, &TodayJsonView::build(&today_items, &store, &today))?;
             return Ok(());
         }

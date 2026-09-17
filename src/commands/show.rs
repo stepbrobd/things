@@ -1,6 +1,6 @@
 use std::io::Write;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::Args;
 
 use crate::{
@@ -29,8 +29,7 @@ impl Command for ShowArgs {
         let today = ctx.today();
         let (task, err, _) = store.resolve_task_identifier(&self.item_id);
         let Some(task) = task else {
-            eprintln!("{err}");
-            return Ok(());
+            bail!("{err}");
         };
 
         if cli.json {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::Args;
 use iocraft::prelude::*;
 
@@ -39,14 +39,11 @@ impl Command for AreaArgs {
         let today = ctx.today();
         let (area_opt, err, ambiguous) = store.resolve_area_identifier(&self.area_id);
         let Some(area) = area_opt else {
-            eprintln!("{err}");
-            for match_area in ambiguous {
-                eprintln!(
-                    "  {} {}  ({})",
-                    ICONS.area, match_area.title, match_area.uuid
-                );
-            }
-            return Ok(());
+            let candidates = ambiguous
+                .iter()
+                .map(|area| format!("\n  {} {}  ({})", ICONS.area, area.title, area.uuid))
+                .collect::<String>();
+            bail!("{err}{candidates}");
         };
 
         let status_filter = if self.all {
@@ -77,9 +74,7 @@ impl Command for AreaArgs {
 
         let json = cli.json;
         if json {
-            if detailed_json_conflict(json, self.detailed) {
-                return Ok(());
-            }
+            detailed_json_conflict(json, self.detailed)?;
 
             let mut items = projects;
             items.extend(loose_tasks);

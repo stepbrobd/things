@@ -1,5 +1,6 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000333.0 edit A7h5eCi24RvAWKC3Hv3muf --when today --repeat weekly:mon
+? 1
 2023-11-14 is not a day of weekly:mon, the next one is 2023-11-20, set --when 2023-11-20
 
 ```

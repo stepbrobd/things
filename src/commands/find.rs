@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use chrono::{DateTime, Duration, NaiveDate, TimeZone, Utc};
 use clap::{ArgGroup, Args};
 use iocraft::prelude::*;
@@ -175,8 +175,7 @@ impl Command for FindArgs {
         ] {
             for expr in exprs {
                 if let Err(err) = parse_date_expr(expr, flag, &today) {
-                    eprintln!("{err}");
-                    return Ok(());
+                    bail!("{err}");
                 }
             }
         }
@@ -185,8 +184,7 @@ impl Command for FindArgs {
         for tag_filter in &self.tag_filters {
             let (tag, err) = resolve_single_tag(&store, tag_filter.as_str());
             if !err.is_empty() {
-                eprintln!("{err}");
-                return Ok(());
+                bail!("{err}");
             }
             if let Some(tag) = tag {
                 resolved_tag_uuids.push(tag.uuid);
@@ -214,9 +212,7 @@ impl Command for FindArgs {
 
         let json = cli.json;
         if json {
-            if detailed_json_conflict(json, self.detailed.detailed) {
-                return Ok(());
-            }
+            detailed_json_conflict(json, self.detailed.detailed)?;
             let tasks = matched
                 .iter()
                 .map(|(task, _)| task.clone())

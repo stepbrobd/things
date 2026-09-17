@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use chrono::{TimeZone, Utc};
 use clap::Args;
 use serde_json::json;
@@ -30,7 +30,7 @@ pub struct NewArgs {
         long = "in",
         short = 'i',
         default_value = "inbox",
-        help = "Container: inbox, clear, project UUID/prefix, or area UUID/prefix"
+        help = "Container: inbox, project UUID/prefix, or area UUID/prefix"
     )]
     pub in_target: String,
     #[arg(
@@ -42,6 +42,7 @@ pub struct NewArgs {
     #[arg(
         long = "before",
         short = 'b',
+        conflicts_with = "after_id",
         help = "Insert before this sibling task UUID/prefix"
     )]
     pub before_id: Option<String>,
@@ -77,12 +78,15 @@ pub struct NewArgs {
     #[arg(
         long = "times",
         value_name = "N",
+        requires = "repeat",
+        conflicts_with = "until",
         help = "End the repeat after N times"
     )]
     pub times: Option<i32>,
     #[arg(
         long = "until",
         value_name = "YYYY-MM-DD",
+        requires = "repeat",
         help = "End the repeat on a day"
     )]
     pub until: Option<String>,
@@ -296,16 +300,18 @@ fn build_new_plan(
         } else if when.eq_ignore_ascii_case("someday") {
             props.start_location = TaskStart::Someday;
             props.scheduled_date = None;
-        } else if when.eq_ignore_ascii_case("today") {
+        } else if when.eq_ignore_ascii_case("today") || when.eq_ignore_ascii_case("evening") {
             props.start_location = TaskStart::Anytime;
             props.scheduled_date = Some(today_ts);
             props.today_index_reference = Some(today_ts);
+            props.evening_bit = i32::from(when.eq_ignore_ascii_case("evening"));
         } else {
             let parsed = match parse_day(Some(when), "--when") {
                 Ok(Some(day)) => day,
                 Ok(None) => {
                     return Err(
-                        "--when requires anytime, someday, today, or YYYY-MM-DD".to_string()
+                        "--when requires anytime, someday, today, evening, or YYYY-MM-DD"
+                            .to_string(),
                     );
                 }
                 Err(err) => return Err(err),
@@ -561,18 +567,11 @@ impl Command for NewArgs {
         let now = ctx.now_timestamp();
         let today = ctx.today_timestamp();
         let mut id_gen = || ctx.next_id();
-        let plan = match build_new_plan(self, &store, now, today, &mut id_gen) {
-            Ok(plan) => plan,
-            Err(err) => {
-                eprintln!("{err}");
-                return Ok(());
-            }
-        };
+        let plan =
+            build_new_plan(self, &store, now, today, &mut id_gen).map_err(anyhow::Error::msg)?;
 
-        if let Err(e) = ctx.commit_changes(plan.changes, None) {
-            eprintln!("Failed to create task: {e}");
-            return Ok(());
-        }
+        ctx.commit_changes(plan.changes, None)
+            .map_err(|e| anyhow!("Failed to create task: {e}"))?;
 
         let repeat = plan
             .repeat_label

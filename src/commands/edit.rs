@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use clap::Args;
 use serde_json::json;
 
@@ -31,7 +31,7 @@ use crate::{
     about = "Edit a task: title, notes, container, tags, checklist, when, deadline, reminder or repeat"
 )]
 pub struct EditArgs {
-    #[arg(help = "Task UUID(s) (or unique UUID prefixes)")]
+    #[arg(required = true, help = "Task UUID(s) (or unique UUID prefixes)")]
     pub task_ids: Vec<IdentifierToken>,
     #[arg(long, short = 't', help = "Replace title (single task only)")]
     pub title: Option<String>,
@@ -88,13 +88,19 @@ pub struct EditArgs {
         help = "When: anytime, today, evening, someday, or YYYY-MM-DD"
     )]
     pub when: Option<String>,
-    #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]
+    #[arg(
+        long = "deadline",
+        short = 'd',
+        conflicts_with = "clear_deadline",
+        help = "Deadline date (YYYY-MM-DD)"
+    )]
     pub deadline_date: Option<String>,
     #[arg(long = "clear-deadline", short = 'D', help = "Clear deadline")]
     pub clear_deadline: bool,
     #[arg(
         long = "reminder",
         value_name = "HH:MM",
+        conflicts_with = "clear_reminder",
         help = "Reminder time on the scheduled day (HH:MM)"
     )]
     pub reminder: Option<String>,
@@ -109,12 +115,15 @@ pub struct EditArgs {
     #[arg(
         long = "times",
         value_name = "N",
+        requires = "repeat",
+        conflicts_with = "until",
         help = "End the repeat after N times"
     )]
     pub times: Option<i32>,
     #[arg(
         long = "until",
         value_name = "YYYY-MM-DD",
+        requires = "repeat",
         help = "End the repeat on a day"
     )]
     pub until: Option<String>,
@@ -388,18 +397,11 @@ impl Command for EditArgs {
         let now = ctx.now_timestamp();
         let today = ctx.today_timestamp();
         let mut id_gen = || ctx.next_id();
-        let plan = match build_edit_plan(self, &store, now, today, &mut id_gen) {
-            Ok(plan) => plan,
-            Err(err) => {
-                eprintln!("{err}");
-                return Ok(());
-            }
-        };
+        let plan =
+            build_edit_plan(self, &store, now, today, &mut id_gen).map_err(anyhow::Error::msg)?;
 
-        if let Err(e) = ctx.commit_changes(plan.changes.clone(), None) {
-            eprintln!("Failed to edit item: {e}");
-            return Ok(());
-        }
+        ctx.commit_changes(plan.changes.clone(), None)
+            .map_err(|e| anyhow!("Failed to edit item: {e}"))?;
 
         let label_str = colored(
             format!("({})", plan.labels.join(", ")),

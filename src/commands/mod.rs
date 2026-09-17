@@ -19,7 +19,7 @@ pub mod tags;
 pub mod today;
 pub mod upcoming;
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::{Args, Subcommand};
 use serde::Serialize;
 
@@ -42,13 +42,11 @@ pub trait Command {
     }
 }
 
-pub(crate) fn detailed_json_conflict(json: bool, detailed: bool) -> bool {
+pub(crate) fn detailed_json_conflict(json: bool, detailed: bool) -> Result<()> {
     if json && detailed {
-        eprintln!("--detailed is not supported with --json.");
-        true
-    } else {
-        false
+        bail!("--detailed is not supported with --json.");
     }
+    Ok(())
 }
 
 pub(crate) fn write_json<T: Serialize>(out: &mut dyn std::io::Write, value: &T) -> Result<()> {

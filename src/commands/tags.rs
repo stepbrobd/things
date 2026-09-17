@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use iocraft::prelude::*;
 use serde_json::json;
@@ -182,8 +182,7 @@ impl Command for TagsArgs {
             TagsSubcommand::New(args) => {
                 let name = args.name.trim();
                 if name.is_empty() {
-                    eprintln!("Tag name cannot be empty.");
-                    return Ok(());
+                    bail!("Tag name cannot be empty.");
                 }
 
                 let store = cli.load_store()?;
@@ -197,8 +196,7 @@ impl Command for TagsArgs {
                 if let Some(parent_raw) = &args.parent {
                     let (parent, err) = resolve_single_tag(&store, parent_raw);
                     let Some(parent) = parent else {
-                        eprintln!("{err}");
-                        return Ok(());
+                        bail!("{err}");
                     };
                     props.parent_ids = vec![parent.uuid];
                 }
@@ -206,10 +204,8 @@ impl Command for TagsArgs {
                 let uuid = ctx.next_id();
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Tag4, props));
-                if let Err(e) = ctx.commit_changes(changes, None) {
-                    eprintln!("Failed to create tag: {e}");
-                    return Ok(());
-                }
+                ctx.commit_changes(changes, None)
+                    .map_err(|e| anyhow!("Failed to create tag: {e}"))?;
 
                 writeln!(
                     out,
@@ -221,23 +217,16 @@ impl Command for TagsArgs {
             }
             TagsSubcommand::Edit(args) => {
                 let store = cli.load_store()?;
-                let plan = match build_tags_edit_plan(args, &store, ctx.now_timestamp()) {
-                    Ok(plan) => plan,
-                    Err(err) => {
-                        eprintln!("{err}");
-                        return Ok(());
-                    }
-                };
+                let plan = build_tags_edit_plan(args, &store, ctx.now_timestamp())
+                    .map_err(anyhow::Error::msg)?;
 
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     plan.tag.uuid.to_string(),
                     WireObject::update(EntityType::Tag4, plan.update.clone()),
                 );
-                if let Err(e) = ctx.commit_changes(changes, None) {
-                    eprintln!("Failed to edit tag: {e}");
-                    return Ok(());
-                }
+                ctx.commit_changes(changes, None)
+                    .map_err(|e| anyhow!("Failed to edit tag: {e}"))?;
 
                 let name = plan.update.title.as_deref().unwrap_or(&plan.tag.title);
                 writeln!(
@@ -257,16 +246,13 @@ impl Command for TagsArgs {
                 let store = cli.load_store()?;
                 let (tag, err) = resolve_single_tag(&store, &args.tag_id);
                 let Some(tag) = tag else {
-                    eprintln!("{err}");
-                    return Ok(());
+                    bail!("{err}");
                 };
 
                 let mut changes = BTreeMap::new();
                 changes.insert(tag.uuid.to_string(), WireObject::delete(EntityType::Tag4));
-                if let Err(e) = ctx.commit_changes(changes, None) {
-                    eprintln!("Failed to delete tag: {e}");
-                    return Ok(());
-                }
+                ctx.commit_changes(changes, None)
+                    .map_err(|e| anyhow!("Failed to delete tag: {e}"))?;
 
                 writeln!(
                     out,

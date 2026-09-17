@@ -1,5 +1,6 @@
 ```trycmd
 $ run.sh things find --deadline 'bad-expr'
+? 1
 Invalid date expression for --deadline: "bad-expr". Expected an operator prefix: >, <, >=, <=, or =  (e.g. '<=2026-03-31')
 
 ```

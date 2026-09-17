@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow, bail};
 use clap::{Args, Subcommand};
 use iocraft::prelude::*;
 use serde_json::json;
@@ -168,8 +168,7 @@ impl Command for AreasArgs {
             AreasSubcommand::New(args) => {
                 let title = args.title.trim();
                 if title.is_empty() {
-                    eprintln!("Area title cannot be empty.");
-                    return Ok(());
+                    bail!("Area title cannot be empty.");
                 }
 
                 let store = cli.load_store()?;
@@ -183,8 +182,7 @@ impl Command for AreasArgs {
                 if let Some(tags) = &args.tags {
                     let (tag_ids, err) = resolve_tag_ids(&store, tags);
                     if !err.is_empty() {
-                        eprintln!("{err}");
-                        return Ok(());
+                        bail!("{err}");
                     }
                     props.tag_ids = tag_ids;
                 }
@@ -192,10 +190,8 @@ impl Command for AreasArgs {
                 let uuid = ctx.next_id();
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Area3, props));
-                if let Err(e) = ctx.commit_changes(changes, None) {
-                    eprintln!("Failed to create area: {e}");
-                    return Ok(());
-                }
+                ctx.commit_changes(changes, None)
+                    .map_err(|e| anyhow!("Failed to create area: {e}"))?;
 
                 writeln!(
                     out,
@@ -207,23 +203,16 @@ impl Command for AreasArgs {
             }
             AreasSubcommand::Edit(args) => {
                 let store = cli.load_store()?;
-                let plan = match build_areas_edit_plan(args, &store, ctx.now_timestamp()) {
-                    Ok(plan) => plan,
-                    Err(err) => {
-                        eprintln!("{err}");
-                        return Ok(());
-                    }
-                };
+                let plan = build_areas_edit_plan(args, &store, ctx.now_timestamp())
+                    .map_err(anyhow::Error::msg)?;
 
                 let mut changes = BTreeMap::new();
                 changes.insert(
                     plan.area.uuid.to_string(),
                     WireObject::update(EntityType::Area3, plan.update.clone()),
                 );
-                if let Err(e) = ctx.commit_changes(changes, None) {
-                    eprintln!("Failed to edit area: {e}");
-                    return Ok(());
-                }
+                ctx.commit_changes(changes, None)
+                    .map_err(|e| anyhow!("Failed to edit area: {e}"))?;
 
                 let title = plan.update.title.as_deref().unwrap_or(&plan.area.title);
                 writeln!(

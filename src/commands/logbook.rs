@@ -1,6 +1,6 @@
 use std::{io::Write, sync::Arc};
 
-use anyhow::Result;
+use anyhow::{Result, bail};
 use clap::Args;
 use iocraft::prelude::*;
 
@@ -50,17 +50,14 @@ impl Command for LogbookArgs {
         if let (Some(from), Some(to)) = (from_day, to_day)
             && from > to
         {
-            eprintln!("--from date must be before or equal to --to date");
-            return Ok(());
+            bail!("--from date must be before or equal to --to date");
         }
 
         let tasks = store.logbook(from_day, to_day);
 
         let json = cli.json;
         if json {
-            if detailed_json_conflict(json, self.detailed.detailed) {
-                return Ok(());
-            }
+            detailed_json_conflict(json, self.detailed.detailed)?;
             write_json(out, &build_tasks_json(&tasks, &store, &today))?;
             return Ok(());
         }

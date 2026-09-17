@@ -1,5 +1,6 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'No day' --repeat daily
+? 1
 --repeat requires --when today or YYYY-MM-DD
 
 ```

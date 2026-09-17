@@ -1,8 +1,8 @@
 use std::{cmp::Ordering, collections::BTreeMap};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use chrono::{TimeZone, Utc};
-use clap::Args;
+use clap::{ArgGroup, Args};
 
 use crate::{
     app::Cli,
@@ -16,6 +16,7 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(about = "Reorder item relative to another item")]
+#[command(group(ArgGroup::new("anchor").args(["before_id", "after_id"]).required(true).multiple(false)))]
 pub struct ReorderArgs {
     /// Item UUID (or unique UUID prefix)
     pub item_id: String,
@@ -296,19 +297,11 @@ impl Command for ReorderArgs {
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
         let store = cli.load_store()?;
-        let plan =
-            match build_reorder_plan(self, &store, ctx.now_timestamp(), ctx.today_timestamp()) {
-                Ok(plan) => plan,
-                Err(err) => {
-                    eprintln!("{err}");
-                    return Ok(());
-                }
-            };
+        let plan = build_reorder_plan(self, &store, ctx.now_timestamp(), ctx.today_timestamp())
+            .map_err(anyhow::Error::msg)?;
 
-        if let Err(e) = ctx.commit_changes(plan.changes, None) {
-            eprintln!("Failed to reorder item: {e}");
-            return Ok(());
-        }
+        ctx.commit_changes(plan.changes, None)
+            .map_err(|e| anyhow!("Failed to reorder item: {e}"))?;
 
         writeln!(
             out,

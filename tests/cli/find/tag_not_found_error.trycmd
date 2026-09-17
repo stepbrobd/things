@@ -1,5 +1,6 @@
 ```trycmd
 $ run.sh things find --tag NoSuchTag
+? 1
 Tag not found: NoSuchTag
 
 ```
