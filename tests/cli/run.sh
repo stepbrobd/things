@@ -58,11 +58,7 @@ set +e
 status=$?
 set -e
 
-pretty_json="$({ jq -RrS 'fromjson? | select(.event == "cloud.commit.request") | .request_json | fromjson' <"$stderr_file"; } || true)"
-if [[ -n "$pretty_json" ]]; then
-	printf '%s\n' "$pretty_json" 1>&2
-else
-	cat "$stderr_file" 1>&2
-fi
+# commit request log events become their pretty printed payload, every other stderr line passes through in place
+jq -RrS '(fromjson? | objects | select(.event == "cloud.commit.request") | .request_json | fromjson) // .' <"$stderr_file" 1>&2
 
 exit "$status"
