@@ -33,12 +33,17 @@ impl CloudWriter for LoggingCloudWriter {
         ancestor_index: Option<i64>,
     ) -> Result<i64> {
         let uuids = changes.keys().cloned().collect::<Vec<_>>();
-        let request_value = json!({
-            "ancestor_index": ancestor_index.unwrap_or(self.inner.head_index()),
-            "changes": &changes,
-        });
-        let request_json =
-            serde_json::to_string(&request_value).unwrap_or_else(|_| "{}".to_string());
+        // the payload is serialized for the log only when that log is on
+        let request_json = if tracing::enabled!(target: "things_cli::cloud_commit::request", tracing::Level::DEBUG)
+        {
+            serde_json::to_string(&json!({
+                "ancestor_index": ancestor_index.unwrap_or(self.inner.head_index()),
+                "changes": &changes,
+            }))
+            .unwrap_or_else(|_| "{}".to_string())
+        } else {
+            String::new()
+        };
         debug!(
             target: "things_cli::cloud_commit::request",
             event = "cloud.commit.request",
