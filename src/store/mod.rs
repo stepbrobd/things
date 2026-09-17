@@ -534,6 +534,27 @@ impl ThingsStore {
         out
     }
 
+    /// the parents above a tag, nearest first, stopping where the chain ends or turns back on itself
+    pub fn tag_ancestors(&self, tag: &ThingsId) -> Vec<ThingsId> {
+        let mut seen = HashSet::from([tag.clone()]);
+        let mut chain = Vec::new();
+        let mut current = self
+            .tags_by_uuid
+            .get(tag)
+            .and_then(|tag| tag.parent_uuid.clone());
+        while let Some(parent) = current {
+            if !seen.insert(parent.clone()) {
+                break;
+            }
+            current = self
+                .tags_by_uuid
+                .get(&parent)
+                .and_then(|tag| tag.parent_uuid.clone());
+            chain.push(parent);
+        }
+        chain
+    }
+
     pub fn get_task(&self, uuid: &str) -> Option<Task> {
         uuid.parse::<ThingsId>()
             .ok()

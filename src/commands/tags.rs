@@ -107,6 +107,13 @@ fn build_tags_edit_plan(
             if parent.uuid == tag.uuid {
                 return Err("A tag cannot be its own parent.".to_string());
             }
+            // a parent below the tag would close a cycle that no walk from the roots reaches
+            if store.tag_ancestors(&parent.uuid).contains(&tag.uuid) {
+                return Err(format!(
+                    "Cannot move {} under {}, which is below it.",
+                    tag.title, parent.title
+                ));
+            }
             let parent_id = parent.uuid;
             update.parent_ids = Some(vec![parent_id]);
             labels.push(format!("move={move_raw}"));
@@ -153,14 +160,16 @@ impl Command for TagsArgs {
                 let mut top_level = Vec::new();
 
                 for tag in tags {
-                    if let Some(parent_uuid) = &tag.parent_uuid {
-                        if by_uuid.contains_key(parent_uuid) {
+                    // a tag whose parent chain comes back to itself shows at the top level, where the cycle is visible, rather than nowhere
+                    let attached = tag.parent_uuid.as_ref().filter(|parent| {
+                        by_uuid.contains_key(*parent)
+                            && !store.tag_ancestors(parent).contains(&tag.uuid)
+                    });
+                    match attached {
+                        Some(parent_uuid) => {
                             children.entry(parent_uuid.clone()).or_default().push(tag);
-                        } else {
-                            top_level.push(tag);
                         }
-                    } else {
-                        top_level.push(tag);
+                        None => top_level.push(tag),
                     }
                 }
 
@@ -395,5 +404,41 @@ mod tests {
         )
         .expect_err("self parent");
         assert_eq!(self_parent, "A tag cannot be its own parent.");
+
+        // Meetings is below Work, so Work cannot go under Meetings
+        let cycle = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: TAG_UUID.to_string(),
+                name: None,
+                move_target: Some(CHILD_UUID.to_string()),
+            },
+            &store,
+            NOW,
+        )
+        .expect_err("cycle");
+        assert_eq!(cycle, "Cannot move Work under Meetings, which is below it.");
+    }
+
+    #[test]
+    fn a_cycle_two_tags_already_form_is_rejected_and_bounded() {
+        let store = build_store(vec![
+            tag(TAG_UUID, "Work", Some(CHILD_UUID)),
+            tag(CHILD_UUID, "Meetings", Some(TAG_UUID)),
+        ]);
+        assert_eq!(
+            store.tag_ancestors(&TAG_UUID.parse().expect("id")),
+            vec![CHILD_UUID.parse().expect("id")]
+        );
+        let err = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: TAG_UUID.to_string(),
+                name: None,
+                move_target: Some(CHILD_UUID.to_string()),
+            },
+            &store,
+            NOW,
+        )
+        .expect_err("still a cycle");
+        assert_eq!(err, "Cannot move Work under Meetings, which is below it.");
     }
 }
