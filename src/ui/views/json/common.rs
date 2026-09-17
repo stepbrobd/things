@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 
 use crate::{
     ids::ThingsId,
@@ -129,27 +129,66 @@ pub struct ResolvedChecklistItemJson {
     pub index: i32,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
+/// a wire value the CLI does not know, kept as `unknown:<raw>` rather than passed off as a known one
+fn serialize_unknown<S: Serializer>(raw: i32, serializer: S) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(&format!("unknown:{raw}"))
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum JsonTaskStatus {
     Incomplete,
     Completed,
     Canceled,
+    Unknown(i32),
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
+impl Serialize for JsonTaskStatus {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Incomplete => serializer.serialize_str("incomplete"),
+            Self::Completed => serializer.serialize_str("completed"),
+            Self::Canceled => serializer.serialize_str("canceled"),
+            Self::Unknown(raw) => serialize_unknown(*raw, serializer),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum JsonStartBucket {
     Inbox,
     Anytime,
     Someday,
+    Unknown(i32),
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
-#[serde(rename_all = "snake_case")]
+impl Serialize for JsonStartBucket {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Inbox => serializer.serialize_str("inbox"),
+            Self::Anytime => serializer.serialize_str("anytime"),
+            Self::Someday => serializer.serialize_str("someday"),
+            Self::Unknown(raw) => serialize_unknown(*raw, serializer),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub enum JsonItemType {
     Todo,
     Project,
+    Heading,
+    Unknown(i32),
+}
+
+impl Serialize for JsonItemType {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Todo => serializer.serialize_str("todo"),
+            Self::Project => serializer.serialize_str("project"),
+            Self::Heading => serializer.serialize_str("heading"),
+            Self::Unknown(raw) => serialize_unknown(*raw, serializer),
+        }
+    }
 }
 
 pub fn link_ref(id: &str, title: String, store: &ThingsStore) -> LinkRefJson {
@@ -173,7 +212,7 @@ pub fn task_status_json(status: TaskStatus) -> JsonTaskStatus {
         TaskStatus::Incomplete => JsonTaskStatus::Incomplete,
         TaskStatus::Completed => JsonTaskStatus::Completed,
         TaskStatus::Canceled => JsonTaskStatus::Canceled,
-        TaskStatus::Unknown(_) => JsonTaskStatus::Incomplete,
+        TaskStatus::Unknown(raw) => JsonTaskStatus::Unknown(raw),
     }
 }
 
@@ -182,14 +221,16 @@ pub fn task_start_json(start: TaskStart) -> JsonStartBucket {
         TaskStart::Inbox => JsonStartBucket::Inbox,
         TaskStart::Anytime => JsonStartBucket::Anytime,
         TaskStart::Someday => JsonStartBucket::Someday,
-        TaskStart::Unknown(_) => JsonStartBucket::Inbox,
+        TaskStart::Unknown(raw) => JsonStartBucket::Unknown(raw),
     }
 }
 
 pub fn task_type_json(item_type: TaskType) -> JsonItemType {
     match item_type {
+        TaskType::Todo => JsonItemType::Todo,
         TaskType::Project => JsonItemType::Project,
-        TaskType::Todo | TaskType::Heading | TaskType::Unknown(_) => JsonItemType::Todo,
+        TaskType::Heading => JsonItemType::Heading,
+        TaskType::Unknown(raw) => JsonItemType::Unknown(raw),
     }
 }
 

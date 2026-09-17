@@ -1,0 +1,93 @@
+```trycmd
+$ run.sh things --today-ts 1774396800 --json show Tu11111111111111111111
+{
+  "id": "Tu11111111111111111111",
+  "short_id": "Tu",
+  "title": "From a newer client",
+  "status": "unknown:77",
+  "type": "unknown:77",
+  "start": {
+    "bucket": "unknown:77",
+    "scheduled_at": null,
+    "reminder": null,
+    "today_index_reference": null,
+    "evening": false
+  },
+  "project": null,
+  "area": null,
+  "heading": null,
+  "tags": [],
+  "dates": {
+    "deadline_at": null,
+    "created_at": "1970-01-01T00:00:01+00:00",
+    "modified_at": "1970-01-01T00:00:01+00:00",
+    "completed_at": null
+  },
+  "notes": null,
+  "checklist": [],
+  "recurrence": {
+    "is_template": false,
+    "is_instance": false,
+    "rule": null,
+    "template_ids": []
+  },
+  "flags": {
+    "trashed": false,
+    "is_new": false,
+    "instance_creation_paused": false,
+    "leaves_tombstone": false
+  },
+  "indexes": {
+    "sort_index": 1,
+    "today_sort_index": 0
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --today-ts 1774396800 --json show Th11111111111111111111
+{
+  "id": "Th11111111111111111111",
+  "short_id": "Th",
+  "title": "A heading",
+  "status": "incomplete",
+  "type": "heading",
+  "start": {
+    "bucket": "anytime",
+    "scheduled_at": null,
+    "reminder": null,
+    "today_index_reference": null,
+    "evening": false
+  },
+  "project": null,
+  "area": null,
+  "heading": null,
+  "tags": [],
+  "dates": {
+    "deadline_at": null,
+    "created_at": "1970-01-01T00:00:01+00:00",
+    "modified_at": "1970-01-01T00:00:01+00:00",
+    "completed_at": null
+  },
+  "notes": null,
+  "checklist": [],
+  "recurrence": {
+    "is_template": false,
+    "is_instance": false,
+    "rule": null,
+    "template_ids": []
+  },
+  "flags": {
+    "trashed": false,
+    "is_new": false,
+    "instance_creation_paused": false,
+    "leaves_tombstone": false
+  },
+  "indexes": {
+    "sort_index": 2,
+    "today_sort_index": 0
+  }
+}
+
+```
