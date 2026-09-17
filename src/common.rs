@@ -169,7 +169,11 @@ pub fn parse_reminder(time: &str) -> Result<i64, String> {
 }
 
 pub fn day_to_timestamp(day: DateTime<Local>) -> i64 {
-    day.with_timezone(&Utc).timestamp()
+    day.date_naive()
+        .and_hms_opt(0, 0, 0)
+        .expect("midnight")
+        .and_utc()
+        .timestamp()
 }
 
 pub fn task6_note(value: &str) -> TaskNotes {
