@@ -430,6 +430,13 @@ pub struct Materialized {
 }
 
 /// the instances whose day has come, for every fixed schedule template not yet served for that day
+///
+/// `icsd` on a template is the day the search for the next instance starts
+/// from, not the day the next instance is due: the app sets it to the next
+/// occurrence when it makes the template and to the day after each instance it
+/// creates. the due day is therefore the first occurrence on or after it,
+/// bounded by the rule's end day and count, and a template past its end is
+/// never due
 pub fn due_instances(
     store: &ThingsStore,
     today: NaiveDate,
@@ -451,25 +458,19 @@ pub fn due_instances(
         .into_iter()
         .filter_map(|template| {
             let rule = template.recurrence_rule.as_ref()?;
-            RepeatSpec::from_rule(rule)?;
-            let due = template.instance_creation_start_date.and_then(day_of)?;
+            let search_from = template.instance_creation_start_date.and_then(day_of)?;
+            let due = next_occurrence_of_rule(
+                rule,
+                search_from.pred_opt()?,
+                template.instance_creation_count,
+            )?;
             if due > today {
                 return None;
             }
-            if rule.repeat_count > 0 && template.instance_creation_count >= rule.repeat_count {
-                return None;
-            }
-            let served = store.tasks_by_uuid.values().any(|task| {
-                !task.trashed
-                    && task.recurrence_templates.contains(&template.uuid)
-                    && task.start_date.is_some_and(|day| day.date_naive() >= due)
-            });
-            if served {
-                return None;
-            }
             let created = template.instance_creation_count + 1;
-            let following = next_occurrence_of_rule(rule, due.max(today), created)
-                .unwrap_or_else(|| today + Days::new(1));
+            // the search resumes tomorrow, which makes a missed stretch yield this one instance and not one per missed day
+            let resume = today.succ_opt()?;
+            let following = next_occurrence_of_rule(rule, today, created);
             let instance_id = next_id();
             let day_ts = day_timestamp(due);
             let instance = TaskProps {
@@ -495,8 +496,8 @@ pub fn due_instances(
             };
             let advance = TaskPatch {
                 instance_creation_count: Some(created),
-                instance_creation_start_date: Some(Some(day_timestamp(following))),
-                today_index_reference: Some(Some(day_timestamp(following))),
+                instance_creation_start_date: Some(Some(day_timestamp(resume))),
+                today_index_reference: Some(following.map(day_timestamp)),
                 modification_date: Some(Some(now)),
                 ..Default::default()
             };
@@ -534,6 +535,10 @@ pub struct TemplateSource {
 }
 
 /// the hidden template behind a repeating to-do whose first instance is on `first`
+///
+/// `icsd` points at the occurrence after the first, as the app writes it, or
+/// at the day after the first when the count or the end day allows only the
+/// one instance, and `tir` is that occurrence or nothing
 pub fn template(
     spec: &RepeatSpec,
     rule: RecurrenceRule,
@@ -541,9 +546,10 @@ pub fn template(
     source: TemplateSource,
     now: f64,
 ) -> TaskProps {
-    let next = spec
-        .next_occurrence(first, first)
-        .unwrap_or_else(|| first + Days::new(1));
+    let next = match &spec.cadence {
+        Cadence::AfterCompletion(_) => Some(first + Days::new(1)),
+        _ => next_occurrence_of_rule(&rule, first, 1),
+    };
     let after_completion_reference_date = match &spec.cadence {
         Cadence::AfterCompletion(unit) => {
             Some(day_timestamp(minus_interval(first, *unit, spec.every)))
@@ -555,7 +561,7 @@ pub fn template(
         notes: source.notes,
         start_location: TaskStart::Someday,
         scheduled_date: None,
-        today_index_reference: Some(day_timestamp(next)),
+        today_index_reference: next.map(day_timestamp),
         tag_ids: source.tag_ids,
         parent_project_ids: source.parent_project_ids,
         area_ids: source.area_ids,
@@ -563,7 +569,9 @@ pub fn template(
         sort_index: source.sort_index,
         today_sort_index: source.today_sort_index,
         recurrence_rule: Some(rule),
-        instance_creation_start_date: Some(day_timestamp(next)),
+        instance_creation_start_date: Some(day_timestamp(
+            next.unwrap_or_else(|| first + Days::new(1)),
+        )),
         instance_creation_count: 1,
         instance_creation_paused: false,
         after_completion_reference_date,
@@ -578,6 +586,10 @@ pub fn template(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        store::fold_items,
+        wire::{task::TaskProps, wire_object::WireItem},
+    };
 
     fn day(text: &str) -> NaiveDate {
         NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("date")
@@ -757,6 +769,144 @@ mod tests {
         assert_eq!(after.recurrence_type, RecurrenceType::AfterCompletion);
         assert_eq!(after.interval_anchor, Some(0));
         assert!(after.offsets.is_empty());
+    }
+
+    #[test]
+    fn the_day_after_an_app_made_instance_is_not_due() {
+        // the app created the 2026-09-17 instance and moved icsd to the next day
+        let store = store_of(vec![
+            template_object(YEARLY_SEP_17, "2026-09-18", 1),
+            instance_object(INSTANCE, "2026-09-17"),
+        ]);
+        assert!(due_on(&store, "2026-09-18").is_empty());
+        assert!(due_on(&store, "2027-09-16").is_empty());
+
+        let made = due_on(&store, "2027-09-17");
+        assert_eq!(made.len(), 1);
+        assert_eq!(made[0].day, day("2027-09-17"));
+        let patch = template_patch(&made[0]);
+        assert_eq!(patch.get("icc"), Some(&json!(2)));
+        assert_eq!(
+            patch.get("icsd"),
+            Some(&json!(day_timestamp(day("2027-09-18"))))
+        );
+        // the rule ended with this occurrence
+        assert_eq!(patch.get("tir"), Some(&Value::Null));
+    }
+
+    #[test]
+    fn the_last_allowed_day_creates_its_instance_and_no_day_after_it() {
+        let store = store_of(vec![
+            template_object(DAILY_UNTIL_MAR_25, "2026-03-25", 1),
+            instance_object(INSTANCE, "2026-03-24"),
+        ]);
+        let made = due_on(&store, "2026-03-25");
+        assert_eq!(made.len(), 1);
+        assert_eq!(made[0].day, day("2026-03-25"));
+        let patch = template_patch(&made[0]);
+        assert_eq!(
+            patch.get("icsd"),
+            Some(&json!(day_timestamp(day("2026-03-26"))))
+        );
+        assert_eq!(patch.get("tir"), Some(&Value::Null));
+
+        // the day after, with that commit folded in
+        let mut state = fold_items([[
+            template_object(DAILY_UNTIL_MAR_25, "2026-03-25", 1),
+            instance_object(INSTANCE, "2026-03-24"),
+        ]
+        .into_iter()
+        .collect::<WireItem>()]);
+        crate::store::fold_item(made.into_iter().next().expect("made").changes, &mut state);
+        let store = ThingsStore::from_raw_state(&state);
+        assert!(due_on(&store, "2026-03-26").is_empty());
+        assert!(due_on(&store, "2026-04-01").is_empty());
+
+        // a template an earlier version advanced past its end day
+        let store = store_of(vec![template_object(DAILY_UNTIL_MAR_25, "2026-03-26", 2)]);
+        assert!(due_on(&store, "2026-03-26").is_empty());
+    }
+
+    #[test]
+    fn a_rescheduled_instance_does_not_hold_the_template_back() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        // the user moved the instance of 2026-03-24 to 2026-03-27, the search still starts on 03-25
+        let store = store_of(vec![
+            template_object(daily, "2026-03-25", 2),
+            instance_object(INSTANCE, "2026-03-27"),
+        ]);
+        let made = due_on(&store, "2026-03-25");
+        assert_eq!(made.len(), 1);
+        assert_eq!(made[0].day, day("2026-03-25"));
+    }
+
+    #[test]
+    fn a_missed_stretch_yields_one_instance_on_the_first_missed_day() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        let store = store_of(vec![template_object(daily, "2026-03-20", 1)]);
+        let made = due_on(&store, "2026-03-25");
+        assert_eq!(made.len(), 1);
+        assert_eq!(made[0].day, day("2026-03-20"));
+        let patch = template_patch(&made[0]);
+        assert_eq!(
+            patch.get("icsd"),
+            Some(&json!(day_timestamp(day("2026-03-26"))))
+        );
+        assert_eq!(
+            patch.get("tir"),
+            Some(&json!(day_timestamp(day("2026-03-26"))))
+        );
+
+        // the count bounds the search as well as the end day
+        let store = store_of(vec![template_object(
+            r#"{"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":2,"sr":1773619200,"tp":0}"#,
+            "2026-03-20",
+            2,
+        )]);
+        assert!(due_on(&store, "2026-03-25").is_empty());
+    }
+
+    #[test]
+    fn template_ends_with_the_first_instance_when_the_bound_allows_one() {
+        let today = day("2026-09-17");
+        let source = || TemplateSource {
+            title: "once".to_string(),
+            notes: None,
+            tag_ids: Vec::new(),
+            parent_project_ids: Vec::new(),
+            area_ids: Vec::new(),
+            action_group_ids: Vec::new(),
+            alarm_time_offset: None,
+            sort_index: 0,
+            today_sort_index: 0,
+            conflict_overrides: None,
+        };
+        let daily = spec("daily");
+        for bound in [Bound::Times(1), Bound::Until(today)] {
+            let made = template(
+                &daily,
+                daily.rule(today, today, bound),
+                today,
+                source(),
+                1.0,
+            );
+            assert_eq!(
+                made.instance_creation_start_date,
+                Some(day_timestamp(day("2026-09-18")))
+            );
+            assert_eq!(made.today_index_reference, None);
+        }
+        let made = template(
+            &daily,
+            daily.rule(today, today, Bound::Times(2)),
+            today,
+            source(),
+            1.0,
+        );
+        assert_eq!(
+            made.today_index_reference,
+            Some(day_timestamp(day("2026-09-18")))
+        );
     }
 
     #[test]
