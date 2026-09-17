@@ -13,7 +13,6 @@ pub mod new;
 pub mod project;
 pub mod projects;
 pub mod reorder;
-pub mod schedule;
 pub mod someday;
 pub mod tags;
 pub mod today;
@@ -110,8 +109,6 @@ pub enum Commands {
     Edit(edit::EditArgs),
     #[command(about = "Mark a task done, incomplete, or canceled")]
     Mark(mark::MarkArgs),
-    #[command(about = "Set when and deadline")]
-    Schedule(schedule::ScheduleArgs),
     #[command(about = "Reorder item relative to another item")]
     Reorder(reorder::ReorderArgs),
     #[command(about = "Delete tasks/projects/headings/areas")]
@@ -146,7 +143,6 @@ impl Command for Commands {
             Commands::New(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Edit(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Mark(args) => args.run_with_ctx(cli, out, ctx),
-            Commands::Schedule(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Reorder(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Delete(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Auth(args) => args.run_with_ctx(cli, out, ctx),

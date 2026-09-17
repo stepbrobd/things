@@ -1,13 +1,23 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::{
+    collections::{BTreeMap, HashMap, HashSet},
+    str::FromStr,
+};
 
 use anyhow::Result;
 use clap::Args;
+use serde_json::json;
 
 use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs},
-    common::{DIM, GREEN, ICONS, colored, parse_instant, resolve_tag_ids, task6_note},
+    common::{
+        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_instant, parse_reminder,
+        resolve_tag_ids, task6_note,
+    },
+    ids::ThingsId,
+    repeat::{Bound, RepeatSpec, TemplateSource, bound, day_of, template},
+    store::Task,
     wire::{
         checklist::{ChecklistItemPatch, ChecklistItemProps},
         notes::{StructuredTaskNotes, TaskNotes},
@@ -17,7 +27,9 @@ use crate::{
 };
 
 #[derive(Debug, Args)]
-#[command(about = "Edit a task title, container, notes, tags, or checklist items")]
+#[command(
+    about = "Edit a task: title, notes, container, tags, checklist, when, deadline, reminder or repeat"
+)]
 pub struct EditArgs {
     #[arg(help = "Task UUID(s) (or unique UUID prefixes)")]
     pub task_ids: Vec<IdentifierToken>,
@@ -70,6 +82,42 @@ pub struct EditArgs {
         help = "Set when the task was created (single task only, RFC 3339 or YYYY-MM-DD)"
     )]
     pub created_on: Option<String>,
+    #[arg(
+        long,
+        short = 'w',
+        help = "When: anytime, today, evening, someday, or YYYY-MM-DD"
+    )]
+    pub when: Option<String>,
+    #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]
+    pub deadline_date: Option<String>,
+    #[arg(long = "clear-deadline", short = 'D', help = "Clear deadline")]
+    pub clear_deadline: bool,
+    #[arg(
+        long = "reminder",
+        value_name = "HH:MM",
+        help = "Reminder time on the scheduled day (HH:MM)"
+    )]
+    pub reminder: Option<String>,
+    #[arg(long = "clear-reminder", help = "Clear reminder")]
+    pub clear_reminder: bool,
+    #[arg(
+        long = "repeat",
+        value_name = "RULE",
+        help = "Repeat: daily, weekly[:mon,thu], monthly[:15|last], yearly[:MM-DD] or after:2w, with /N for every N (single task only)"
+    )]
+    pub repeat: Option<String>,
+    #[arg(
+        long = "times",
+        value_name = "N",
+        help = "End the repeat after N times"
+    )]
+    pub times: Option<i32>,
+    #[arg(
+        long = "until",
+        value_name = "YYYY-MM-DD",
+        help = "End the repeat on a day"
+    )]
+    pub until: Option<String>,
 }
 
 fn resolve_checklist_items(
@@ -119,6 +167,183 @@ struct EditPlan {
     labels: Vec<String>,
 }
 
+/// when, deadline, reminder and repeat, the fields the app's popovers edit
+#[allow(clippy::too_many_arguments)]
+fn apply_schedule(
+    args: &EditArgs,
+    task: &Task,
+    update: &mut TaskPatch,
+    changes: &mut BTreeMap<String, WireObject>,
+    labels: &mut Vec<String>,
+    now: f64,
+    today_ts: i64,
+    next_id: &mut dyn FnMut() -> String,
+) -> std::result::Result<(), String> {
+    let scheduling = args.when.is_some()
+        || args.deadline_date.is_some()
+        || args.clear_deadline
+        || args.reminder.is_some()
+        || args.clear_reminder
+        || args.repeat.is_some();
+    if !scheduling {
+        if args.times.is_some() || args.until.is_some() {
+            return Err("--times and --until need --repeat".to_string());
+        }
+        return Ok(());
+    }
+    if task.has_repeater() {
+        return Err(
+            "Task7 repeater tasks are blocked from scheduling until repeater bookkeeping is supported."
+                .to_string(),
+        );
+    }
+    let mut label = |text: String| {
+        if !labels.contains(&text) {
+            labels.push(text);
+        }
+    };
+
+    if let Some(when_raw) = &args.when {
+        let when = when_raw.trim();
+        let when_l = when.to_lowercase();
+        if when_l == "anytime" || when_l == "someday" {
+            update.start_location = Some(if when_l == "anytime" {
+                TaskStart::Anytime
+            } else {
+                TaskStart::Someday
+            });
+            update.scheduled_date = Some(None);
+            update.today_index_reference = Some(None);
+            update.evening_bit = Some(0);
+            if task.alarm_time_offset.is_some() {
+                update.alarm_time_offset = Some(None);
+            }
+            label(format!("when={when_l}"));
+        } else if when_l == "today" || when_l == "evening" {
+            update.start_location = Some(TaskStart::Anytime);
+            update.scheduled_date = Some(Some(today_ts));
+            update.today_index_reference = Some(Some(today_ts));
+            update.evening_bit = Some(if when_l == "evening" { 1 } else { 0 });
+            label(format!("when={when_l}"));
+        } else {
+            let when_day = match parse_day(Some(when), "--when") {
+                Ok(Some(day)) => day,
+                Ok(None) => {
+                    return Err(
+                        "--when requires anytime, someday, today, evening, or YYYY-MM-DD"
+                            .to_string(),
+                    );
+                }
+                Err(e) => return Err(e),
+            };
+            let day_ts = day_to_timestamp(when_day);
+            update.start_location = Some(if day_ts <= today_ts {
+                TaskStart::Anytime
+            } else {
+                TaskStart::Someday
+            });
+            update.scheduled_date = Some(Some(day_ts));
+            update.today_index_reference = Some(Some(day_ts));
+            update.evening_bit = Some(0);
+            label(format!("when={when}"));
+        }
+    }
+
+    if let Some(deadline) = &args.deadline_date {
+        let day = match parse_day(Some(deadline), "--deadline") {
+            Ok(Some(day)) => day,
+            Ok(None) => return Err("--deadline requires YYYY-MM-DD".to_string()),
+            Err(e) => return Err(e),
+        };
+        update.deadline = Some(Some(day_to_timestamp(day) as f64));
+        label(format!("deadline={deadline}"));
+    }
+    if args.clear_deadline {
+        update.deadline = Some(None);
+        label("deadline=none".to_string());
+    }
+
+    if let Some(reminder) = &args.reminder {
+        let dated = match update.scheduled_date {
+            Some(day) => day.is_some(),
+            None => task.start_date.is_some(),
+        };
+        if !dated {
+            return Err(
+                "--reminder requires a scheduled day, set --when today or YYYY-MM-DD".to_string(),
+            );
+        }
+        update.alarm_time_offset = Some(Some(parse_reminder(reminder)?));
+        label(format!("reminder={reminder}"));
+    }
+    if args.clear_reminder {
+        update.alarm_time_offset = Some(None);
+        label("reminder=none".to_string());
+    }
+
+    if let Some(rule_text) = &args.repeat {
+        if task.is_recurrence_template() || task.is_recurrence_instance() {
+            return Err("This to-do already repeats.".to_string());
+        }
+        let spec: RepeatSpec = rule_text.parse()?;
+        let bound = bound(args.times, args.until.as_deref())?;
+        let when_day = match update.scheduled_date {
+            Some(Some(day)) => day_of(day),
+            Some(None) => None,
+            None => task.start_date.map(|day| day.date_naive()),
+        };
+        let Some(when_day) = when_day else {
+            return Err(
+                "--repeat requires a scheduled day, set --when today or YYYY-MM-DD".to_string(),
+            );
+        };
+        let first = spec.first_occurrence(when_day);
+        if first != when_day {
+            return Err(format!(
+                "{when_day} is not a day of {rule_text}, the next one is {first}, set --when {first}"
+            ));
+        }
+        if let Bound::Until(until) = bound
+            && until < first
+        {
+            return Err(format!(
+                "--until {until} is before the first occurrence {first}"
+            ));
+        }
+        let rule = spec.rule(first, day_of(today_ts).expect("today"), bound);
+        label(format!(
+            "repeat={}",
+            rule.human_readable().unwrap_or_else(|_| rule_text.clone())
+        ));
+        let source = TemplateSource {
+            title: task.title.clone(),
+            notes: task.notes.as_deref().map(task6_note),
+            tag_ids: task.tags.clone(),
+            parent_project_ids: task.project.iter().cloned().collect(),
+            area_ids: task.area.iter().cloned().collect(),
+            action_group_ids: task.action_group.iter().cloned().collect(),
+            alarm_time_offset: match update.alarm_time_offset {
+                Some(alarm) => alarm,
+                None => task.alarm_time_offset,
+            },
+            sort_index: task.index,
+            today_sort_index: task.today_index,
+            conflict_overrides: Some(json!({"_t": "oo", "sn": {}})),
+        };
+        let template_uuid = next_id();
+        update.recurrence_template_ids = Some(vec![
+            ThingsId::from_str(&template_uuid).map_err(|e| e.to_string())?,
+        ]);
+        changes.insert(
+            template_uuid,
+            WireObject::create(EntityType::Task7, template(&spec, rule, first, source, now)),
+        );
+    } else if args.times.is_some() || args.until.is_some() {
+        return Err("--times and --until need --repeat".to_string());
+    }
+    Ok(())
+}
+
 impl Command for EditArgs {
     fn run_with_ctx(
         &self,
@@ -128,8 +353,9 @@ impl Command for EditArgs {
     ) -> Result<()> {
         let store = cli.load_store()?;
         let now = ctx.now_timestamp();
+        let today = ctx.today_timestamp();
         let mut id_gen = || ctx.next_id();
-        let plan = match build_edit_plan(self, &store, now, &mut id_gen) {
+        let plan = match build_edit_plan(self, &store, now, today, &mut id_gen) {
             Ok(plan) => plan,
             Err(err) => {
                 eprintln!("{err}");
@@ -172,6 +398,7 @@ fn build_edit_plan(
     args: &EditArgs,
     store: &crate::store::ThingsStore,
     now: f64,
+    today_ts: i64,
     next_id: &mut dyn FnMut() -> String,
 ) -> std::result::Result<EditPlan, String> {
     let multiple = args.task_ids.len() > 1;
@@ -183,6 +410,9 @@ fn build_edit_plan(
     }
     if multiple && (args.completed_on.is_some() || args.created_on.is_some()) {
         return Err("--completed-on/--created-on require a single task ID.".to_string());
+    }
+    if multiple && args.repeat.is_some() {
+        return Err("--repeat requires a single task ID.".to_string());
     }
     if multiple
         && (!args.add_checklist.is_empty()
@@ -460,6 +690,17 @@ fn build_edit_plan(
             }
         }
 
+        apply_schedule(
+            args,
+            task,
+            &mut update,
+            &mut changes,
+            &mut labels,
+            now,
+            today_ts,
+            next_id,
+        )?;
+
         let has_checklist_changes = !args.add_checklist.is_empty()
             || args.remove_checklist.is_some()
             || !rename_map.is_empty();
@@ -503,6 +744,7 @@ mod tests {
     };
 
     const NOW: f64 = 1_700_000_222.0;
+    const TODAY: i64 = 1_699_920_000;
     const TASK_UUID: &str = "A7h5eCi24RvAWKC3Hv3muf";
     const TASK_UUID2: &str = "3H9jsMx3kYMrQ4M7DReSRn";
     const PROJECT_UUID: &str = "KGvAPpMrzHAKMdgMiERP1V";
@@ -657,9 +899,17 @@ mod tests {
             rename_checklist: vec![],
             completed_on: None,
             created_on: None,
+            when: None,
+            deadline_date: None,
+            clear_deadline: false,
+            reminder: None,
+            clear_reminder: false,
+            repeat: None,
+            times: None,
+            until: None,
         };
         let mut id_gen = || "X".to_string();
-        let plan = build_edit_plan(&args, &store, NOW, &mut id_gen).expect("plan");
+        let plan = build_edit_plan(&args, &store, NOW, TODAY, &mut id_gen).expect("plan");
         let p = assert_task_update(&plan, TASK_UUID);
         assert_eq!(p.get("tt"), Some(&json!("New title")));
         assert_eq!(p.get("md"), Some(&json!(NOW)));
@@ -690,9 +940,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect("inbox plan");
@@ -716,9 +975,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect("clear plan");
@@ -740,9 +1008,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect("project move plan");
@@ -778,9 +1055,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect("multi move");
@@ -804,9 +1090,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect_err("title should reject");
@@ -839,9 +1134,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect("tag plan");
@@ -875,9 +1179,18 @@ mod tests {
                 rename_checklist: vec![format!("{}:Renamed", &CHECK_A[..6])],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect("checklist plan");
@@ -913,9 +1226,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect_err("no changes");
@@ -937,9 +1259,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect_err("project edit reject");
@@ -964,9 +1295,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect_err("invalid move target kind");
@@ -1001,9 +1341,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect_err("ambiguous move target");
@@ -1036,9 +1385,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect_err("single task constraint");
@@ -1063,9 +1421,18 @@ mod tests {
                 rename_checklist: vec![],
                 completed_on: None,
                 created_on: None,
+                when: None,
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
+            TODAY,
             &mut id_gen,
         )
         .expect_err("empty title");

@@ -80,11 +80,6 @@ fn reorder() {
 }
 
 #[test]
-fn schedule() {
-    cases("tests/cli/schedule/**/*.trycmd");
-}
-
-#[test]
 fn someday() {
     cases("tests/cli/someday/**/*.trycmd");
 }
