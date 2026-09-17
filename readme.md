@@ -31,8 +31,10 @@ export THINGS_EMAIL="you@example.com"
 export THINGS_PASSWORD="your-password"
 ```
 
-The auth file and the sync cache live under `$XDG_STATE_HOME/things`, created
-owner-only.
+The auth file lives at `$XDG_CONFIG_HOME/things/auth.json` and the sync cache
+under `$XDG_STATE_HOME/things`, both created owner-only. The variables are
+honored on every platform, macOS included, with `~/.config` and `~/.local/state`
+as the defaults.
 
 ## Usage
 
