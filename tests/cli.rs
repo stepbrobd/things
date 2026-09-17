@@ -98,3 +98,8 @@ fn today() {
 fn upcoming() {
     cases("tests/cli/upcoming/**/*.trycmd");
 }
+
+#[test]
+fn show() {
+    cases("tests/cli/show/**/*.trycmd");
+}

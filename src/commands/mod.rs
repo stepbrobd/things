@@ -13,6 +13,7 @@ pub mod new;
 pub mod project;
 pub mod projects;
 pub mod reorder;
+pub mod show;
 pub mod someday;
 pub mod tags;
 pub mod today;
@@ -117,6 +118,8 @@ pub enum Commands {
     Auth(auth::AuthArgs),
     #[command(about = "Search and filter tasks")]
     Find(find::FindArgs),
+    #[command(about = "Show one task or project in full")]
+    Show(show::ShowArgs),
     #[command(about = "Generate shell completion scripts")]
     Completions(completions::CompletionsArgs),
 }
@@ -147,6 +150,7 @@ impl Command for Commands {
             Commands::Delete(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Auth(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Find(args) => args.run_with_ctx(cli, out, ctx),
+            Commands::Show(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Completions(args) => args.run_with_ctx(cli, out, ctx),
         }
     }

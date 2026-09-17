@@ -1,0 +1,76 @@
+```trycmd
+$ run.sh things --today-ts 1774396800 --json show Ta11111111111111111111
+{
+  "id": "Ta11111111111111111111",
+  "short_id": "Ta",
+  "title": "Write the announcement",
+  "status": "incomplete",
+  "type": "todo",
+  "start": {
+    "bucket": "anytime",
+    "scheduled_at": "2026-03-25T00:00:00+00:00",
+    "reminder": "09:00",
+    "today_index_reference": 1774396800,
+    "evening": false
+  },
+  "project": {
+    "id": "Pj11111111111111111111",
+    "short_id": "P",
+    "title": "Launch"
+  },
+  "area": {
+    "id": "Ar11111111111111111111",
+    "short_id": "A",
+    "title": "Work"
+  },
+  "heading": null,
+  "tags": [
+    {
+      "id": "Tg11111111111111111111",
+      "short_id": "Tg",
+      "title": "urgent",
+      "shortcut": null
+    }
+  ],
+  "dates": {
+    "deadline_at": "2026-04-01T00:00:00+00:00",
+    "created_at": "2023-11-14T22:13:20+00:00",
+    "modified_at": "2023-11-15T22:13:20+00:00",
+    "completed_at": null
+  },
+  "notes": "Draft in the shared doc/nThen send it around",
+  "checklist": [
+    {
+      "id": "Ck11111111111111111111",
+      "short_id": "Ck",
+      "title": "Outline",
+      "status": "completed",
+      "index": 1
+    },
+    {
+      "id": "Cm11111111111111111111",
+      "short_id": "Cm",
+      "title": "Proofread",
+      "status": "incomplete",
+      "index": 2
+    }
+  ],
+  "recurrence": {
+    "is_template": false,
+    "is_instance": false,
+    "rule": null,
+    "template_ids": []
+  },
+  "flags": {
+    "trashed": false,
+    "is_new": false,
+    "instance_creation_paused": false,
+    "leaves_tombstone": false
+  },
+  "indexes": {
+    "sort_index": 2,
+    "today_sort_index": 0
+  }
+}
+
+```

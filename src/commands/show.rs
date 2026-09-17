@@ -1,0 +1,165 @@
+use std::io::Write;
+
+use anyhow::Result;
+use clap::Args;
+
+use crate::{
+    app::Cli,
+    commands::{Command, write_json},
+    common::{DIM, ICONS, colored, fmt_date},
+    ui::views::json::common::build_tasks_json,
+    wire::task::TaskStart,
+};
+
+#[derive(Debug, Args)]
+#[command(about = "Show one task or project in full")]
+pub struct ShowArgs {
+    /// Task or project UUID (or unique UUID prefix)
+    pub item_id: String,
+}
+
+impl Command for ShowArgs {
+    fn run_with_ctx(
+        &self,
+        cli: &Cli,
+        out: &mut dyn Write,
+        ctx: &mut dyn crate::cmd_ctx::CmdCtx,
+    ) -> Result<()> {
+        let store = cli.load_store()?;
+        let today = ctx.today();
+        let (task, err, _) = store.resolve_task_identifier(&self.item_id);
+        let Some(task) = task else {
+            eprintln!("{err}");
+            return Ok(());
+        };
+
+        if cli.json {
+            let mut json = build_tasks_json(std::slice::from_ref(&task), &store, &today);
+            write_json(out, &json.remove(0))?;
+            return Ok(());
+        }
+
+        let no_color = cli.no_color();
+        let field = |name: &str| colored(format!("{name}:"), &[DIM], no_color);
+        writeln!(
+            out,
+            "{}  {}",
+            task.title,
+            colored(&task.uuid, &[DIM], no_color)
+        )?;
+        let kind = if task.is_project() {
+            "project"
+        } else if task.is_heading() {
+            "heading"
+        } else {
+            "to-do"
+        };
+        let status = if task.is_completed() {
+            "done"
+        } else if task.is_canceled() {
+            "canceled"
+        } else {
+            "open"
+        };
+        writeln!(out, "{} {kind}, {status}", field("Kind"))?;
+
+        let mut when = match (task.start, task.start_date) {
+            (TaskStart::Inbox, _) => "inbox".to_string(),
+            (_, Some(day)) if day.date_naive() == today.date_naive() => "today".to_string(),
+            (_, Some(day)) => day.format("%Y-%m-%d").to_string(),
+            (TaskStart::Someday, None) => "someday".to_string(),
+            _ => "anytime".to_string(),
+        };
+        if task.evening {
+            when.push_str(" evening");
+        }
+        if let Some(time) = task.reminder() {
+            when.push_str(&format!(" @{time}"));
+        }
+        writeln!(out, "{} {when}", field("When"))?;
+        if task.deadline.is_some() {
+            writeln!(out, "{} {}", field("Deadline"), fmt_date(task.deadline))?;
+        }
+        if let Some(project) = store.effective_project_uuid(&task) {
+            writeln!(
+                out,
+                "{} {}",
+                field("Project"),
+                store.resolve_project_title(&project)
+            )?;
+        }
+        if let Some(heading) = task
+            .action_group
+            .as_ref()
+            .and_then(|id| store.get_task(&id.to_string()))
+        {
+            writeln!(out, "{} {}", field("Heading"), heading.title)?;
+        }
+        if let Some(area) = store.effective_area_uuid(&task) {
+            writeln!(out, "{} {}", field("Area"), store.resolve_area_title(&area))?;
+        }
+        if !task.tags.is_empty() {
+            let tags: Vec<String> = task
+                .tags
+                .iter()
+                .map(|tag| store.resolve_tag_title(tag))
+                .collect();
+            writeln!(out, "{} {}", field("Tags"), tags.join(", "))?;
+        }
+        if let Some(rule) = &task.recurrence_rule {
+            writeln!(
+                out,
+                "{} {}",
+                field("Repeat"),
+                rule.human_readable()
+                    .unwrap_or_else(|_| "repeats".to_string())
+            )?;
+        }
+        if let Some(rule) = task
+            .recurrence_templates
+            .first()
+            .and_then(|id| store.get_task(&id.to_string()))
+            .and_then(|template| template.recurrence_rule)
+        {
+            writeln!(
+                out,
+                "{} {}",
+                field("Instance of"),
+                rule.human_readable()
+                    .unwrap_or_else(|_| "a repeat".to_string())
+            )?;
+        }
+        let mut dates = vec![format!("created {}", fmt_date(task.creation_date))];
+        if task.modification_date.is_some() {
+            dates.push(format!("modified {}", fmt_date(task.modification_date)));
+        }
+        if task.stop_date.is_some() {
+            dates.push(format!("completed {}", fmt_date(task.stop_date)));
+        }
+        writeln!(out, "{} {}", field("Dates"), dates.join(", "))?;
+        if let Some(notes) = task
+            .notes
+            .as_deref()
+            .filter(|notes| !notes.trim().is_empty())
+        {
+            writeln!(out, "{}", field("Notes"))?;
+            for line in notes.lines() {
+                writeln!(out, "  {line}")?;
+            }
+        }
+        if !task.checklist_items.is_empty() {
+            writeln!(out, "{}", field("Checklist"))?;
+            for item in &task.checklist_items {
+                let mark = if item.is_completed() {
+                    ICONS.checklist_done
+                } else if item.is_canceled() {
+                    ICONS.checklist_canceled
+                } else {
+                    ICONS.checklist_open
+                };
+                writeln!(out, "  {mark} {}", item.title)?;
+            }
+        }
+        Ok(())
+    }
+}

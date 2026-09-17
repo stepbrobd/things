@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things --today-ts 1774396800 show Ta11111111111111111111
+Write the announcement  Ta11111111111111111111
+Kind: to-do, open
+When: today @09:00
+Deadline: 2026-04-01
+Project: Launch
+Area: Work
+Tags: urgent
+Dates: created 2023-11-14, modified 2023-11-15
+Notes:
+  Draft in the shared doc
+  Then send it around
+Checklist:
+  ● Outline
+  ○ Proofread
+
+```
