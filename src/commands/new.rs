@@ -302,7 +302,7 @@ fn build_new_plan(
             Ok(None) => return Err("--deadline requires YYYY-MM-DD".to_string()),
             Err(err) => return Err(err),
         };
-        props.deadline = Some(day_to_timestamp(parsed) as i64);
+        props.deadline = Some(day_to_timestamp(parsed));
     }
 
     let anchor_is_today = anchor
