@@ -21,7 +21,7 @@ nix run github:stepbrobd/things -- today
 ## Auth
 
 ```sh
-things set-auth
+things auth
 ```
 
 Or through the environment, which overrides the auth file:
@@ -68,8 +68,8 @@ or `--until YYYY-MM-DD` bound the rule. The to-do needs a when date, which moves
 to the first matching day, and becomes the first instance of a hidden template
 exactly as the app writes it, so the following instances appear on their days:
 every sync creates the instances whose day has come, the way the Apple clients
-do, and `--no-materialize` leaves that to them. `upcoming` also lists each
-repeating to-do on its next day, marked `↻`, before that instance exists.
+do. `upcoming` also lists each repeating to-do on its next day, marked `↻`,
+before that instance exists.
 
 ## Development
 
