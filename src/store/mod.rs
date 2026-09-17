@@ -6,7 +6,7 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use chrono::{DateTime, FixedOffset, Local, TimeZone, Utc};
+use chrono::{DateTime, Days, FixedOffset, Local, NaiveDate, TimeZone, Utc};
 pub use entities::{
     Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateObject,
     StateProperties, Tag, TagStateProps, Task, TaskStateProps,
@@ -18,6 +18,7 @@ use crate::{
         ThingsId,
         matching::{prefix_matches, shortest_unique_prefixes},
     },
+    repeat::{day_timestamp, next_occurrence_of_rule},
     wire::{
         task::{TaskStart, TaskStatus, TaskType},
         wire_object::EntityType,
@@ -207,6 +208,8 @@ impl ThingsStore {
             today_index_reference: p.today_index_reference,
             leaves_tombstone: p.leaves_tombstone,
             instance_creation_paused: p.instance_creation_paused,
+            instance_creation_start_date: p.instance_creation_start_date,
+            instance_creation_count: p.instance_creation_count,
             evening: p.evening_bit != 0,
             alarm_time_offset: p.alarm_time_offset,
             recurrence_rule: p.recurrence_rule.clone(),
@@ -279,6 +282,44 @@ impl ThingsStore {
             .collect();
         out.sort_by_key(|t| t.index);
         out
+    }
+
+    /// one row per repeating template for its next occurrence after today, so a rule stays visible between instances
+    pub fn projected_repeats(&self, today: NaiveDate) -> Vec<Task> {
+        let floor = today - Days::new(1);
+        self.tasks_by_uuid
+            .values()
+            .filter(|template| {
+                template.is_recurrence_template()
+                    && !template.trashed
+                    && template.status == TaskStatus::Incomplete
+                    && !template.instance_creation_paused
+            })
+            .filter_map(|template| {
+                let last_instance = self
+                    .tasks_by_uuid
+                    .values()
+                    .filter(|task| {
+                        !task.trashed && task.recurrence_templates.contains(&template.uuid)
+                    })
+                    .filter_map(|task| task.start_date)
+                    .map(|day| day.date_naive())
+                    .max();
+                let after = last_instance.map_or(floor, |last| last.max(floor));
+                let next = next_occurrence_of_rule(
+                    template.recurrence_rule.as_ref()?,
+                    after,
+                    template.instance_creation_count,
+                )?;
+                if next <= today {
+                    return None;
+                }
+                let mut projected = template.clone();
+                projected.start_date = DateTime::from_timestamp(day_timestamp(next), 0);
+                projected.start = TaskStart::Someday;
+                Some(projected)
+            })
+            .collect()
     }
 
     pub fn today(&self, today: &DateTime<Utc>) -> Vec<Task> {

@@ -155,6 +155,8 @@ pub struct Task {
     pub today_index_reference: Option<i64>,
     pub leaves_tombstone: bool,
     pub instance_creation_paused: bool,
+    pub instance_creation_start_date: Option<i64>,
+    pub instance_creation_count: i32,
     pub evening: bool,
     pub alarm_time_offset: Option<i64>,
     pub recurrence_rule: Option<RecurrenceRule>,

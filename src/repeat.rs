@@ -1,15 +1,19 @@
 use std::{collections::BTreeMap, str::FromStr};
 
+use std::collections::BTreeMap as ChangeMap;
+
 use chrono::{DateTime, Datelike, Days, Months, NaiveDate};
-use serde_json::Value;
+use serde_json::{Value, json};
 
 use crate::{
-    common::parse_day,
+    common::{parse_day, task6_note},
     ids::ThingsId,
+    store::{Task, ThingsStore},
     wire::{
         notes::TaskNotes,
         recurrence::{FrequencyUnit, RECURRENCE_END_NEVER, RecurrenceRule, RecurrenceType},
-        task::{TaskProps, TaskStart},
+        task::{TaskPatch, TaskProps, TaskStart, TaskStatus, TaskType},
+        wire_object::{EntityType, WireObject},
     },
 };
 
@@ -238,14 +242,14 @@ impl RepeatSpec {
         }
     }
 
-    /// the occurrence after `after`, counting intervals from `anchor`, None after completion
+    /// the occurrence after `after`, counting intervals from `anchor`, which need not be an occurrence itself, None after completion
     pub fn next_occurrence(&self, anchor: NaiveDate, after: NaiveDate) -> Option<NaiveDate> {
-        if after < anchor {
-            return Some(anchor);
-        }
         let every = i64::from(self.every);
         match &self.cadence {
             Cadence::Daily => {
+                if after < anchor {
+                    return Some(anchor);
+                }
                 let elapsed = (after - anchor).num_days();
                 Some(anchor + Days::new((elapsed / every * every + every) as u64))
             }
@@ -256,8 +260,13 @@ impl RepeatSpec {
                     days.clone()
                 };
                 let base = week_start(anchor);
-                (1..=7 * every + 7)
-                    .map(|ahead| after + Days::new(ahead as u64))
+                let start = if after < anchor {
+                    anchor
+                } else {
+                    after + Days::new(1)
+                };
+                (0..=7 * every + 7)
+                    .map(|ahead| start + Days::new(ahead as u64))
                     .find(|day| {
                         days.contains(&weekday_index(*day))
                             && ((week_start(*day) - base).num_days() / 7) % every == 0
@@ -270,7 +279,7 @@ impl RepeatSpec {
                         let month = anchor + Months::new(steps * self.every as u32);
                         day_in_month(month.year(), month.month(), day)
                     })
-                    .find(|candidate| *candidate > after)
+                    .find(|candidate| *candidate > after && *candidate >= anchor)
             }
             Cadence::Yearly(month_day) => {
                 let (month, day) = month_day.unwrap_or((anchor.month(), anchor.day()));
@@ -278,10 +287,62 @@ impl RepeatSpec {
                     .map(|steps| {
                         day_in_month(anchor.year() + steps * self.every, month, day as i32)
                     })
-                    .find(|candidate| *candidate > after)
+                    .find(|candidate| *candidate > after && *candidate >= anchor)
             }
             Cadence::AfterCompletion(_) => None,
         }
+    }
+
+    /// the spec and anchor behind a fixed schedule rule from the wire, None for after completion or shapes the CLI cannot evaluate
+    pub fn from_rule(rule: &RecurrenceRule) -> Option<(Self, NaiveDate)> {
+        if rule.recurrence_type != RecurrenceType::FixedSchedule || rule.frequency_amount < 1 {
+            return None;
+        }
+        let anchor = rule
+            .interval_anchor
+            .filter(|anchor| *anchor > 0)
+            .or(rule.start_date)
+            .and_then(day_of)?;
+        let field = |key: &str| -> Vec<i64> {
+            rule.offsets
+                .iter()
+                .filter_map(|offset| offset.get(key).and_then(Value::as_i64))
+                .collect()
+        };
+        let cadence = match rule.frequency_unit {
+            FrequencyUnit::Daily => Cadence::Daily,
+            FrequencyUnit::Weekly => Cadence::Weekly(
+                field("wd")
+                    .into_iter()
+                    .filter_map(|day| u32::try_from(day).ok())
+                    .collect(),
+            ),
+            FrequencyUnit::Monthly => {
+                // the nth weekday of a month is not evaluated
+                if !field("wd").is_empty() {
+                    return None;
+                }
+                Cadence::Monthly(
+                    field("dy")
+                        .first()
+                        .map(|day| if *day < 0 { -1 } else { *day as i32 + 1 }),
+                )
+            }
+            FrequencyUnit::Yearly => {
+                Cadence::Yearly(match (field("mo").first(), field("dy").first()) {
+                    (Some(month), Some(day)) => Some((*month as u32 + 1, *day as u32 + 1)),
+                    _ => None,
+                })
+            }
+            FrequencyUnit::Unknown(_) => return None,
+        };
+        Some((
+            Self {
+                cadence,
+                every: rule.frequency_amount,
+            },
+            anchor,
+        ))
     }
 
     /// the wire rule as the app writes it, `sr` the day the rule was made, `ia` the first occurrence
@@ -354,6 +415,121 @@ impl RepeatSpec {
             version: 4,
         }
     }
+}
+
+/// the next occurrence of a wire rule after `after`, honoring the end day and the repeat count against the instances made so far
+pub fn next_occurrence_of_rule(
+    rule: &RecurrenceRule,
+    after: NaiveDate,
+    instances_created: i32,
+) -> Option<NaiveDate> {
+    if rule.repeat_count > 0 && instances_created >= rule.repeat_count {
+        return None;
+    }
+    let (spec, anchor) = RepeatSpec::from_rule(rule)?;
+    let next = spec.next_occurrence(anchor, after)?;
+    match rule.end_date {
+        Some(end) if end != RECURRENCE_END_NEVER => (next <= day_of(end)?).then_some(next),
+        _ => Some(next),
+    }
+}
+
+/// an instance a template is due for on `day`, the shape the app writes when it creates the next copy
+pub struct Materialized {
+    pub title: String,
+    pub day: NaiveDate,
+    pub instance_id: String,
+    pub changes: ChangeMap<String, WireObject>,
+}
+
+/// the instances whose day has come, for every fixed schedule template not yet served for that day
+pub fn due_instances(
+    store: &ThingsStore,
+    today: NaiveDate,
+    now: f64,
+    next_id: &mut dyn FnMut() -> String,
+) -> Vec<Materialized> {
+    let mut templates: Vec<&Task> = store
+        .tasks_by_uuid
+        .values()
+        .filter(|template| {
+            template.is_recurrence_template()
+                && !template.trashed
+                && template.status == TaskStatus::Incomplete
+                && !template.instance_creation_paused
+        })
+        .collect();
+    templates.sort_by(|a, b| a.uuid.cmp(&b.uuid));
+    templates
+        .into_iter()
+        .filter_map(|template| {
+            let rule = template.recurrence_rule.as_ref()?;
+            RepeatSpec::from_rule(rule)?;
+            let due = template.instance_creation_start_date.and_then(day_of)?;
+            if due > today {
+                return None;
+            }
+            if rule.repeat_count > 0 && template.instance_creation_count >= rule.repeat_count {
+                return None;
+            }
+            let served = store.tasks_by_uuid.values().any(|task| {
+                !task.trashed
+                    && task.recurrence_templates.contains(&template.uuid)
+                    && task.start_date.is_some_and(|day| day.date_naive() >= due)
+            });
+            if served {
+                return None;
+            }
+            let created = template.instance_creation_count + 1;
+            let following = next_occurrence_of_rule(rule, due.max(today), created)
+                .unwrap_or_else(|| today + Days::new(1));
+            let instance_id = next_id();
+            let day_ts = day_timestamp(due);
+            let instance = TaskProps {
+                title: template.title.clone(),
+                notes: template.notes.as_deref().map(task6_note),
+                item_type: TaskType::Todo,
+                status: TaskStatus::Incomplete,
+                start_location: TaskStart::Anytime,
+                scheduled_date: Some(day_ts),
+                today_index_reference: Some(day_ts),
+                tag_ids: template.tags.clone(),
+                parent_project_ids: template.project.iter().cloned().collect(),
+                area_ids: template.area.iter().cloned().collect(),
+                action_group_ids: template.action_group.iter().cloned().collect(),
+                sort_index: template.index,
+                today_sort_index: template.today_index,
+                recurrence_template_ids: vec![template.uuid.clone()],
+                alarm_time_offset: template.alarm_time_offset,
+                conflict_overrides: Some(json!({"_t": "oo", "sn": {}})),
+                creation_date: Some(now),
+                modification_date: Some(now),
+                ..Default::default()
+            };
+            let advance = TaskPatch {
+                instance_creation_count: Some(created),
+                instance_creation_start_date: Some(Some(day_timestamp(following))),
+                today_index_reference: Some(Some(day_timestamp(following))),
+                modification_date: Some(Some(now)),
+                ..Default::default()
+            };
+            let mut changes = ChangeMap::new();
+            changes.insert(
+                instance_id.clone(),
+                WireObject::create(EntityType::Task7, instance),
+            );
+            changes.insert(
+                template.uuid.to_string(),
+                WireObject::update(EntityType::Task7, advance),
+            );
+            Some(Materialized {
+                title: template.title.clone(),
+                day: due,
+                instance_id,
+                changes,
+            })
+        })
+        .collect()
 }
 
 /// what the template copies from the to-do that becomes its first instance
@@ -531,6 +707,40 @@ mod tests {
             Some(day("2025-02-28"))
         );
         assert_eq!(spec("after:2w").next_occurrence(thursday, thursday), None);
+    }
+
+    #[test]
+    fn wire_rules_evaluate_like_the_app() {
+        let today = day("2026-09-17");
+        // the app's monthly rule anchored on its creation day, first occurrence october 15
+        let monthly: RecurrenceRule = serde_json::from_str(
+            r#"{"fa":1,"fu":8,"ia":1789603200,"of":[{"dy":14}],"rc":3,"rrv":4,"sr":1789603200,"tp":0,"ts":0}"#,
+        )
+        .expect("rule");
+        assert_eq!(
+            next_occurrence_of_rule(&monthly, today - Days::new(1), 0),
+            Some(day("2026-10-15"))
+        );
+        assert_eq!(
+            next_occurrence_of_rule(&monthly, day("2026-10-15"), 3),
+            None
+        );
+        // yearly ending on its own day
+        let yearly: RecurrenceRule = serde_json::from_str(
+            r#"{"ed":1821139200,"fa":1,"fu":4,"ia":1789603200,"of":[{"dy":16,"mo":8}],"rc":0,"rrv":4,"sr":1789603200,"tp":0,"ts":0}"#,
+        )
+        .expect("rule");
+        assert_eq!(
+            next_occurrence_of_rule(&yearly, today, 1),
+            Some(day("2027-09-17"))
+        );
+        assert_eq!(next_occurrence_of_rule(&yearly, day("2027-09-17"), 2), None);
+        // after completion is never projected
+        let after: RecurrenceRule = serde_json::from_str(
+            r#"{"ed":64092211200,"fa":2,"fu":256,"ia":0,"of":[],"rc":0,"rrv":4,"sr":1789603200,"tp":1,"ts":0}"#,
+        )
+        .expect("rule");
+        assert_eq!(next_occurrence_of_rule(&after, today, 0), None);
     }
 
     #[test]
