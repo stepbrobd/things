@@ -283,7 +283,7 @@ impl ThingsStore {
             })
             .cloned()
             .collect();
-        out.sort_by_key(|t| t.index);
+        out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         out
     }
 
@@ -340,12 +340,18 @@ impl ThingsStore {
             .cloned()
             .collect();
 
+        // equal keys keep a fixed order, the id breaks the tie
         out.sort_by_key(|task| {
             if task.today_index == 0 {
                 let sr_ts = task.start_date.map(|d| d.timestamp()).unwrap_or(0);
-                (0i32, Reverse(sr_ts), Reverse(task.index))
+                (0i32, Reverse(sr_ts), Reverse(task.index), task.uuid.clone())
             } else {
-                (1i32, Reverse(task.today_index as i64), Reverse(task.index))
+                (
+                    1i32,
+                    Reverse(task.today_index as i64),
+                    Reverse(task.index),
+                    task.uuid.clone(),
+                )
             }
         });
         out
@@ -368,7 +374,7 @@ impl ThingsStore {
             })
             .cloned()
             .collect();
-        out.sort_by_key(|t| t.index);
+        out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         out
     }
 
@@ -409,7 +415,7 @@ impl ThingsStore {
             })
             .cloned()
             .collect();
-        out.sort_by_key(|t| t.index);
+        out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         out
     }
 
@@ -429,7 +435,7 @@ impl ThingsStore {
             })
             .cloned()
             .collect();
-        out.sort_by_key(|t| t.index);
+        out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         out
     }
 
@@ -520,13 +526,13 @@ impl ThingsStore {
             })
             .cloned()
             .collect();
-        out.sort_by_key(|t| t.index);
+        out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         out
     }
 
     pub fn areas(&self) -> Vec<Area> {
         let mut out: Vec<Area> = self.areas_by_uuid.values().cloned().collect();
-        out.sort_by_key(|a| a.index);
+        out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         out
     }
 
@@ -537,7 +543,7 @@ impl ThingsStore {
             .filter(|t| !t.title.trim().is_empty())
             .cloned()
             .collect();
-        out.sort_by_key(|t| t.index);
+        out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         out
     }
 
@@ -648,10 +654,11 @@ impl ThingsStore {
         max_need
     }
 
-    fn resolve_prefix<T: Clone>(
-        &self,
+    /// one item by full id or unique prefix among `sorted_ids`, looked up through `lookup`, or the message and up to ten candidates when the prefix is ambiguous
+    fn resolve_prefix<'a, T: Clone + 'a>(
+        &'a self,
         identifier: &str,
-        items: &HashMap<ThingsId, T>,
+        lookup: impl Fn(&ThingsId) -> Option<&'a T>,
         sorted_ids: &[ThingsId],
         label: &str,
     ) -> (Option<T>, String, Vec<T>) {
@@ -665,14 +672,14 @@ impl ThingsStore {
         }
 
         if let Ok(exact_id) = ident.parse::<ThingsId>()
-            && let Some(exact) = items.get(&exact_id)
+            && let Some(exact) = lookup(&exact_id)
         {
             return (Some(exact.clone()), String::new(), Vec::new());
         }
 
         let matches: Vec<&ThingsId> = prefix_matches(sorted_ids, ident);
         if matches.len() == 1
-            && let Some(item) = items.get(matches[0])
+            && let Some(item) = lookup(matches[0])
         {
             return (Some(item.clone()), String::new(), Vec::new());
         }
@@ -680,7 +687,7 @@ impl ThingsStore {
         if matches.len() > 1 {
             let mut out = Vec::new();
             for m in matches.iter().take(10) {
-                if let Some(item) = items.get(*m) {
+                if let Some(item) = lookup(m) {
                     out.push(item.clone());
                 }
             }
@@ -704,22 +711,23 @@ impl ThingsStore {
     }
 
     pub fn resolve_mark_identifier(&self, identifier: &str) -> (Option<Task>, String, Vec<Task>) {
-        let markable: HashMap<ThingsId, Task> = self
-            .markable_ids
-            .iter()
-            .filter_map(|uid| {
-                self.tasks_by_uuid
-                    .get(uid)
-                    .map(|t| (uid.clone(), t.clone()))
-            })
-            .collect();
-        self.resolve_prefix(identifier, &markable, &self.markable_ids_sorted, "Item")
+        self.resolve_prefix(
+            identifier,
+            |id| {
+                self.markable_ids
+                    .contains(id)
+                    .then(|| self.tasks_by_uuid.get(id))
+                    .flatten()
+            },
+            &self.markable_ids_sorted,
+            "Item",
+        )
     }
 
     pub fn resolve_area_identifier(&self, identifier: &str) -> (Option<Area>, String, Vec<Area>) {
         self.resolve_prefix(
             identifier,
-            &self.areas_by_uuid,
+            |id| self.areas_by_uuid.get(id),
             &self.area_ids_sorted,
             "Area",
         )
@@ -728,7 +736,7 @@ impl ThingsStore {
     pub fn resolve_task_identifier(&self, identifier: &str) -> (Option<Task>, String, Vec<Task>) {
         self.resolve_prefix(
             identifier,
-            &self.tasks_by_uuid,
+            |id| self.tasks_by_uuid.get(id),
             &self.task_ids_sorted,
             "Task",
         )
