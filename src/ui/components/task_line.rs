@@ -45,6 +45,7 @@ pub fn TaskLine<'a>(hooks: Hooks, props: &TaskLineProps<'a>) -> impl Into<AnyEle
     };
 
     let context = vec![
+        reminder_element(task),
         tags,
         context_element(task, store.as_ref(), props.show_project, props.show_area),
         element! { DeadlineBadge(deadline: task.deadline) }.into_any(),
@@ -79,6 +80,13 @@ fn marker_element<'a>(
     }
 
     element!(Fragment).into_any()
+}
+
+fn reminder_element<'a>(task: &Task) -> AnyElement<'a> {
+    let Some(time) = task.reminder() else {
+        return element!(Fragment).into_any();
+    };
+    element!(Text(content: format!("@{time}"), color: Color::DarkGrey)).into_any()
 }
 
 fn title_element<'a>(task: &Task) -> AnyElement<'a> {

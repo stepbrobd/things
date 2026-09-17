@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things --today-ts 1774396800 today
+⭑ Today  (2 tasks)
+
+  A ▢ Morning workout  @09:00
+  K ▢ Read email
+
+```

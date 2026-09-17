@@ -70,6 +70,7 @@ pub struct TaskLinksJson {
 pub struct TaskStartJson {
     pub bucket: JsonStartBucket,
     pub scheduled_at: Option<String>,
+    pub reminder: Option<String>,
     pub today_index_reference: Option<i64>,
     pub evening: bool,
 }
@@ -222,6 +223,7 @@ fn task_to_json(task: &Task, store: &ThingsStore, today: &DateTime<Utc>) -> Reso
             start: TaskStartJson {
                 bucket: task_start_json(task.start),
                 scheduled_at: task.start_date.map(|d| d.to_rfc3339()),
+                reminder: task.reminder(),
                 today_index_reference: task.today_index_reference,
                 evening: task.evening,
             },
