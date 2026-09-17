@@ -54,6 +54,7 @@ pub struct Icons {
     pub area: &'static str,
     pub tag: &'static str,
     pub evening: &'static str,
+    pub repeat: &'static str,
 
     // Project progress icons
     pub progress_empty: &'static str,
@@ -96,6 +97,7 @@ pub const ICONS: Icons = Icons {
     area: "◆",
     tag: "⌗",
     evening: "☽",
+    repeat: "↻",
 
     progress_empty: "◯",
     progress_quarter: "◔",

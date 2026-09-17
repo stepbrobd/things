@@ -1,0 +1,234 @@
+[
+  {
+    "RTKdozwkfpXDhugqJBb9A5": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Prepare quarterly plan",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 10,
+        "cd": 1,
+        "md": 1,
+        "sr": 4071254400
+      }
+    }
+  },
+  {
+    "ShuDMT6hGzqxdTjt9ajstS": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Send kickoff email",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 20,
+        "cd": 1,
+        "md": 1,
+        "sr": 4071254400
+      }
+    }
+  },
+  {
+    "RbCMxciUzSDVCYYXVjAgVD": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Book team retro",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 30,
+        "cd": 1,
+        "md": 1,
+        "sr": 4071427200
+      }
+    }
+  },
+  {
+    "UAM9jermS7i1WZG7ky7kMg": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Should not show (scheduled today)",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 40,
+        "cd": 1,
+        "md": 1,
+        "sr": 1774396800
+      }
+    }
+  },
+  {
+    "AnVsD8K9ZUNbjkeVsEmeZy": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Should not show (scheduled in past)",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 50,
+        "cd": 1,
+        "md": 1,
+        "sr": 946684800
+      }
+    }
+  },
+  {
+    "Vdi8v72EndV5jM54gSHbRy": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Should not show (someday unscheduled)",
+        "tp": 0,
+        "ss": 0,
+        "st": 2,
+        "ix": 60,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  },
+  {
+    "XNUinUJXsc5dZFXNuN6ya": {
+      "t": 0,
+      "e": "Task6",
+      "p": {
+        "tt": "Should not show (backlog unscheduled)",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 70,
+        "cd": 1,
+        "md": 1
+      }
+    }
+  },
+  {
+    "Tw11111111111111111111": {
+      "t": 0,
+      "e": "Task7",
+      "p": {
+        "tt": "Weekly review",
+        "tp": 0,
+        "ss": 0,
+        "st": 2,
+        "ix": 30,
+        "cd": 1,
+        "md": 1,
+        "rr": {
+          "ed": 64092211200,
+          "fa": 1,
+          "fu": 256,
+          "ia": 1774396800,
+          "of": [
+            {
+              "wd": 3
+            }
+          ],
+          "rc": 0,
+          "rrv": 4,
+          "sr": 1774396800,
+          "tp": 0,
+          "ts": 0
+        },
+        "rt": [],
+        "icsd": 1775001600,
+        "icc": 1,
+        "icp": false,
+        "tir": 1775001600
+      }
+    }
+  },
+  {
+    "Jw11111111111111111111": {
+      "t": 0,
+      "e": "Task7",
+      "p": {
+        "tt": "Weekly review",
+        "tp": 0,
+        "ss": 0,
+        "st": 1,
+        "ix": 31,
+        "cd": 1,
+        "md": 1,
+        "sr": 1774396800,
+        "tir": 1774396800,
+        "rt": [
+          "Tw11111111111111111111"
+        ]
+      }
+    }
+  },
+  {
+    "Tm11111111111111111111": {
+      "t": 0,
+      "e": "Task7",
+      "p": {
+        "tt": "Pay rent",
+        "tp": 0,
+        "ss": 0,
+        "st": 2,
+        "ix": 40,
+        "cd": 1,
+        "md": 1,
+        "rr": {
+          "fa": 1,
+          "fu": 8,
+          "ia": 1772323200,
+          "of": [
+            {
+              "dy": 0
+            }
+          ],
+          "rc": 2,
+          "rrv": 4,
+          "sr": 1772323200,
+          "tp": 0,
+          "ts": 0
+        },
+        "rt": [],
+        "icsd": 1775001600,
+        "icc": 2,
+        "icp": false
+      }
+    }
+  },
+  {
+    "Ta11111111111111111111": {
+      "t": 0,
+      "e": "Task7",
+      "p": {
+        "tt": "Water the fern",
+        "tp": 0,
+        "ss": 0,
+        "st": 2,
+        "ix": 50,
+        "cd": 1,
+        "md": 1,
+        "rr": {
+          "ed": 64092211200,
+          "fa": 2,
+          "fu": 256,
+          "ia": 0,
+          "of": [],
+          "rc": 0,
+          "rrv": 4,
+          "sr": 1774396800,
+          "tp": 1,
+          "ts": 0
+        },
+        "rt": [],
+        "icsd": 1774483200,
+        "icc": 1,
+        "icp": false,
+        "acrd": 1773187200
+      }
+    }
+  }
+]

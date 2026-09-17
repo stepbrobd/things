@@ -43,6 +43,7 @@ impl Command for UpcomingArgs {
                 tasks.push(t);
             }
         }
+        tasks.extend(store.projected_repeats(today.date_naive()));
         tasks.sort_by_key(|t| t.start_date);
 
         let json = cli.json;

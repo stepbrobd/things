@@ -115,7 +115,9 @@ fn TaskDetails<'a>(props: &TaskDetailProps<'a>) -> impl Into<AnyElement<'a>> {
 }
 
 fn checkbox_str(task: &Task) -> &'static str {
-    if task.is_completed() {
+    if task.is_recurrence_template() {
+        ICONS.repeat
+    } else if task.is_completed() {
         ICONS.task_done
     } else if task.is_canceled() {
         ICONS.task_canceled
