@@ -7,7 +7,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs},
-    common::{DIM, GREEN, ICONS, colored, resolve_tag_ids, task6_note},
+    common::{parse_instant, DIM, GREEN, ICONS, colored, resolve_tag_ids, task6_note},
     wire::{
         checklist::{ChecklistItemPatch, ChecklistItemProps},
         notes::{StructuredTaskNotes, TaskNotes},
@@ -58,6 +58,18 @@ pub struct EditArgs {
         help = "Rename a checklist item: short-id:new title (repeatable, single task only)"
     )]
     pub rename_checklist: Vec<String>,
+    #[arg(
+        long = "completed-on",
+        value_name = "DATETIME",
+        help = "Set when a completed task was completed (single task only, RFC 3339 or YYYY-MM-DD)"
+    )]
+    pub completed_on: Option<String>,
+    #[arg(
+        long = "created-on",
+        value_name = "DATETIME",
+        help = "Set when the task was created (single task only, RFC 3339 or YYYY-MM-DD)"
+    )]
+    pub created_on: Option<String>,
 }
 
 fn resolve_checklist_items(
@@ -168,6 +180,9 @@ fn build_edit_plan(
     }
     if multiple && args.notes.is_some() {
         return Err("--notes requires a single task ID.".to_string());
+    }
+    if multiple && (args.completed_on.is_some() || args.created_on.is_some()) {
+        return Err("--completed-on/--created-on require a single task ID.".to_string());
     }
     if multiple
         && (!args.add_checklist.is_empty()
@@ -307,6 +322,18 @@ fn build_edit_plan(
             if !labels.iter().any(|l| l == "title") {
                 labels.push("title".to_string());
             }
+        }
+
+        if let Some(completed_on) = &args.completed_on {
+            if !task.is_completed() && !task.is_canceled() {
+                return Err("--completed-on needs a completed or canceled task.".to_string());
+            }
+            update.stop_date = Some(Some(parse_instant(completed_on, "--completed-on")?));
+            labels.push("completed-on".to_string());
+        }
+        if let Some(created_on) = &args.created_on {
+            update.creation_date = Some(Some(parse_instant(created_on, "--created-on")?));
+            labels.push("created-on".to_string());
         }
 
         if let Some(notes) = &args.notes {
@@ -628,6 +655,8 @@ mod tests {
             add_checklist: vec![],
             remove_checklist: None,
             rename_checklist: vec![],
+            completed_on: None,
+            created_on: None,
         };
         let mut id_gen = || "X".to_string();
         let plan = build_edit_plan(&args, &store, NOW, &mut id_gen).expect("plan");
@@ -659,6 +688,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -683,6 +714,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -705,6 +738,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -741,6 +776,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -765,6 +802,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -798,6 +837,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -828,6 +869,8 @@ mod tests {
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
+                completed_on: None,
+                created_on: None,
                 },
                 add_checklist: vec!["Step three".to_string(), "Step four".to_string()],
                 remove_checklist: Some(format!("{},{}", &CHECK_A[..6], &CHECK_B[..6])),
@@ -868,6 +911,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -890,6 +935,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -915,6 +962,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -950,6 +999,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -983,6 +1034,8 @@ mod tests {
                 add_checklist: vec!["Step".to_string()],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,
@@ -1008,6 +1061,8 @@ mod tests {
                 add_checklist: vec![],
                 remove_checklist: None,
                 rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
             },
             &store,
             NOW,

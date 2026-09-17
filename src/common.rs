@@ -164,6 +164,16 @@ pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<DateTime<Local
     Ok(Some(local_dt))
 }
 
+/// an RFC 3339 instant, or a YYYY-MM-DD day taken at UTC midnight, as a wire timestamp
+pub fn parse_instant(text: &str, label: &str) -> Result<f64, String> {
+    if let Ok(instant) = DateTime::parse_from_rfc3339(text) {
+        return Ok(instant.timestamp_millis() as f64 / 1000.0);
+    }
+    parse_day(Some(text), label)?
+        .map(|day| day_to_timestamp(day) as f64)
+        .ok_or_else(|| format!("Invalid {label}: {text} (expected RFC 3339 or YYYY-MM-DD)"))
+}
+
 pub fn parse_reminder(time: &str) -> Result<i64, String> {
     NaiveTime::parse_from_str(time, "%H:%M")
         .map(|t| i64::from(t.num_seconds_from_midnight()))
