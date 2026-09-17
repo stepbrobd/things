@@ -1,7 +1,7 @@
 pub mod anytime;
-pub mod auth;
 pub mod area;
 pub mod areas;
+pub mod auth;
 pub mod completions;
 pub mod delete;
 pub mod edit;
@@ -122,7 +122,6 @@ pub enum Commands {
     Find(find::FindArgs),
     #[command(hide = true, about = "Generate shell completion scripts")]
     Completions(completions::CompletionsArgs),
-    #[command(hide = true, about = "Run internal HTTP bridge server")]
 }
 
 impl Command for Commands {
