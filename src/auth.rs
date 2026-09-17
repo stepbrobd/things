@@ -53,14 +53,14 @@ pub fn load_auth() -> Result<(String, String)> {
 
     let Some(email) = cfg.email else {
         return Err(anyhow!(
-            "Missing auth email. Set THINGS_EMAIL or run `things set-auth` to create {}.",
+            "Missing auth email. Set THINGS_EMAIL or run `things auth` to create {}.",
             path.display()
         ));
     };
 
     let Some(password) = cfg.password else {
         return Err(anyhow!(
-            "Missing auth password. Set THINGS_PASSWORD or run `things set-auth` to update {}.",
+            "Missing auth password. Set THINGS_PASSWORD or run `things auth` to update {}.",
             path.display()
         ));
     };

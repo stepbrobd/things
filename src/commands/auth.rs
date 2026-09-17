@@ -7,9 +7,9 @@ use crate::{app::Cli, auth::write_auth, commands::Command};
 
 #[derive(Debug, Default, Args)]
 #[command(about = "Configure Things Cloud credentials")]
-pub struct SetAuthArgs {}
+pub struct AuthArgs {}
 
-impl Command for SetAuthArgs {
+impl Command for AuthArgs {
     fn run_with_ctx(
         &self,
         _cli: &Cli,

@@ -1,4 +1,5 @@
 pub mod anytime;
+pub mod auth;
 pub mod area;
 pub mod areas;
 pub mod completions;
@@ -13,12 +14,10 @@ pub mod project;
 pub mod projects;
 pub mod reorder;
 pub mod schedule;
-pub mod set_auth;
 pub mod someday;
 pub mod tags;
 pub mod today;
 pub mod upcoming;
-pub mod webserver;
 
 use anyhow::Result;
 use clap::{Args, Subcommand};
@@ -118,13 +117,12 @@ pub enum Commands {
     #[command(about = "Delete tasks/projects/headings/areas")]
     Delete(delete::DeleteArgs),
     #[command(about = "Configure Things Cloud credentials")]
-    SetAuth(set_auth::SetAuthArgs),
+    Auth(auth::AuthArgs),
     #[command(about = "Search and filter tasks")]
     Find(find::FindArgs),
     #[command(hide = true, about = "Generate shell completion scripts")]
     Completions(completions::CompletionsArgs),
     #[command(hide = true, about = "Run internal HTTP bridge server")]
-    Webserver(webserver::WebserverArgs),
 }
 
 impl Command for Commands {
@@ -152,10 +150,9 @@ impl Command for Commands {
             Commands::Schedule(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Reorder(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Delete(args) => args.run_with_ctx(cli, out, ctx),
-            Commands::SetAuth(args) => args.run_with_ctx(cli, out, ctx),
+            Commands::Auth(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Find(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Completions(args) => args.run_with_ctx(cli, out, ctx),
-            Commands::Webserver(args) => args.run_with_ctx(cli, out, ctx),
         }
     }
 }
