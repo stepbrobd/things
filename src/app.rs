@@ -77,9 +77,10 @@ impl Cli {
             || std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
     }
 
-    pub fn load_state(&self) -> Result<RawState> {
-        if let Some(state) = self.state_cache.borrow().as_ref() {
-            return Ok(state.clone());
+    /// load the state once per run, from the journal file, the sync cache or the server
+    fn ensure_state(&self) -> Result<()> {
+        if self.state_cache.borrow().is_some() {
+            return Ok(());
         }
         let state = self.load_state_fresh()?;
         let degraded = degraded_ids(&state);
@@ -98,8 +99,15 @@ impl Cli {
             );
         }
         *self.degraded.borrow_mut() = degraded.into_iter().collect();
-        *self.state_cache.borrow_mut() = Some(state.clone());
-        Ok(state)
+        *self.state_cache.borrow_mut() = Some(state);
+        Ok(())
+    }
+
+    /// the run's state, borrowed rather than copied
+    pub fn with_state<R>(&self, read: impl FnOnce(&RawState) -> R) -> Result<R> {
+        self.ensure_state()?;
+        let cache = self.state_cache.borrow();
+        Ok(read(cache.as_ref().expect("the state was loaded")))
     }
 
     fn load_state_fresh(&self) -> Result<RawState> {
@@ -141,8 +149,7 @@ impl Cli {
     }
 
     pub fn load_store(&self) -> Result<ThingsStore> {
-        let state = self.load_state()?;
-        Ok(ThingsStore::from_raw_state(&state))
+        self.with_state(ThingsStore::from_raw_state)
     }
 }
 
@@ -165,11 +172,11 @@ pub fn run() -> Result<()> {
 
 /// create the instances repeating templates are due for, the way the Apple clients do on their day
 fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
-    let mut state = cli.load_state()?;
+    cli.ensure_state()?;
     if cli.offline.get() {
         return Ok(());
     }
-    let store = ThingsStore::from_raw_state(&state);
+    let store = cli.load_store()?;
     let today = ctx.today().date_naive();
     let now = ctx.now_timestamp();
     let mut next_id = || ctx.next_id();
@@ -183,8 +190,10 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
     }
     ctx.commit_changes(changes.clone(), None)
         .with_context(|| "failed to create due instances of repeating to-dos")?;
-    fold_item(changes, &mut state);
-    *cli.state_cache.borrow_mut() = Some(state);
+    // the committed objects join the run's state, the command that follows sees them without another sync
+    if let Some(state) = cli.state_cache.borrow_mut().as_mut() {
+        fold_item(changes, state);
+    }
     for materialized in due {
         eprintln!(
             "{} Created {} for {}  {}",
