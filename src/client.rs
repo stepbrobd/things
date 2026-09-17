@@ -1,5 +1,6 @@
 use std::{
     collections::BTreeMap,
+    fmt,
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -35,13 +36,24 @@ pub(crate) fn now_timestamp() -> f64 {
     now_ts()
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ThingsCloudClient {
     pub email: String,
     pub password: String,
     pub history_key: Option<String>,
     pub head_index: i64,
     http: Client,
+}
+
+impl fmt::Debug for ThingsCloudClient {
+    // the password stays out of every dump
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("ThingsCloudClient")
+            .field("email", &self.email)
+            .field("history_key", &self.history_key)
+            .field("head_index", &self.head_index)
+            .finish_non_exhaustive()
+    }
 }
 
 impl ThingsCloudClient {
