@@ -1,0 +1,67 @@
+```trycmd
+$ run.sh things --id-seed 7 --today-ts 1774396800 --now-ts 1774400000.0 today
+⭑ Today  (1 tasks)
+
+  M ▢ Stretch  @08:00
+{
+  "ancestor_index": 0,
+  "changes": {
+    "MdeYZd3jHuUUVtGH6rRgXy": {
+      "e": "Task7",
+      "p": {
+        "acrd": null,
+        "agr": [],
+        "ar": [],
+        "ato": 28800,
+        "cd": 1774400000.0,
+        "dd": null,
+        "dds": null,
+        "dl": [],
+        "do": 0,
+        "icc": 0,
+        "icp": false,
+        "icsd": null,
+        "ix": 10,
+        "lai": null,
+        "lt": false,
+        "md": 1774400000.0,
+        "nt": null,
+        "pr": [],
+        "rmd": null,
+        "rp": null,
+        "rr": null,
+        "rt": [
+          "Td11111111111111111111"
+        ],
+        "sb": 0,
+        "sp": null,
+        "sr": 1774396800,
+        "ss": 0,
+        "st": 1,
+        "tg": [],
+        "ti": 0,
+        "tir": 1774396800,
+        "tp": 0,
+        "tr": false,
+        "tt": "Stretch",
+        "xx": {
+          "_t": "oo",
+          "sn": {}
+        }
+      },
+      "t": 0
+    },
+    "Td11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "icc": 2,
+        "icsd": 1774483200,
+        "md": 1774400000.0,
+        "tir": 1774483200
+      },
+      "t": 1
+    }
+  }
+}
+
+```

@@ -1,4 +1,4 @@
-use std::{io::Read, path::PathBuf};
+use std::{cell::RefCell, collections::BTreeMap, io::Read, path::PathBuf};
 
 use anyhow::{Context, Result};
 use clap::Parser;
@@ -6,11 +6,13 @@ use clap::Parser;
 use crate::{
     auth::load_auth,
     client::ThingsCloudClient,
+    cmd_ctx::{CmdCtx, DefaultCmdCtx},
     commands::{Command, Commands},
+    common::ICONS,
     dirs::append_log_dir,
     log_cache::{fold_state_from_append_log, get_state_with_append_log},
-    logging,
-    store::{RawState, ThingsStore, fold_items},
+    logging, repeat,
+    store::{RawState, ThingsStore, fold_item, fold_items},
     wire::wire_object::WireItem,
 };
 
@@ -35,6 +37,9 @@ pub struct Cli {
     /// Skip cloud sync and use local cache only
     #[arg(long)]
     pub no_sync: bool,
+    /// Leave due instances of repeating to-dos for the Apple clients to create
+    #[arg(long, global = true)]
+    pub no_materialize: bool,
     /// For testing: disable cloud sync and cloud writes
     #[arg(long, hide = true)]
     pub no_cloud: bool,
@@ -63,10 +68,22 @@ pub struct Cli {
     pub load_journal: Option<PathBuf>,
     #[command(subcommand)]
     pub command: Option<Commands>,
+    /// the state loaded by this run, so a command after the materialization pass does not sync twice
+    #[arg(skip)]
+    pub state_cache: RefCell<Option<RawState>>,
 }
 
 impl Cli {
     pub fn load_state(&self) -> Result<RawState> {
+        if let Some(state) = self.state_cache.borrow().as_ref() {
+            return Ok(state.clone());
+        }
+        let state = self.load_state_fresh()?;
+        *self.state_cache.borrow_mut() = Some(state.clone());
+        Ok(state)
+    }
+
+    fn load_state_fresh(&self) -> Result<RawState> {
         if let Some(journal_path) = &self.load_journal {
             let raw = if journal_path == std::path::Path::new("-") {
                 let mut buf = String::new();
@@ -108,5 +125,43 @@ pub fn run() -> Result<()> {
         .command
         .take()
         .unwrap_or(Commands::Today(Default::default()));
-    command.run(&cli, &mut std::io::stdout())
+    let mut ctx = DefaultCmdCtx::from_cli(&cli);
+    if !matches!(
+        command,
+        Commands::SetAuth(_) | Commands::Completions(_) | Commands::Webserver(_)
+    ) {
+        materialize_due(&cli, &mut ctx)?;
+    }
+    command.run_with_ctx(&cli, &mut std::io::stdout(), &mut ctx)
+}
+
+/// create the instances repeating templates are due for, the way the Apple clients do on their day
+fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
+    if cli.no_sync || cli.no_materialize {
+        return Ok(());
+    }
+    let mut state = cli.load_state()?;
+    let store = ThingsStore::from_raw_state(&state);
+    let today = ctx.today().date_naive();
+    let now = ctx.now_timestamp();
+    let mut next_id = || ctx.next_id();
+    let due = repeat::due_instances(&store, today, now, &mut next_id);
+    if due.is_empty() {
+        return Ok(());
+    }
+    let mut changes = BTreeMap::new();
+    for materialized in &due {
+        changes.extend(materialized.changes.clone());
+    }
+    ctx.commit_changes(changes.clone(), None)
+        .with_context(|| "failed to create due instances of repeating to-dos")?;
+    fold_item(changes, &mut state);
+    *cli.state_cache.borrow_mut() = Some(state);
+    for materialized in due {
+        eprintln!(
+            "{} Created {} for {}  {}",
+            ICONS.repeat, materialized.title, materialized.day, materialized.instance_id
+        );
+    }
+    Ok(())
 }
