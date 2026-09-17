@@ -20,13 +20,9 @@ use crate::{
 #[command(name = "things")]
 #[command(bin_name = "things")]
 #[command(version)]
-#[command(before_help = concat!("things ", env!("CARGO_PKG_VERSION")))]
+#[command(before_help = concat!("Things ", env!("CARGO_PKG_VERSION")))]
 #[command(disable_help_subcommand = true)]
-#[command(about = concat!(
-    "things v",
-    env!("CARGO_PKG_VERSION"),
-    ": Command-line interface for Things 3 via Cloud API"
-))]
+#[command(about = "Command-line interface for Things 3 via Cloud API")]
 pub struct Cli {
     /// Disable color output
     #[arg(long)]
@@ -37,17 +33,14 @@ pub struct Cli {
     /// Skip cloud sync and use local cache only
     #[arg(long)]
     pub no_sync: bool,
-    /// Leave due instances of repeating to-dos for the Apple clients to create
-    #[arg(long, global = true)]
-    pub no_materialize: bool,
     /// For testing: disable cloud sync and cloud writes
     #[arg(long, hide = true)]
     pub no_cloud: bool,
     /// Set the log level filter
     #[arg(long, value_enum, default_value_t = logging::Level::Info)]
     pub log_level: logging::Level,
-    /// Set the logging output format
-    #[arg(long, value_enum, default_value_t = logging::LogFormat::Auto)]
+    /// For testing: set the logging output format
+    #[arg(long, hide = true, value_enum, default_value_t = logging::LogFormat::Auto)]
     pub log_format: logging::LogFormat,
     /// For testing: advanced tracing filter directive
     #[arg(long, global = true, hide = true, value_name = "DIRECTIVE")]
@@ -126,10 +119,7 @@ pub fn run() -> Result<()> {
         .take()
         .unwrap_or(Commands::Today(Default::default()));
     let mut ctx = DefaultCmdCtx::from_cli(&cli);
-    if !matches!(
-        command,
-        Commands::SetAuth(_) | Commands::Completions(_) | Commands::Webserver(_)
-    ) {
+    if !matches!(command, Commands::Auth(_) | Commands::Completions(_)) {
         materialize_due(&cli, &mut ctx)?;
     }
     command.run_with_ctx(&cli, &mut std::io::stdout(), &mut ctx)
@@ -137,7 +127,7 @@ pub fn run() -> Result<()> {
 
 /// create the instances repeating templates are due for, the way the Apple clients do on their day
 fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
-    if cli.no_sync || cli.no_materialize {
+    if cli.no_sync {
         return Ok(());
     }
     let mut state = cli.load_state()?;
