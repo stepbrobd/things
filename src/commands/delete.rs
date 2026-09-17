@@ -107,17 +107,18 @@ fn build_delete_plan(args: &DeleteArgs, store: &crate::store::ThingsStore, now: 
         }
     }
 
-    // a project takes its to-dos and headings along, an area its projects and to-dos, as in the app
+    // a project takes along everything whose effective project it is, the headings and the to-dos under them included, and an area everything whose effective area it is, projects and their contents included, as in the app
     let contents = |parent: &ThingsId, in_area: bool| -> Vec<Task> {
         store
             .tasks_by_uuid
             .values()
             .filter(|task| {
                 !task.trashed
+                    && task.uuid != *parent
                     && if in_area {
-                        task.area.as_ref() == Some(parent)
+                        store.effective_area_uuid(task).as_ref() == Some(parent)
                     } else {
-                        task.project.as_ref() == Some(parent)
+                        store.effective_project_uuid(task).as_ref() == Some(parent)
                     }
             })
             .cloned()
@@ -127,33 +128,22 @@ fn build_delete_plan(args: &DeleteArgs, store: &crate::store::ThingsStore, now: 
     let mut counts = Vec::new();
     for (uuid, entity, _title) in &targets {
         let mut taken = 0usize;
-        match entity {
-            EntityType::Area3 => {
-                changes.insert(uuid.clone(), WireObject::delete(entity.clone()));
-                let area_id: ThingsId = uuid.parse().expect("resolved id");
-                for task in contents(&area_id, true) {
-                    if task.is_project() {
-                        for child in contents(&task.uuid, false) {
-                            changes.insert(child.uuid.to_string(), trash(now));
-                            taken += 1;
-                        }
-                    }
-                    changes.insert(task.uuid.to_string(), trash(now));
+        let parent: ThingsId = uuid.parse().expect("resolved id");
+        let in_area = *entity == EntityType::Area3;
+        if in_area {
+            changes.insert(uuid.clone(), WireObject::delete(entity.clone()));
+        } else {
+            changes.insert(uuid.clone(), trash(now));
+        }
+        if in_area
+            || store
+                .tasks_by_uuid
+                .get(&parent)
+                .is_some_and(Task::is_project)
+        {
+            for child in contents(&parent, in_area) {
+                if changes.insert(child.uuid.to_string(), trash(now)).is_none() {
                     taken += 1;
-                }
-            }
-            _ => {
-                changes.insert(uuid.clone(), trash(now));
-                let task_id: ThingsId = uuid.parse().expect("resolved id");
-                if store
-                    .tasks_by_uuid
-                    .get(&task_id)
-                    .is_some_and(Task::is_project)
-                {
-                    for child in contents(&task_id, false) {
-                        changes.insert(child.uuid.to_string(), trash(now));
-                        taken += 1;
-                    }
                 }
             }
         }
@@ -349,6 +339,62 @@ mod tests {
                 TASK_A: {"t":1,"e":"Task7","p":{"md":1.0,"tr":true}},
                 AREA_A: {"t":2,"e":"Area3","p":{}}
             })
+        );
+
+        // the heading links the to-do to the project, there is no direct project field on it
+        let heading = "JFdhhhp37fpryAKu8UXwzK";
+        let via_heading = "74rgJf6Qh9wYp2TcVk8mNB";
+        let project_id = "By8mN2qRk5Wv7Xc9Dt3HpL";
+        let cascade = build_delete_plan(
+            &DeleteArgs {
+                item_ids: vec![IdentifierToken::from(project_id)],
+            },
+            &build_store(vec![
+                (
+                    project_id.to_string(),
+                    WireObject::create(
+                        EntityType::Task7,
+                        TaskProps {
+                            title: "Remodel".to_string(),
+                            item_type: TaskType::Project,
+                            creation_date: Some(1.0),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+                (
+                    heading.to_string(),
+                    WireObject::create(
+                        EntityType::Task7,
+                        TaskProps {
+                            title: "Plumbing".to_string(),
+                            item_type: TaskType::Heading,
+                            parent_project_ids: vec![project_id.parse().expect("id")],
+                            creation_date: Some(1.0),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+                (
+                    via_heading.to_string(),
+                    WireObject::create(
+                        EntityType::Task7,
+                        TaskProps {
+                            title: "Order sink".to_string(),
+                            action_group_ids: vec![heading.parse().expect("id")],
+                            creation_date: Some(1.0),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+                task(TASK_A, "Unrelated", false),
+            ]),
+            1.0,
+        );
+        assert_eq!(cascade.targets[0].3, 2);
+        assert_eq!(
+            cascade.changes.keys().cloned().collect::<Vec<_>>(),
+            vec![via_heading, project_id, heading]
         );
 
         let skip_trashed = build_delete_plan(

@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --today-ts 1699920000 --now-ts 1700000222.0 delete Pj11111111111111111111
-× Deleted Kitchen remodel  Pj11111111111111111111  (with 3 items)
+× Deleted Kitchen remodel  Pj11111111111111111111  (with 4 items)
 {
   "ancestor_index": 0,
   "changes": {
@@ -29,6 +29,14 @@ $ run.sh things --today-ts 1699920000 --now-ts 1700000222.0 delete Pj11111111111
       "t": 1
     },
     "Tb11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1700000222.0,
+        "tr": true
+      },
+      "t": 1
+    },
+    "Td11111111111111111111": {
       "e": "Task7",
       "p": {
         "md": 1700000222.0,
