@@ -49,7 +49,7 @@ impl Command for SomedayArgs {
                 }
             }
         };
-        let rendered = render_element_to_string(&mut ui, cli.no_color);
+        let rendered = render_element_to_string(&mut ui, cli.no_color());
         writeln!(out, "{}", rendered)?;
         Ok(())
     }

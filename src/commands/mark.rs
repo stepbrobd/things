@@ -350,9 +350,9 @@ impl Command for MarkArgs {
                 writeln!(
                     out,
                     "{} {}  {}",
-                    colored(&title, &[GREEN], cli.no_color),
+                    colored(&title, &[GREEN], cli.no_color()),
                     item.title,
-                    colored(&item.uuid, &[DIM], cli.no_color)
+                    colored(&item.uuid, &[DIM], cli.no_color())
                 )?;
             }
             return Ok(());
@@ -389,9 +389,9 @@ impl Command for MarkArgs {
             writeln!(
                 out,
                 "{} {}  {}",
-                colored(&label, &[GREEN], cli.no_color),
+                colored(&label, &[GREEN], cli.no_color()),
                 task.title,
-                colored(&task.uuid, &[DIM], cli.no_color)
+                colored(&task.uuid, &[DIM], cli.no_color())
             )?;
         }
 

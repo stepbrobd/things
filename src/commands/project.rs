@@ -114,12 +114,12 @@ impl Command for ProjectArgs {
                         ungrouped: ungrouped.iter().collect::<Vec<_>>(),
                         heading_groups,
                         detailed: self.detailed,
-                        no_color: cli.no_color,
+                        no_color: cli.no_color(),
                     )
                 }
             }
         };
-        let rendered = render_element_to_string(&mut ui, cli.no_color);
+        let rendered = render_element_to_string(&mut ui, cli.no_color());
         writeln!(out, "{}", rendered)?;
 
         Ok(())

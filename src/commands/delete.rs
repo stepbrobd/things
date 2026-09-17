@@ -187,16 +187,20 @@ impl Command for DeleteArgs {
 
         for (uuid, _entity, title, taken) in plan.targets {
             let along = if taken > 0 {
-                colored(format!("  (with {taken} items)"), &[DIM], cli.no_color)
+                colored(format!("  (with {taken} items)"), &[DIM], cli.no_color())
             } else {
                 String::new()
             };
             writeln!(
                 out,
                 "{} {}  {}{}",
-                colored(format!("{} Deleted", ICONS.deleted), &[GREEN], cli.no_color),
+                colored(
+                    format!("{} Deleted", ICONS.deleted),
+                    &[GREEN],
+                    cli.no_color()
+                ),
                 title,
-                colored(&uuid, &[DIM], cli.no_color),
+                colored(&uuid, &[DIM], cli.no_color()),
                 along
             )?;
         }

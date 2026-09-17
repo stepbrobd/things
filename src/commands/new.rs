@@ -569,14 +569,19 @@ impl Command for NewArgs {
 
         let repeat = plan
             .repeat_label
-            .map(|label| format!("  {}", colored(format!("({label})"), &[DIM], cli.no_color)))
+            .map(|label| {
+                format!(
+                    "  {}",
+                    colored(format!("({label})"), &[DIM], cli.no_color())
+                )
+            })
             .unwrap_or_default();
         writeln!(
             out,
             "{} {}  {}{}",
-            colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color),
+            colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
             plan.title,
-            colored(&plan.new_uuid, &[DIM], cli.no_color),
+            colored(&plan.new_uuid, &[DIM], cli.no_color()),
             repeat
         )?;
         Ok(())

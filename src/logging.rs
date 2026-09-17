@@ -1,11 +1,9 @@
 use std::sync::OnceLock;
 
-use clap::ValueEnum;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, Layer, prelude::*};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, ValueEnum, Default)]
-#[clap(rename_all = "kebab-case")]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum LogFormat {
     #[default]
     Auto,
@@ -14,38 +12,20 @@ pub enum LogFormat {
     Json,
 }
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash, ValueEnum, Default)]
-#[clap(rename_all = "kebab-case")]
-pub enum Level {
-    Error,
-    Warn,
-    #[default]
-    Info,
-    Debug,
-    Trace,
-    Off,
-}
-
-impl Level {
-    pub const fn level_filter(self) -> LevelFilter {
-        match self {
-            Self::Error => LevelFilter::ERROR,
-            Self::Warn => LevelFilter::WARN,
-            Self::Info => LevelFilter::INFO,
-            Self::Debug => LevelFilter::DEBUG,
-            Self::Trace => LevelFilter::TRACE,
-            Self::Off => LevelFilter::OFF,
-        }
-    }
-}
-
-pub fn init(log_level: Level, log_format: LogFormat, log_filter: Option<&str>) {
+/// THINGS_LOG holds a filter directive, THINGS_LOG_FORMAT one of pretty, simplified or json
+pub fn init() {
     static INIT: OnceLock<()> = OnceLock::new();
     let _ = INIT.get_or_init(|| {
         let subscriber = tracing_subscriber::fmt::layer()
             .with_writer(std::io::stderr)
             .with_target(true);
 
+        let log_format = match std::env::var("THINGS_LOG_FORMAT").as_deref() {
+            Ok("pretty") => LogFormat::Pretty,
+            Ok("simplified") => LogFormat::Simplified,
+            Ok("json") => LogFormat::Json,
+            _ => LogFormat::Auto,
+        };
         let format = match (log_format, console::user_attended()) {
             (LogFormat::Auto, true) | (LogFormat::Pretty, _) => {
                 subscriber.compact().without_time().boxed()
@@ -63,14 +43,10 @@ pub fn init(log_level: Level, log_format: LogFormat, log_filter: Option<&str>) {
                 .boxed(),
         };
 
-        let filter = match log_filter {
-            Some(directive) => EnvFilter::builder()
-                .with_default_directive(log_level.level_filter().into())
-                .parse_lossy(directive),
-            None => EnvFilter::builder()
-                .with_default_directive(log_level.level_filter().into())
-                .from_env_lossy(),
-        };
+        let directive = std::env::var("THINGS_LOG").unwrap_or_default();
+        let filter = EnvFilter::builder()
+            .with_default_directive(LevelFilter::INFO.into())
+            .parse_lossy(directive);
 
         tracing_subscriber::registry()
             .with(format.with_filter(filter))

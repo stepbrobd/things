@@ -162,7 +162,7 @@ impl Command for AreasArgs {
                         AreasView(areas, id_prefix_len)
                     }
                 };
-                let rendered = render_element_to_string(&mut ui, cli.no_color);
+                let rendered = render_element_to_string(&mut ui, cli.no_color());
                 writeln!(out, "{}", rendered)?;
             }
             AreasSubcommand::New(args) => {
@@ -200,9 +200,9 @@ impl Command for AreasArgs {
                 writeln!(
                     out,
                     "{} {}  {}",
-                    colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color),
+                    colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
                     title,
-                    colored(&uuid, &[DIM], cli.no_color)
+                    colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
             AreasSubcommand::Edit(args) => {
@@ -229,13 +229,13 @@ impl Command for AreasArgs {
                 writeln!(
                     out,
                     "{} {}  {} {}",
-                    colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color),
+                    colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
                     title,
-                    colored(&plan.area.uuid, &[DIM], cli.no_color),
+                    colored(&plan.area.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),
                         &[DIM],
-                        cli.no_color
+                        cli.no_color()
                     )
                 )?;
             }

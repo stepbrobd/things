@@ -167,7 +167,7 @@ impl Command for TagsArgs {
                 let mut ui = element! {
                     TagsView(tags_count: by_uuid.len(), top_level, children)
                 };
-                let rendered = render_element_to_string(&mut ui, cli.no_color);
+                let rendered = render_element_to_string(&mut ui, cli.no_color());
                 writeln!(out, "{}", rendered)?;
             }
             TagsSubcommand::New(args) => {
@@ -205,9 +205,9 @@ impl Command for TagsArgs {
                 writeln!(
                     out,
                     "{} {}  {}",
-                    colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color),
+                    colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
                     name,
-                    colored(&uuid, &[DIM], cli.no_color)
+                    colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
             TagsSubcommand::Edit(args) => {
@@ -234,13 +234,13 @@ impl Command for TagsArgs {
                 writeln!(
                     out,
                     "{} {}  {} {}",
-                    colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color),
+                    colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
                     name,
-                    colored(&plan.tag.uuid, &[DIM], cli.no_color),
+                    colored(&plan.tag.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),
                         &[DIM],
-                        cli.no_color
+                        cli.no_color()
                     )
                 )?;
             }
@@ -262,9 +262,13 @@ impl Command for TagsArgs {
                 writeln!(
                     out,
                     "{} {}  {}",
-                    colored(format!("{} Deleted", ICONS.deleted), &[GREEN], cli.no_color),
+                    colored(
+                        format!("{} Deleted", ICONS.deleted),
+                        &[GREEN],
+                        cli.no_color()
+                    ),
                     tag.title,
-                    colored(&tag.uuid, &[DIM], cli.no_color)
+                    colored(&tag.uuid, &[DIM], cli.no_color())
                 )?;
             }
         }

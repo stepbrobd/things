@@ -297,7 +297,7 @@ impl Command for ProjectsArgs {
                         }
                     }
                 };
-                let rendered = render_element_to_string(&mut ui, cli.no_color);
+                let rendered = render_element_to_string(&mut ui, cli.no_color());
                 writeln!(out, "{}", rendered)?;
             }
             Some(ProjectsSubcommand::New(args)) => {
@@ -391,9 +391,9 @@ impl Command for ProjectsArgs {
                 writeln!(
                     out,
                     "{} {}  {}",
-                    colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color),
+                    colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
                     title,
-                    colored(&uuid, &[DIM], cli.no_color)
+                    colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
             Some(ProjectsSubcommand::Edit(args)) => {
@@ -420,13 +420,13 @@ impl Command for ProjectsArgs {
                 writeln!(
                     out,
                     "{} {}  {} {}",
-                    colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color),
+                    colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
                     title,
-                    colored(&plan.project.uuid, &[DIM], cli.no_color),
+                    colored(&plan.project.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),
                         &[DIM],
-                        cli.no_color
+                        cli.no_color()
                     )
                 )?;
             }

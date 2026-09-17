@@ -145,7 +145,7 @@ impl Command for EditArgs {
         let label_str = colored(
             format!("({})", plan.labels.join(", ")),
             &[DIM],
-            cli.no_color,
+            cli.no_color(),
         );
         for task in plan.tasks {
             let title_display = plan
@@ -157,9 +157,9 @@ impl Command for EditArgs {
             writeln!(
                 out,
                 "{} {}  {} {}",
-                colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color),
+                colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
                 title_display,
-                colored(&task.uuid, &[DIM], cli.no_color),
+                colored(&task.uuid, &[DIM], cli.no_color()),
                 label_str
             )?;
         }
