@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use chrono::{DateTime, FixedOffset, Local, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 use crc32fast::Hasher;
 
 use crate::{
@@ -160,6 +160,12 @@ pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<DateTime<Local
         .map(|d| d.with_timezone(&Local))
         .ok_or_else(|| format!("Invalid {label} date: {day} (expected YYYY-MM-DD)"))?;
     Ok(Some(local_dt))
+}
+
+pub fn parse_reminder(time: &str) -> Result<i64, String> {
+    NaiveTime::parse_from_str(time, "%H:%M")
+        .map(|t| i64::from(t.num_seconds_from_midnight()))
+        .map_err(|_| format!("Invalid --reminder time: {time} (expected HH:MM)"))
 }
 
 pub fn day_to_timestamp(day: DateTime<Local>) -> i64 {

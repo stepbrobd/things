@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things --today-ts 1699920000 --now-ts 1700000333.0 schedule A7h5eCi24RvAWKC3Hv3muf --clear-reminder
+✓ Scheduled Schedule me  A7h5eCi24RvAWKC3Hv3muf (reminder=none)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "A7h5eCi24RvAWKC3Hv3muf": {
+      "e": "Task7",
+      "p": {
+        "ato": null,
+        "md": 1700000333.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```

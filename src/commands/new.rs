@@ -9,7 +9,8 @@ use crate::{
     app::Cli,
     commands::Command,
     common::{
-        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, resolve_tag_ids, task6_note,
+        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_reminder, resolve_tag_ids,
+        task6_note,
     },
     store::Task,
     wire::{
@@ -58,6 +59,13 @@ pub struct NewArgs {
     pub tags: Option<String>,
     #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]
     pub deadline_date: Option<String>,
+    #[arg(
+        long = "reminder",
+        short = 'r',
+        value_name = "HH:MM",
+        help = "Reminder time on the scheduled day (HH:MM)"
+    )]
+    pub reminder: Option<String>,
 }
 
 fn base_new_props(title: &str, now: f64) -> TaskProps {
@@ -286,6 +294,13 @@ fn build_new_plan(
             props.scheduled_date = Some(day_ts);
             props.today_index_reference = Some(day_ts);
         }
+    }
+
+    if let Some(reminder) = &args.reminder {
+        if props.scheduled_date.is_none() {
+            return Err("--reminder requires --when today or YYYY-MM-DD".to_string());
+        }
+        props.alarm_time_offset = Some(parse_reminder(reminder)?);
     }
 
     if let Some(tags) = &args.tags {
@@ -602,6 +617,7 @@ mod tests {
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
+                reminder: None,
             },
             &build_store(vec![]),
             NOW,
@@ -627,6 +643,7 @@ mod tests {
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
+                reminder: None,
             },
             &build_store(vec![]),
             NOW,
@@ -655,6 +672,7 @@ mod tests {
                 notes: "line one".to_string(),
                 tags: Some("urgent,backend".to_string()),
                 deadline_date: Some("2032-05-06".to_string()),
+                reminder: None,
             },
             &full_store,
             NOW,
@@ -691,6 +709,7 @@ mod tests {
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
+                reminder: None,
             },
             &gap_store,
             NOW,
@@ -717,6 +736,7 @@ mod tests {
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
+                reminder: None,
             },
             &rebalance_store,
             NOW,
@@ -742,6 +762,7 @@ mod tests {
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
+                reminder: None,
             },
             &build_store(vec![]),
             NOW,
@@ -761,6 +782,7 @@ mod tests {
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
+                reminder: None,
             },
             &build_store(vec![]),
             NOW,

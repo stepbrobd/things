@@ -1,0 +1,5 @@
+```trycmd
+$ run.sh things --today-ts 1699920000 --now-ts 1700000000.0 new 'Needs a day' --reminder 09:00
+--reminder requires --when today or YYYY-MM-DD
+
+```

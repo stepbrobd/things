@@ -6,7 +6,7 @@ use clap::Args;
 use crate::{
     app::Cli,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day},
+    common::{DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_reminder},
     wire::{
         task::{TaskPatch, TaskStart},
         wire_object::{EntityType, WireObject},
@@ -28,6 +28,15 @@ pub struct ScheduleArgs {
     pub deadline_date: Option<String>,
     #[arg(long = "clear-deadline", short = 'D', help = "Clear deadline")]
     pub clear_deadline: bool,
+    #[arg(
+        long = "reminder",
+        short = 'r',
+        value_name = "HH:MM",
+        help = "Reminder time on the scheduled day (HH:MM)"
+    )]
+    pub reminder: Option<String>,
+    #[arg(long = "clear-reminder", short = 'R', help = "Clear reminder")]
+    pub clear_reminder: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -66,6 +75,9 @@ fn build_schedule_plan(
             update.scheduled_date = Some(None);
             update.today_index_reference = Some(None);
             update.evening_bit = Some(0);
+            if task.alarm_time_offset.is_some() {
+                update.alarm_time_offset = Some(None);
+            }
             when_label = Some("anytime".to_string());
         } else if when_l == "today" {
             update.start_location = Some(TaskStart::Anytime);
@@ -84,6 +96,9 @@ fn build_schedule_plan(
             update.scheduled_date = Some(None);
             update.today_index_reference = Some(None);
             update.evening_bit = Some(0);
+            if task.alarm_time_offset.is_some() {
+                update.alarm_time_offset = Some(None);
+            }
             when_label = Some("someday".to_string());
         } else {
             let when_day = match parse_day(Some(when), "--when") {
@@ -120,6 +135,22 @@ fn build_schedule_plan(
         update.deadline = Some(None);
     }
 
+    if let Some(reminder) = &args.reminder {
+        let dated = match update.scheduled_date {
+            Some(day) => day.is_some(),
+            None => task.start_date.is_some(),
+        };
+        if !dated {
+            return Err(
+                "--reminder requires a scheduled day, set --when today or YYYY-MM-DD".to_string(),
+            );
+        }
+        update.alarm_time_offset = Some(Some(parse_reminder(reminder)?));
+    }
+    if args.clear_reminder {
+        update.alarm_time_offset = Some(None);
+    }
+
     if update.is_empty() {
         return Err("No schedule changes requested.".to_string());
     }
@@ -139,6 +170,15 @@ fn build_schedule_plan(
                 args.deadline_date.clone().unwrap_or_default()
             ));
         }
+    }
+
+    match update.alarm_time_offset {
+        Some(None) => labels.push("reminder=none".to_string()),
+        Some(Some(_)) => labels.push(format!(
+            "reminder={}",
+            args.reminder.clone().unwrap_or_default()
+        )),
+        None => {}
     }
 
     Ok(SchedulePlan {
@@ -275,6 +315,8 @@ mod tests {
                     when: Some(when.to_string()),
                     deadline_date: None,
                     clear_deadline: false,
+                    reminder: None,
+                    clear_reminder: false,
                 },
                 &store,
                 NOW,
@@ -303,6 +345,8 @@ mod tests {
                 when: None,
                 deadline_date: Some("2034-02-01".to_string()),
                 clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
             },
             &store,
             NOW,
@@ -320,6 +364,8 @@ mod tests {
                 when: None,
                 deadline_date: None,
                 clear_deadline: true,
+                reminder: None,
+                clear_reminder: false,
             },
             &store,
             NOW,
@@ -341,6 +387,8 @@ mod tests {
                 when: None,
                 deadline_date: None,
                 clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
             },
             &store,
             NOW,
@@ -366,6 +414,8 @@ mod tests {
                 when: Some("today".to_string()),
                 deadline_date: None,
                 clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
             },
             &repeating_store,
             NOW,
@@ -380,6 +430,8 @@ mod tests {
                 when: Some("2024-02-31".to_string()),
                 deadline_date: None,
                 clear_deadline: false,
+                reminder: None,
+                clear_reminder: false,
             },
             &store,
             NOW,
