@@ -1,14 +1,17 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, str::FromStr};
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use clap::Args;
+use serde_json::json;
 
 use crate::{
     app::Cli,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_reminder},
+    common::{DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_reminder, task6_note},
+    ids::ThingsId,
+    repeat::{Bound, RepeatSpec, TemplateSource, bound, day_of, template},
     wire::{
-        task::{TaskPatch, TaskStart},
+        task::{TaskPatch, TaskProps, TaskStart},
         wire_object::{EntityType, WireObject},
     },
 };
@@ -37,6 +40,24 @@ pub struct ScheduleArgs {
     pub reminder: Option<String>,
     #[arg(long = "clear-reminder", short = 'R', help = "Clear reminder")]
     pub clear_reminder: bool,
+    #[arg(
+        long = "repeat",
+        value_name = "RULE",
+        help = "Repeat: daily, weekly[:mon,thu], monthly[:15|last], yearly[:MM-DD] or after:2w, with /N for every N"
+    )]
+    pub repeat: Option<String>,
+    #[arg(
+        long = "times",
+        value_name = "N",
+        help = "End the repeat after N times"
+    )]
+    pub times: Option<i32>,
+    #[arg(
+        long = "until",
+        value_name = "YYYY-MM-DD",
+        help = "End the repeat on a day"
+    )]
+    pub until: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -44,6 +65,7 @@ struct SchedulePlan {
     task: crate::store::Task,
     update: TaskPatch,
     labels: Vec<String>,
+    template: Option<TaskProps>,
 }
 
 fn build_schedule_plan(
@@ -151,7 +173,60 @@ fn build_schedule_plan(
         update.alarm_time_offset = Some(None);
     }
 
-    if update.is_empty() {
+    let mut repeat_label = None;
+    let mut template_props = None;
+    if let Some(rule_text) = &args.repeat {
+        if task.is_recurrence_template() || task.is_recurrence_instance() {
+            return Err("This to-do already repeats.".to_string());
+        }
+        let spec: RepeatSpec = rule_text.parse()?;
+        let bound = bound(args.times, args.until.as_deref())?;
+        let when_day = match update.scheduled_date {
+            Some(Some(day)) => day_of(day),
+            Some(None) => None,
+            None => task.start_date.map(|day| day.date_naive()),
+        };
+        let Some(when_day) = when_day else {
+            return Err(
+                "--repeat requires a scheduled day, set --when today or YYYY-MM-DD".to_string(),
+            );
+        };
+        let first = spec.first_occurrence(when_day);
+        if first != when_day {
+            return Err(format!(
+                "{when_day} is not a day of {rule_text}, the next one is {first}, set --when {first}"
+            ));
+        }
+        if let Bound::Until(until) = bound
+            && until < first
+        {
+            return Err(format!(
+                "--until {until} is before the first occurrence {first}"
+            ));
+        }
+        let rule = spec.rule(first, day_of(today_ts).expect("today"), bound);
+        repeat_label = Some(rule.human_readable().unwrap_or_else(|_| rule_text.clone()));
+        let source = TemplateSource {
+            title: task.title.clone(),
+            notes: task.notes.as_deref().map(task6_note),
+            tag_ids: task.tags.clone(),
+            parent_project_ids: task.project.iter().cloned().collect(),
+            area_ids: task.area.iter().cloned().collect(),
+            action_group_ids: task.action_group.iter().cloned().collect(),
+            alarm_time_offset: match update.alarm_time_offset {
+                Some(alarm) => alarm,
+                None => task.alarm_time_offset,
+            },
+            sort_index: task.index,
+            today_sort_index: task.today_index,
+            conflict_overrides: Some(json!({"_t": "oo", "sn": {}})),
+        };
+        template_props = Some(template(&spec, rule, first, source, now));
+    } else if args.times.is_some() || args.until.is_some() {
+        return Err("--times and --until need --repeat".to_string());
+    }
+
+    if update.is_empty() && template_props.is_none() {
         return Err("No schedule changes requested.".to_string());
     }
 
@@ -181,10 +256,15 @@ fn build_schedule_plan(
         None => {}
     }
 
+    if let Some(label) = repeat_label {
+        labels.push(format!("repeat={label}"));
+    }
+
     Ok(SchedulePlan {
         task,
         update,
         labels,
+        template: template_props,
     })
 }
 
@@ -205,10 +285,21 @@ impl Command for ScheduleArgs {
                 }
             };
 
+        let mut update = plan.update.clone();
         let mut changes = BTreeMap::new();
+        if let Some(template) = plan.template {
+            let template_uuid = ctx.next_id();
+            update.recurrence_template_ids = Some(vec![
+                ThingsId::from_str(&template_uuid).map_err(|e| anyhow!("{e}"))?,
+            ]);
+            changes.insert(
+                template_uuid,
+                WireObject::create(EntityType::Task7, template),
+            );
+        }
         changes.insert(
             plan.task.uuid.to_string(),
-            WireObject::update(EntityType::Task7, plan.update.clone()),
+            WireObject::update(EntityType::Task7, update),
         );
 
         if let Err(e) = ctx.commit_changes(changes, None) {
@@ -317,6 +408,9 @@ mod tests {
                     clear_deadline: false,
                     reminder: None,
                     clear_reminder: false,
+                    repeat: None,
+                    times: None,
+                    until: None,
                 },
                 &store,
                 NOW,
@@ -347,6 +441,9 @@ mod tests {
                 clear_deadline: false,
                 reminder: None,
                 clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
@@ -366,6 +463,9 @@ mod tests {
                 clear_deadline: true,
                 reminder: None,
                 clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
@@ -389,6 +489,9 @@ mod tests {
                 clear_deadline: false,
                 reminder: None,
                 clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,
@@ -416,6 +519,9 @@ mod tests {
                 clear_deadline: false,
                 reminder: None,
                 clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &repeating_store,
             NOW,
@@ -432,6 +538,9 @@ mod tests {
                 clear_deadline: false,
                 reminder: None,
                 clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &store,
             NOW,

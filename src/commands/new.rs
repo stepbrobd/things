@@ -1,4 +1,4 @@
-use std::{cmp::Reverse, collections::BTreeMap};
+use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
 
 use anyhow::Result;
 use chrono::{TimeZone, Utc};
@@ -12,6 +12,8 @@ use crate::{
         DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_reminder, resolve_tag_ids,
         task6_note,
     },
+    ids::ThingsId,
+    repeat::{Bound, RepeatSpec, TemplateSource, bound, day_of, day_timestamp, template},
     store::Task,
     wire::{
         task::{TaskProps, TaskStart, TaskStatus, TaskType},
@@ -66,6 +68,24 @@ pub struct NewArgs {
         help = "Reminder time on the scheduled day (HH:MM)"
     )]
     pub reminder: Option<String>,
+    #[arg(
+        long = "repeat",
+        value_name = "RULE",
+        help = "Repeat: daily, weekly[:mon,thu], monthly[:15|last], yearly[:MM-DD] or after:2w, with /N for every N"
+    )]
+    pub repeat: Option<String>,
+    #[arg(
+        long = "times",
+        value_name = "N",
+        help = "End the repeat after N times"
+    )]
+    pub times: Option<i32>,
+    #[arg(
+        long = "until",
+        value_name = "YYYY-MM-DD",
+        help = "End the repeat on a day"
+    )]
+    pub until: Option<String>,
 }
 
 fn base_new_props(title: &str, now: f64) -> TaskProps {
@@ -190,6 +210,7 @@ struct NewPlan {
     new_uuid: String,
     changes: BTreeMap<String, WireObject>,
     title: String,
+    repeat_label: Option<String>,
 }
 
 fn build_new_plan(
@@ -301,6 +322,36 @@ fn build_new_plan(
             return Err("--reminder requires --when today or YYYY-MM-DD".to_string());
         }
         props.alarm_time_offset = Some(parse_reminder(reminder)?);
+    }
+
+    let mut repeat = None;
+    if let Some(rule_text) = &args.repeat {
+        let spec: RepeatSpec = rule_text.parse()?;
+        let bound = bound(args.times, args.until.as_deref())?;
+        let Some(when_day) = props.scheduled_date.and_then(day_of) else {
+            return Err("--repeat requires --when today or YYYY-MM-DD".to_string());
+        };
+        let first = spec.first_occurrence(when_day);
+        if first != when_day {
+            let first_ts = day_timestamp(first);
+            props.scheduled_date = Some(first_ts);
+            props.today_index_reference = Some(first_ts);
+            props.start_location = if first_ts <= today_ts {
+                TaskStart::Anytime
+            } else {
+                TaskStart::Someday
+            };
+        }
+        if let Bound::Until(until) = bound
+            && until < first
+        {
+            return Err(format!(
+                "--until {until} is before the first occurrence {first}"
+            ));
+        }
+        repeat = Some((spec, bound, first));
+    } else if args.times.is_some() || args.until.is_some() {
+        return Err("--times and --until need --repeat".to_string());
     }
 
     if let Some(tags) = &args.tags {
@@ -431,11 +482,43 @@ fn build_new_plan(
 
     let new_uuid = next_id();
 
+    let mut repeat_label = None;
+    let mut template_change = None;
+    if let Some((spec, bound, first)) = repeat {
+        let template_uuid = next_id();
+        props.recurrence_template_ids =
+            vec![ThingsId::from_str(&template_uuid).map_err(|e| e.to_string())?];
+        let rule = spec.rule(first, day_of(today_ts).expect("today"), bound);
+        repeat_label = Some(
+            rule.human_readable()
+                .unwrap_or_else(|_| args.repeat.clone().unwrap_or_default()),
+        );
+        let source = TemplateSource {
+            title: props.title.clone(),
+            notes: props.notes.clone(),
+            tag_ids: props.tag_ids.clone(),
+            parent_project_ids: props.parent_project_ids.clone(),
+            area_ids: props.area_ids.clone(),
+            action_group_ids: props.action_group_ids.clone(),
+            alarm_time_offset: props.alarm_time_offset,
+            sort_index: props.sort_index,
+            today_sort_index: props.today_sort_index,
+            conflict_overrides: props.conflict_overrides.clone(),
+        };
+        template_change = Some((template_uuid, template(&spec, rule, first, source, now)));
+    }
+
     let mut changes = BTreeMap::new();
     changes.insert(
         new_uuid.clone(),
         WireObject::create(EntityType::Task7, props.clone()),
     );
+    if let Some((template_uuid, template)) = template_change {
+        changes.insert(
+            template_uuid,
+            WireObject::create(EntityType::Task7, template),
+        );
+    }
 
     for (task_uuid, task_index) in index_updates {
         use crate::wire::task::TaskPatch;
@@ -456,6 +539,7 @@ fn build_new_plan(
         new_uuid,
         changes,
         title: title.to_string(),
+        repeat_label,
     })
 }
 
@@ -483,12 +567,17 @@ impl Command for NewArgs {
             return Ok(());
         }
 
+        let repeat = plan
+            .repeat_label
+            .map(|label| format!("  {}", colored(format!("({label})"), &[DIM], cli.no_color)))
+            .unwrap_or_default();
         writeln!(
             out,
-            "{} {}  {}",
+            "{} {}  {}{}",
             colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color),
             plan.title,
-            colored(&plan.new_uuid, &[DIM], cli.no_color)
+            colored(&plan.new_uuid, &[DIM], cli.no_color),
+            repeat
         )?;
         Ok(())
     }
@@ -618,6 +707,9 @@ mod tests {
                 tags: None,
                 deadline_date: None,
                 reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &build_store(vec![]),
             NOW,
@@ -644,6 +736,9 @@ mod tests {
                 tags: None,
                 deadline_date: None,
                 reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &build_store(vec![]),
             NOW,
@@ -673,6 +768,9 @@ mod tests {
                 tags: Some("urgent,backend".to_string()),
                 deadline_date: Some("2032-05-06".to_string()),
                 reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &full_store,
             NOW,
@@ -710,6 +808,9 @@ mod tests {
                 tags: None,
                 deadline_date: None,
                 reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &gap_store,
             NOW,
@@ -737,6 +838,9 @@ mod tests {
                 tags: None,
                 deadline_date: None,
                 reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &rebalance_store,
             NOW,
@@ -763,6 +867,9 @@ mod tests {
                 tags: None,
                 deadline_date: None,
                 reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &build_store(vec![]),
             NOW,
@@ -783,6 +890,9 @@ mod tests {
                 tags: None,
                 deadline_date: None,
                 reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
             },
             &build_store(vec![]),
             NOW,
