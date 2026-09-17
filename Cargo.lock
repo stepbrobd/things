@@ -2190,7 +2190,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "things3-cloud"
+name = "things"
 version = "0.10.0"
 dependencies = [
  "anyhow",

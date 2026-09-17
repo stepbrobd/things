@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 project D
+$ run.sh things project D
 ◯ Backyard Renovation (0/0)
   No tasks.
 

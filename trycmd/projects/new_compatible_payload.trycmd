@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 --today-ts 1700000000 --now-ts 1700000000.0 projects new 'HV-MRF-01'
+$ run.sh things --today-ts 1700000000 --now-ts 1700000000.0 projects new 'HV-MRF-01'
 ✓ Created HV-MRF-01  [..]
 {
   "ancestor_index": 0,

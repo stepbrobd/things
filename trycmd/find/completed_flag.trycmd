@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --completed
+$ run.sh things find --completed
 ⌕ Find  (1 task)
 
   B ◼ Done task

@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --area Personal
+$ run.sh things find --area Personal
 ⌕ Find  (1 task)
 
   As ▢ Read book

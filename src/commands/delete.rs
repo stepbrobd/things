@@ -180,7 +180,7 @@ mod tests {
         let item = BTreeMap::from([task(TASK_A, "Alpha", false)]);
         serde_json::to_writer(&journal, &vec![item]).expect("write journal");
         let cli = Cli::parse_from([
-            "things3",
+            "things",
             "--load-journal",
             journal.path().to_str().expect("journal path"),
         ]);

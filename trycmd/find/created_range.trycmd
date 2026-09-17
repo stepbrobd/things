@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --created '>=2026-02-01' --created '<=2026-02-28'
+$ run.sh things find --created '>=2026-02-01' --created '<=2026-02-28'
 ⌕ Find  (1 task)
 
   B ▢ Feb task

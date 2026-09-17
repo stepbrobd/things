@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --recurring
+$ run.sh things find --recurring
 ⌕ Find  (1 task)
 
   A ▢ Weekly review

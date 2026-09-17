@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --someday
+$ run.sh things find --someday
 ⌕ Find  (1 task)
 
   A ⬚ Someday dream

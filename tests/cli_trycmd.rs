@@ -1,9 +1,9 @@
 fn run_trycmd_cases(case_glob: &str) {
-    let things3_bin = std::path::PathBuf::from(env!("CARGO_BIN_EXE_things3"));
+    let things_bin = std::path::PathBuf::from(env!("CARGO_BIN_EXE_things"));
 
     trycmd::TestCases::new()
-        .env("TRYCMD_BIN_THINGS3", things3_bin.display().to_string())
-        .register_bin("things3", &things3_bin)
+        .env("TRYCMD_BIN_THINGS", things_bin.display().to_string())
+        .register_bin("things", &things_bin)
         .register_bin(
             "run.sh",
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

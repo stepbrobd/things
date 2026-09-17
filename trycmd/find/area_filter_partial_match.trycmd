@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --area Work
+$ run.sh things find --area Work
 ⌕ Find  (1 task)
 
   As ▢ Write spec

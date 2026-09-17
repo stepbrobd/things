@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find dentist
+$ run.sh things find dentist
 No matching tasks.
 
 ```

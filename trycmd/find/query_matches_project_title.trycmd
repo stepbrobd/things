@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find launch
+$ run.sh things find launch
 ⌕ Find  (2 tasks)
 
   P ◯ Launch Project

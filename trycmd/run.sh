@@ -6,15 +6,15 @@ export TZ=UTC
 # Wrapper for trycmd cases.
 #
 # Default behavior: if ./journal.json exists and --load-journal is not
-# explicitly provided, append --load-journal journal.json for things3.
+# explicitly provided, append --load-journal journal.json for things.
 # For all commands, enforce deterministic flags and if cloud commit request
 # logs are present on stderr, pretty-print just their request payload JSON.
 
 argv=("$@")
 
-if [[ ${#argv[@]} -gt 0 && "${argv[0]}" == "things3" ]]; then
-	if [[ -n "${TRYCMD_BIN_THINGS3:-}" ]]; then
-		argv[0]="${TRYCMD_BIN_THINGS3}"
+if [[ ${#argv[@]} -gt 0 && "${argv[0]}" == "things" ]]; then
+	if [[ -n "${TRYCMD_BIN_THINGS:-}" ]]; then
+		argv[0]="${TRYCMD_BIN_THINGS}"
 	fi
 
 	has_no_color=0

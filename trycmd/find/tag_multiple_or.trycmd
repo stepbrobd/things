@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --tag Work --tag Urgent
+$ run.sh things find --tag Work --tag Urgent
 ⌕ Find  (2 tasks)
 
   A ▢ Work task  [Work]

@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 logbook --from 2025-03-15
+$ run.sh things logbook --from 2025-03-15
 ✓ Logbook  (2 tasks)
 
   2025-03-15

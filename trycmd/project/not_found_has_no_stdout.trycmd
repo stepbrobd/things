@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 project zzzzz
+$ run.sh things project zzzzz
 Item not found: zzzzz
 
 ```

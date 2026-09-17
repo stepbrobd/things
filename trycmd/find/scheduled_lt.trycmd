@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --scheduled '<2025-01-01'
+$ run.sh things find --scheduled '<2025-01-01'
 ⌕ Find  (1 task)
 
   A ▢ ⭑ Old

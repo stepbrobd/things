@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --tag Work
+$ run.sh things find --tag Work
 ⌕ Find  (1 task)
 
   A ▢ Work report  [Work]

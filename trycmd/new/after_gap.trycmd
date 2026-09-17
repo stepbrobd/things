@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 --today-ts 1700000000 --now-ts 1700000000.0 new Inserted --after A7h5eCi24RvAWKC3Hv3muf
+$ run.sh things --today-ts 1700000000 --now-ts 1700000000.0 new Inserted --after A7h5eCi24RvAWKC3Hv3muf
 ✓ Created Inserted  [..]
 {
   "ancestor_index": 0,

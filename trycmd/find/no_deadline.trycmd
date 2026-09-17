@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 find --no-deadline
+$ run.sh things find --no-deadline
 ⌕ Find  (1 task)
 
   B ▢ No deadline

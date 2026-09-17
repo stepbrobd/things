@@ -3,7 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const APP_NAME: &str = "things3";
+const APP_NAME: &str = "things";
 const LEGACY_APP_NAME: &str = "things-cli";
 
 fn state_home() -> PathBuf {
@@ -73,7 +73,7 @@ mod tests {
     #[test]
     fn creates_the_directory_private() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let dir = tmp.path().join("things3").join("append-log");
+        let dir = tmp.path().join("things").join("append-log");
         create_private_dir(&dir).expect("create");
         assert_eq!(mode_of(&dir), 0o700);
     }
@@ -81,7 +81,7 @@ mod tests {
     #[test]
     fn narrows_an_existing_world_readable_directory() {
         let tmp = tempfile::tempdir().expect("tempdir");
-        let dir = tmp.path().join("things3");
+        let dir = tmp.path().join("things");
         fs::create_dir_all(&dir).expect("seed");
         fs::set_permissions(&dir, fs::Permissions::from_mode(0o755)).expect("widen");
         create_private_dir(&dir).expect("create");

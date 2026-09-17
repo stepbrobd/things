@@ -27,7 +27,7 @@ fn load_auth_config(path: &std::path::Path) -> Result<AuthConfig> {
         figment = figment.merge(Json::file(path));
     }
     figment
-        .merge(Env::prefixed("THINGS3_"))
+        .merge(Env::prefixed("THINGS_"))
         .extract()
         .with_context(|| format!("Failed reading auth config at {}", path.display()))
 }
@@ -53,14 +53,14 @@ pub fn load_auth() -> Result<(String, String)> {
 
     let Some(email) = cfg.email else {
         return Err(anyhow!(
-            "Missing auth email. Set THINGS3_EMAIL or run `things3 set-auth` to create {}.",
+            "Missing auth email. Set THINGS_EMAIL or run `things set-auth` to create {}.",
             path.display()
         ));
     };
 
     let Some(password) = cfg.password else {
         return Err(anyhow!(
-            "Missing auth password. Set THINGS3_PASSWORD or run `things3 set-auth` to update {}.",
+            "Missing auth password. Set THINGS_PASSWORD or run `things set-auth` to update {}.",
             path.display()
         ));
     };

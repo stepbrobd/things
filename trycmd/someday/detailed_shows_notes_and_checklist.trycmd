@@ -1,5 +1,5 @@
 ```trycmd
-$ run.sh things3 someday --detailed
+$ run.sh things someday --detailed
 ⬚ Someday  (2 items)
 
   H ◌ Long-term writing goals

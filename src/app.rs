@@ -15,13 +15,13 @@ use crate::{
 };
 
 #[derive(Debug, Parser)]
-#[command(name = "things3")]
-#[command(bin_name = "things3")]
+#[command(name = "things")]
+#[command(bin_name = "things")]
 #[command(version)]
-#[command(before_help = concat!("things3 ", env!("CARGO_PKG_VERSION")))]
+#[command(before_help = concat!("things ", env!("CARGO_PKG_VERSION")))]
 #[command(disable_help_subcommand = true)]
 #[command(about = concat!(
-    "things3 v",
+    "things v",
     env!("CARGO_PKG_VERSION"),
     ": Command-line interface for Things 3 via Cloud API"
 ))]

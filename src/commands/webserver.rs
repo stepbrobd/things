@@ -71,7 +71,7 @@ impl Command for WebserverArgs {
         let addr = format!("{}:{}", self.host, self.port);
         let server =
             Server::http(&addr).map_err(|err| anyhow::anyhow!("failed to bind {addr}: {err}"))?;
-        eprintln!("things3 webserver listening on http://{addr}");
+        eprintln!("things webserver listening on http://{addr}");
 
         for request in server.incoming_requests() {
             if let Err(err) = handle_request(request) {
