@@ -153,3 +153,63 @@ impl Command for Commands {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use clap::Parser;
+
+    use crate::app::Cli;
+
+    /// the flag combinations clap refuses before any command runs
+    #[test]
+    fn conflicting_and_missing_arguments_are_refused_at_parse_time() {
+        let refused = |args: &[&str]| {
+            let mut argv = vec!["things"];
+            argv.extend_from_slice(args);
+            Cli::try_parse_from(argv).is_err()
+        };
+        assert!(refused(&["edit"]));
+        assert!(refused(&[
+            "edit",
+            "A",
+            "--deadline",
+            "2027-01-15",
+            "--clear-deadline"
+        ]));
+        assert!(refused(&[
+            "edit",
+            "A",
+            "--reminder",
+            "09:00",
+            "--clear-reminder"
+        ]));
+        assert!(refused(&["edit", "A", "--times", "3"]));
+        assert!(refused(&[
+            "edit",
+            "A",
+            "--repeat",
+            "daily",
+            "--times",
+            "3",
+            "--until",
+            "2027-01-15"
+        ]));
+        assert!(refused(&["new", "x", "--before", "A", "--after", "B"]));
+        assert!(refused(&["new", "x", "--until", "2027-01-15"]));
+        assert!(refused(&["reorder", "A"]));
+        assert!(refused(&[
+            "reorder",
+            "A",
+            "--before-id",
+            "B",
+            "--after-id",
+            "C"
+        ]));
+        assert!(refused(&["mark", "--done"]));
+        assert!(refused(&["delete"]));
+        assert!(!refused(&[
+            "edit", "A", "--repeat", "daily", "--times", "3"
+        ]));
+        assert!(!refused(&["reorder", "A", "--after-id", "B"]));
+    }
+}

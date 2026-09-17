@@ -1,0 +1,53 @@
+```trycmd
+$ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Wind down' --when evening
+✓ Created Wind down  MdeYZd3jHuUUVtGH6rRgXy
+{
+  "ancestor_index": 0,
+  "changes": {
+    "MdeYZd3jHuUUVtGH6rRgXy": {
+      "e": "Task7",
+      "p": {
+        "acrd": null,
+        "agr": [],
+        "ar": [],
+        "ato": null,
+        "cd": 1700000000.0,
+        "dd": null,
+        "dds": null,
+        "dl": [],
+        "do": 0,
+        "icc": 0,
+        "icp": false,
+        "icsd": null,
+        "ix": 0,
+        "lai": null,
+        "lt": false,
+        "md": 1700000000.0,
+        "nt": null,
+        "pr": [],
+        "rmd": null,
+        "rp": null,
+        "rr": null,
+        "rt": [],
+        "sb": 1,
+        "sp": null,
+        "sr": 1699920000,
+        "ss": 0,
+        "st": 1,
+        "tg": [],
+        "ti": 0,
+        "tir": 1699920000,
+        "tp": 0,
+        "tr": false,
+        "tt": "Wind down",
+        "xx": {
+          "_t": "oo",
+          "sn": {}
+        }
+      },
+      "t": 0
+    }
+  }
+}
+
+```
