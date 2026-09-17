@@ -25,16 +25,11 @@ pub struct ReorderArgs {
     pub after_id: Option<String>,
 }
 
-#[derive(Debug, Clone)]
-struct ReorderCommit {
-    changes: BTreeMap<String, WireObject>,
-    ancestor_index: Option<i64>,
-}
-
+/// every patch of a reorder in one commit: a rebalance lands whole or not at all
 #[derive(Debug, Clone)]
 struct ReorderPlan {
     item: crate::store::Task,
-    commits: Vec<ReorderCommit>,
+    changes: BTreeMap<String, WireObject>,
     reorder_label: String,
 }
 
@@ -43,7 +38,6 @@ fn build_reorder_plan(
     store: &crate::store::ThingsStore,
     now: f64,
     today_ts: i64,
-    initial_ancestor_index: Option<i64>,
 ) -> std::result::Result<ReorderPlan, String> {
     let today = Utc
         .timestamp_opt(today_ts, 0)
@@ -135,10 +129,7 @@ fn build_reorder_plan(
 
         return Ok(ReorderPlan {
             item,
-            commits: vec![ReorderCommit {
-                changes,
-                ancestor_index: initial_ancestor_index,
-            }],
+            changes,
             reorder_label,
         });
     }
@@ -269,10 +260,8 @@ fn build_reorder_plan(
         index_updates.push((item.uuid.to_string(), new_index));
     }
 
-    let mut commits = Vec::new();
-    let mut ancestor = initial_ancestor_index;
+    let mut changes = BTreeMap::new();
     for (task_uuid, task_index) in index_updates {
-        let mut changes = BTreeMap::new();
         changes.insert(
             task_uuid,
             WireObject::update(
@@ -284,11 +273,6 @@ fn build_reorder_plan(
                 },
             ),
         );
-        commits.push(ReorderCommit {
-            changes,
-            ancestor_index: ancestor,
-        });
-        ancestor = ancestor.map(|v| v + 1).or(Some(1));
     }
 
     let reorder_label = if args.before_id.is_some() {
@@ -299,7 +283,7 @@ fn build_reorder_plan(
 
     Ok(ReorderPlan {
         item,
-        commits,
+        changes,
         reorder_label,
     })
 }
@@ -312,25 +296,18 @@ impl Command for ReorderArgs {
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
         let store = cli.load_store()?;
-        let plan = match build_reorder_plan(
-            self,
-            &store,
-            ctx.now_timestamp(),
-            ctx.today_timestamp(),
-            None,
-        ) {
-            Ok(plan) => plan,
-            Err(err) => {
-                eprintln!("{err}");
-                return Ok(());
-            }
-        };
+        let plan =
+            match build_reorder_plan(self, &store, ctx.now_timestamp(), ctx.today_timestamp()) {
+                Ok(plan) => plan,
+                Err(err) => {
+                    eprintln!("{err}");
+                    return Ok(());
+                }
+            };
 
-        for commit in plan.commits {
-            if let Err(e) = ctx.commit_changes(commit.changes, commit.ancestor_index) {
-                eprintln!("Failed to reorder item: {e}");
-                return Ok(());
-            }
+        if let Err(e) = ctx.commit_changes(plan.changes, None) {
+            eprintln!("Failed to reorder item: {e}");
+            return Ok(());
         }
 
         writeln!(
@@ -438,12 +415,10 @@ mod tests {
             &store,
             NOW,
             TODAY,
-            None,
         )
         .expect("before plan");
-        assert_eq!(before.commits.len(), 1);
         assert_eq!(
-            serde_json::to_value(before.commits[0].changes.clone()).expect("to value"),
+            serde_json::to_value(before.changes).expect("to value"),
             json!({ TASK_C: {"t":1,"e":"Task7","p":{"ix":1536,"md":NOW}} })
         );
 
@@ -460,11 +435,10 @@ mod tests {
             &store_today,
             NOW,
             TODAY,
-            None,
         )
         .expect("today plan");
         assert_eq!(
-            serde_json::to_value(today_plan.commits[0].changes.clone()).expect("to value"),
+            serde_json::to_value(today_plan.changes).expect("to value"),
             json!({ TASK_A: {"t":1,"e":"Task7","p":{"tir":TODAY,"ti":21,"md":NOW}} })
         );
     }
@@ -485,12 +459,16 @@ mod tests {
             &store,
             NOW,
             TODAY,
-            Some(50),
         )
         .expect("rebalance");
-        assert_eq!(rebalance.commits.len(), 2);
-        assert_eq!(rebalance.commits[0].ancestor_index, Some(50));
-        assert_eq!(rebalance.commits[1].ancestor_index, Some(51));
+        // one commit moves every sibling that changes, whatever head the writer is at
+        assert_eq!(
+            serde_json::to_value(rebalance.changes).expect("to value"),
+            json!({
+                TASK_C: {"t":1,"e":"Task7","p":{"ix":2048,"md":NOW}},
+                TASK_B: {"t":1,"e":"Task7","p":{"ix":3072,"md":NOW}},
+            })
+        );
 
         let future_sibling_store = build_store(vec![
             task(TASK_A, "A", 0, 0, 1024, None, None, 0),
@@ -516,7 +494,6 @@ mod tests {
             &future_sibling_store,
             NOW,
             TODAY,
-            None,
         )
         .expect_err("dense reorder around future-version sibling");
         assert_eq!(
@@ -533,7 +510,6 @@ mod tests {
             &store,
             NOW,
             TODAY,
-            None,
         )
         .expect_err("self reorder");
         assert_eq!(err, "Cannot reorder an item relative to itself.");
