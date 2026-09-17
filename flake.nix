@@ -18,7 +18,6 @@
         let
           crane = inputs.crane.mkLib pkgs;
 
-          # the snapshot cases under tests/cli run the built binary through run.sh
           src = lib.fileset.toSource {
             root = ./.;
             fileset = lib.fileset.unions [
@@ -37,24 +36,21 @@
             strictDeps = true;
           };
 
-          # dependencies built once and shared by the package and the check
           cargoArtifacts = crane.buildDepsOnly args;
-
-          things = crane.buildPackage (args // {
-            inherit cargoArtifacts;
-            doCheck = false;
-            meta.mainProgram = "things";
-          });
         in
         {
-          packages = { inherit things; default = things; };
+          packages = {
+            default = crane.buildPackage (args // {
+              inherit cargoArtifacts;
+              doCheck = false;
+              meta.mainProgram = "things";
+            });
+          };
 
-          # run.sh wraps every snapshot case and pretty prints commit payloads with jq
           checks.default = crane.cargoNextest (args // {
             inherit cargoArtifacts;
-            nativeBuildInputs = [ pkgs.jq ];
+            nativeBuildInputs = with pkgs; [ jq writableTmpDirAsHomeHook ];
             preBuild = ''
-              export HOME="$TMPDIR"
               patchShebangs tests/cli/run.sh
             '';
           });
