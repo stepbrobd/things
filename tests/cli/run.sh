@@ -2,6 +2,9 @@
 set -euo pipefail
 
 export TZ=UTC
+export NO_COLOR=1
+export THINGS_LOG="off,things_cli::cloud_commit::request=debug"
+export THINGS_LOG_FORMAT=json
 
 # Wrapper for trycmd cases.
 #
@@ -17,48 +20,22 @@ if [[ ${#argv[@]} -gt 0 && "${argv[0]}" == "things" ]]; then
 		argv[0]="${TRYCMD_BIN_THINGS}"
 	fi
 
-	has_no_color=0
 	has_no_cloud=0
 	has_load_journal=0
-	has_log_level=0
-	has_log_format=0
-	has_log_filter=0
 	has_today_ts=0
 	for ((i = 1; i < ${#argv[@]}; i++)); do
-		if [[ "${argv[i]}" == "--no-color" ]]; then
-			has_no_color=1
-		elif [[ "${argv[i]}" == "--no-cloud" ]]; then
+		if [[ "${argv[i]}" == "--no-cloud" ]]; then
 			has_no_cloud=1
-		fi
-		if [[ "${argv[i]}" == "--load-journal" ]]; then
+		elif [[ "${argv[i]}" == "--load-journal" ]]; then
 			has_load_journal=1
-		elif [[ "${argv[i]}" == "--log-level" ]]; then
-			has_log_level=1
-		elif [[ "${argv[i]}" == "--log-format" ]]; then
-			has_log_format=1
-		elif [[ "${argv[i]}" == "--log-filter" ]]; then
-			has_log_filter=1
 		elif [[ "${argv[i]}" == "--today-ts" ]]; then
 			has_today_ts=1
 		fi
 	done
 
 	globals=()
-	if [[ $has_no_color -eq 0 ]]; then
-		globals+=("--no-color")
-	fi
-
 	if [[ $has_no_cloud -eq 0 ]]; then
 		globals+=("--no-cloud")
-	fi
-	if [[ $has_log_level -eq 0 ]]; then
-		globals+=("--log-level" "debug")
-	fi
-	if [[ $has_log_format -eq 0 ]]; then
-		globals+=("--log-format" "json")
-	fi
-	if [[ $has_log_filter -eq 0 ]]; then
-		globals+=("--log-filter" "off,things_cli::cloud_commit::request=debug")
 	fi
 	if [[ $has_today_ts -eq 0 ]]; then
 		globals+=("--today-ts" "1774396800")
