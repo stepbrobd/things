@@ -82,25 +82,24 @@ fn lcp_len_bytes(a: &[u8], b: &[u8]) -> usize {
     max
 }
 
+/// every id whose base58 form starts with `prefix`, in the order given
+///
+/// the ids are sorted by their bytes, and ids sharing a textual prefix are not
+/// contiguous in that order once their encoded lengths differ. the whole list
+/// is therefore scanned rather than stopped at the first miss after a match
 pub fn prefix_matches<'a>(sorted_ids: &'a [ThingsId], prefix: &str) -> Vec<&'a ThingsId> {
     let prefix = prefix.as_bytes();
     if prefix.is_empty() {
         return sorted_ids.iter().collect();
     }
 
-    let mut matches = Vec::new();
-    let mut collecting = false;
-    for id in sorted_ids {
-        let (buf, len) = base58_encode_fixed(id.as_bytes());
-        let encoded = &buf[..len];
-        if encoded.starts_with(prefix) {
-            matches.push(id);
-            collecting = true;
-        } else if collecting {
-            break;
-        }
-    }
-    matches
+    sorted_ids
+        .iter()
+        .filter(|id| {
+            let (buf, len) = base58_encode_fixed(id.as_bytes());
+            buf[..len].starts_with(prefix)
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -157,6 +156,32 @@ mod tests {
                 shorter
             );
         }
+    }
+
+    #[test]
+    fn every_id_with_the_prefix_is_found_whatever_its_encoded_length() {
+        // byte order puts both 21 character ids before the 22 character one,
+        // which separates the two ids starting with A by the one starting with z
+        let short_a = "A11111111111111111111";
+        let short_z = "z11111111111111111111";
+        let long_a = "A111111111111111111111";
+        let mut sorted: Vec<ThingsId> = [short_a, short_z, long_a]
+            .iter()
+            .map(|id| id.parse().expect("a valid id"))
+            .collect();
+        sorted.sort();
+        assert_eq!(
+            sorted.iter().map(ToString::to_string).collect::<Vec<_>>(),
+            vec![short_a, short_z, long_a]
+        );
+
+        let matches = prefix_matches(&sorted, "A");
+        assert_eq!(
+            matches.iter().map(ToString::to_string).collect::<Vec<_>>(),
+            vec![short_a, long_a]
+        );
+        assert_eq!(prefix_matches(&sorted, "z").len(), 1);
+        assert_eq!(prefix_matches(&sorted, "A1111111111111111111111").len(), 0);
     }
 
     #[test]
