@@ -162,6 +162,41 @@ fn apply_tag_patch(tag: &mut TagStateProps, patch: TagPatch) {
     }
 }
 
+/// the state of an object whose create never arrived, a patch applied to nothing
+impl From<TaskPatch> for TaskStateProps {
+    fn from(patch: TaskPatch) -> Self {
+        let mut task = Self::default();
+        if let Err(error) = apply_task_patch(&mut task, patch) {
+            warn!(target: "things::replay", "note delta on an object without a create not applied: {error:?}");
+        }
+        task
+    }
+}
+
+impl From<ChecklistItemPatch> for ChecklistItemStateProps {
+    fn from(patch: ChecklistItemPatch) -> Self {
+        let mut item = Self::default();
+        apply_checklist_patch(&mut item, patch);
+        item
+    }
+}
+
+impl From<AreaPatch> for AreaStateProps {
+    fn from(patch: AreaPatch) -> Self {
+        let mut area = Self::default();
+        apply_area_patch(&mut area, patch);
+        area
+    }
+}
+
+impl From<TagPatch> for TagStateProps {
+    fn from(patch: TagPatch) -> Self {
+        let mut tag = Self::default();
+        apply_tag_patch(&mut tag, patch);
+        tag
+    }
+}
+
 fn wire_object_properties(obj: &WireObject) -> StateProperties {
     match obj.properties() {
         Ok(payload) => payload.into(),

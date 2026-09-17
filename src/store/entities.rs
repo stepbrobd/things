@@ -4,12 +4,12 @@ use serde::{Deserialize, Serialize};
 use crate::{
     ids::ThingsId,
     wire::{
-        area::{AreaPatch, AreaProps},
-        checklist::{ChecklistItemPatch, ChecklistItemProps},
+        area::AreaProps,
+        checklist::ChecklistItemProps,
         notes::TaskNotes,
         recurrence::RecurrenceRule,
-        tags::{TagPatch, TagProps},
-        task::{TaskPatch, TaskProps, TaskStart, TaskStatus, TaskType},
+        tags::TagProps,
+        task::{TaskProps, TaskStart, TaskStatus, TaskType},
         wire_object::{EntityType, Properties},
     },
 };
@@ -312,151 +312,6 @@ impl From<TagProps> for TagStateProps {
             sort_index: props.sort_index,
             parent_ids: props.parent_ids,
         }
-    }
-}
-
-impl From<ChecklistItemPatch> for ChecklistItemStateProps {
-    fn from(patch: ChecklistItemPatch) -> Self {
-        let mut item = Self::default();
-        if let Some(title) = patch.title {
-            item.title = title;
-        }
-        if let Some(status) = patch.status {
-            item.status = status;
-        }
-        if let Some(stop_date) = patch.stop_date {
-            item.stop_date = stop_date;
-        }
-        if let Some(task_ids) = patch.task_ids {
-            item.task_ids = task_ids;
-        }
-        if let Some(sort_index) = patch.sort_index {
-            item.sort_index = sort_index;
-        }
-        item
-    }
-}
-
-impl From<AreaPatch> for AreaStateProps {
-    fn from(patch: AreaPatch) -> Self {
-        let mut area = Self::default();
-        if let Some(title) = patch.title {
-            area.title = title;
-        }
-        if let Some(tag_ids) = patch.tag_ids {
-            area.tag_ids = tag_ids;
-        }
-        if let Some(sort_index) = patch.sort_index {
-            area.sort_index = sort_index;
-        }
-        area
-    }
-}
-
-impl From<TagPatch> for TagStateProps {
-    fn from(patch: TagPatch) -> Self {
-        let mut tag = Self::default();
-        if let Some(title) = patch.title {
-            tag.title = title;
-        }
-        if let Some(parent_ids) = patch.parent_ids {
-            tag.parent_ids = parent_ids;
-        }
-        if let Some(shortcut) = patch.shortcut {
-            tag.shortcut = shortcut;
-        }
-        if let Some(sort_index) = patch.sort_index {
-            tag.sort_index = sort_index;
-        }
-        tag
-    }
-}
-
-impl From<TaskPatch> for TaskStateProps {
-    fn from(patch: TaskPatch) -> Self {
-        let mut task = Self::default();
-        if let Some(title) = patch.title {
-            task.title = title;
-        }
-        if let Some(notes) = patch.notes {
-            task.notes = notes.to_plain_text();
-        }
-        if let Some(start_location) = patch.start_location {
-            task.start_location = start_location;
-        }
-        if let Some(scheduled_date) = patch.scheduled_date {
-            task.scheduled_date = scheduled_date.map(|v| v as f64);
-        }
-        if let Some(today_index_reference) = patch.today_index_reference {
-            task.today_index_reference = today_index_reference;
-        }
-        if let Some(parent_project_ids) = patch.parent_project_ids {
-            task.parent_project_ids = parent_project_ids;
-        }
-        if let Some(area_ids) = patch.area_ids {
-            task.area_ids = area_ids;
-        }
-        if let Some(action_group_ids) = patch.action_group_ids {
-            task.action_group_ids = action_group_ids;
-        }
-        if let Some(tag_ids) = patch.tag_ids {
-            task.tag_ids = tag_ids;
-        }
-        if let Some(evening_bit) = patch.evening_bit {
-            task.evening_bit = evening_bit;
-        }
-        if let Some(modification_date) = patch.modification_date {
-            task.modification_date = modification_date;
-        }
-        if let Some(item_type) = patch.item_type {
-            task.item_type = item_type;
-        }
-        if let Some(status) = patch.status {
-            task.status = status;
-        }
-        if let Some(stop_date) = patch.stop_date {
-            task.stop_date = stop_date;
-        }
-        if let Some(deadline) = patch.deadline {
-            task.deadline = deadline;
-        }
-        if let Some(sort_index) = patch.sort_index {
-            task.sort_index = sort_index;
-        }
-        if let Some(today_sort_index) = patch.today_sort_index {
-            task.today_sort_index = today_sort_index;
-        }
-        if let Some(recurrence_rule) = patch.recurrence_rule {
-            task.recurrence_rule = recurrence_rule;
-        }
-        if let Some(repeater) = patch.repeater {
-            task.repeater = repeater;
-        }
-        if let Some(recurrence_template_ids) = patch.recurrence_template_ids {
-            task.recurrence_template_ids = recurrence_template_ids;
-        }
-        if let Some(instance_creation_start_date) = patch.instance_creation_start_date {
-            task.instance_creation_start_date = instance_creation_start_date;
-        }
-        if let Some(after_completion_reference_date) = patch.after_completion_reference_date {
-            task.after_completion_reference_date = after_completion_reference_date;
-        }
-        if let Some(instance_creation_count) = patch.instance_creation_count {
-            task.instance_creation_count = instance_creation_count;
-        }
-        if let Some(instance_creation_paused) = patch.instance_creation_paused {
-            task.instance_creation_paused = instance_creation_paused;
-        }
-        if let Some(leaves_tombstone) = patch.leaves_tombstone {
-            task.leaves_tombstone = leaves_tombstone;
-        }
-        if let Some(trashed) = patch.trashed {
-            task.trashed = trashed;
-        }
-        if let Some(creation_date) = patch.creation_date {
-            task.creation_date = creation_date;
-        }
-        task
     }
 }
 
