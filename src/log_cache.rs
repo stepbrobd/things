@@ -1,103 +1,294 @@
+//! the sync cache: the server's history appended to a journal one item per
+//! line, a cursor naming the history the journal holds and how much of it the
+//! two agree on, and the state folded from the journal so far
+//!
+//! every reader and writer holds the directory's lock, the journal is synced
+//! to disk before the cursor claims its bytes, and a journal the cursor cannot
+//! vouch for is repaired or fetched again rather than folded as it is
+
 use std::{
+    collections::HashSet,
     fs::{self, File, OpenOptions},
-    io::{BufRead, BufReader, Seek, SeekFrom, Write},
-    path::{Path, PathBuf},
+    hash::{DefaultHasher, Hash, Hasher as _},
+    io::{BufRead, BufReader, ErrorKind, Read, Seek, SeekFrom, Write},
+    path::Path,
 };
 
 use anyhow::{Context, Result, anyhow};
+use crc32fast::Hasher;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tracing::warn;
 
 use crate::{
-    client::ThingsCloudClient,
+    client::{ThingsCloudClient, now_timestamp},
     dirs::create_private_dir,
     store::{RawState, fold_item},
     wire::wire_object::WireItem,
 };
 
-#[derive(Debug, Clone, Default)]
-struct SyncSnapshot {
-    history_key: Option<String>,
-    head_index: i64,
-}
+const LOG_FILE: &str = "things.log";
+const CURSOR_FILE: &str = "cursor.json";
+const STATE_CACHE_FILE: &str = "state_cache.json";
+const LOCK_FILE: &str = "lock";
+const STATE_CACHE_VERSION: u8 = 4;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+/// which history the journal holds and how much of it the cursor vouches for
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 struct CursorData {
     next_start_index: i64,
     history_key: String,
     #[serde(default)]
     head_index: i64,
+    /// the journal length these indices acknowledge, absent on cursors written before the field existed
+    #[serde(default)]
+    log_offset: Option<u64>,
+    #[serde(default)]
+    updated_at: Option<f64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+impl CursorData {
+    fn same_position(&self, other: &Self) -> bool {
+        self.next_start_index == other.next_start_index
+            && self.history_key == other.history_key
+            && self.head_index == other.head_index
+            && self.log_offset == other.log_offset
+    }
+}
+
+/// the state folded from the first `log_offset` bytes of the journal, whose crc32 is `checksum`, with the hash of every line folded so a line the journal repeats is folded once
+#[derive(Debug, Clone, Deserialize, Default)]
 struct StateCacheData {
     #[serde(default)]
     version: u8,
     log_offset: u64,
+    #[serde(default)]
+    checksum: u32,
+    #[serde(default)]
+    lines: Vec<u64>,
     state: RawState,
 }
 
-const STATE_CACHE_VERSION: u8 = 3;
-
-fn read_cursor(path: &Path) -> CursorData {
-    if !path.exists() {
-        return CursorData::default();
-    }
-    let Ok(raw) = fs::read_to_string(path) else {
-        return CursorData::default();
-    };
-    serde_json::from_str(&raw).unwrap_or_default()
+#[derive(Serialize)]
+struct StateCacheRef<'a> {
+    version: u8,
+    log_offset: u64,
+    checksum: u32,
+    lines: &'a [u64],
+    state: &'a RawState,
 }
 
-fn write_cursor(
-    path: &Path,
-    next_start_index: i64,
-    history_key: &str,
-    head_index: i64,
-) -> Result<()> {
-    let payload = serde_json::to_string(&serde_json::json!({
-        "next_start_index": next_start_index,
-        "history_key": history_key,
-        "head_index": head_index,
-        "updated_at": crate::client::now_timestamp(),
-    }))?;
+/// the identity of a journal line, the journal was seen to repeat a line and folding a note delta twice would corrupt the note
+fn line_hash(line: &str) -> u64 {
+    let mut hasher = DefaultHasher::new();
+    line.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// held by every reader and writer of the cache directory: two processes never interleave appends, cursor moves and state cache writes
+struct CacheLock {
+    _file: File,
+}
+
+fn lock_cache(cache_dir: &Path) -> Result<CacheLock> {
+    create_private_dir(cache_dir)
+        .with_context(|| format!("failed to create {}", cache_dir.display()))?;
+    let path = cache_dir.join(LOCK_FILE);
+    let file = OpenOptions::new()
+        .create(true)
+        .truncate(false)
+        .write(true)
+        .open(&path)
+        .with_context(|| format!("failed to open {}", path.display()))?;
+    file.lock()
+        .with_context(|| format!("failed to lock {}", path.display()))?;
+    Ok(CacheLock { _file: file })
+}
+
+fn read_cursor(cache_dir: &Path) -> CursorData {
+    fs::read_to_string(cache_dir.join(CURSOR_FILE))
+        .ok()
+        .and_then(|raw| serde_json::from_str(&raw).ok())
+        .unwrap_or_default()
+}
+
+/// write through a staging file synced to disk and renamed into place: a crash leaves the old file or the whole new one
+fn write_durable(path: &Path, payload: &[u8]) -> Result<()> {
     let tmp = path.with_extension("tmp");
-    fs::write(&tmp, payload)?;
-    fs::rename(tmp, path)?;
+    let mut file =
+        File::create(&tmp).with_context(|| format!("failed to write {}", tmp.display()))?;
+    file.write_all(payload)?;
+    file.sync_all()?;
+    fs::rename(&tmp, path).with_context(|| format!("failed to replace {}", path.display()))?;
     Ok(())
 }
 
-pub fn sync_append_log(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
-    create_private_dir(cache_dir)?;
-    let log_path = cache_dir.join("things.log");
-    let cursor_path = cache_dir.join("cursor.json");
+fn write_cursor(cache_dir: &Path, cursor: &CursorData) -> Result<()> {
+    write_durable(
+        &cache_dir.join(CURSOR_FILE),
+        serde_json::to_string(cursor)?.as_bytes(),
+    )
+}
 
-    let cursor = read_cursor(&cursor_path);
-    let mut start_index = cursor.next_start_index;
+fn read_state_cache(cache_dir: &Path) -> Option<StateCacheData> {
+    let raw = fs::read_to_string(cache_dir.join(STATE_CACHE_FILE)).ok()?;
+    let cache: StateCacheData = serde_json::from_str(&raw).ok()?;
+    (cache.version == STATE_CACHE_VERSION).then_some(cache)
+}
 
-    if client.history_key.is_none() {
-        if !cursor.history_key.is_empty() {
-            client.history_key = Some(cursor.history_key.clone());
-        } else {
-            let _ = client.authenticate()?;
+fn write_state_cache(
+    cache_dir: &Path,
+    state: &RawState,
+    log_offset: u64,
+    checksum: u32,
+    lines: &[u64],
+) -> Result<()> {
+    let payload = serde_json::to_string(&StateCacheRef {
+        version: STATE_CACHE_VERSION,
+        log_offset,
+        checksum,
+        lines,
+        state,
+    })?;
+    write_durable(&cache_dir.join(STATE_CACHE_FILE), payload.as_bytes())
+}
+
+/// the crc32 of the first `len` bytes of the journal
+fn prefix_checksum(log_path: &Path, len: u64) -> Result<u32> {
+    let file =
+        File::open(log_path).with_context(|| format!("failed to open {}", log_path.display()))?;
+    let mut reader = BufReader::new(file).take(len);
+    let mut hasher = Hasher::new();
+    let mut buffer = [0u8; 64 * 1024];
+    loop {
+        let read = reader.read(&mut buffer)?;
+        if read == 0 {
+            break;
         }
+        hasher.update(&buffer[..read]);
     }
+    Ok(hasher.finalize())
+}
 
-    let mut fp = OpenOptions::new()
+fn remove_if_present(path: &Path) -> Result<()> {
+    match fs::remove_file(path) {
+        Ok(()) => Ok(()),
+        Err(error) if error.kind() == ErrorKind::NotFound => Ok(()),
+        Err(error) => Err(error).with_context(|| format!("failed to remove {}", path.display())),
+    }
+}
+
+/// drop the journal, the cursor and the folded state together, the next fetch starts at the first item
+fn reset_cache(cache_dir: &Path) -> Result<()> {
+    for name in [LOG_FILE, CURSOR_FILE, STATE_CACHE_FILE] {
+        remove_if_present(&cache_dir.join(name))?;
+    }
+    Ok(())
+}
+
+/// the cursor for `history_key`: the stored one when it names that history, otherwise the cache holds another account's history or one nobody vouches for, and it starts over
+fn cursor_for_history(cache_dir: &Path, history_key: &str) -> Result<CursorData> {
+    let cursor = read_cursor(cache_dir);
+    if cursor.history_key == history_key {
+        return Ok(cursor);
+    }
+    if !cursor.history_key.is_empty() || cache_dir.join(LOG_FILE).exists() {
+        eprintln!(
+            "The sync cache is not bound to this account's history, fetching the history from the start"
+        );
+    }
+    reset_cache(cache_dir)?;
+    let cursor = CursorData {
+        history_key: history_key.to_string(),
+        log_offset: Some(0),
+        updated_at: Some(now_timestamp()),
+        ..Default::default()
+    };
+    write_cursor(cache_dir, &cursor)?;
+    Ok(cursor)
+}
+
+/// the byte length of the journal up to and including its last newline
+fn complete_length(log_path: &Path) -> Result<u64> {
+    let bytes =
+        fs::read(log_path).with_context(|| format!("failed to read {}", log_path.display()))?;
+    Ok(bytes
+        .iter()
+        .rposition(|byte| *byte == b'\n')
+        .map_or(0, |at| at as u64 + 1))
+}
+
+fn truncate_log(log_path: &Path, len: u64) -> Result<()> {
+    OpenOptions::new()
+        .write(true)
+        .open(log_path)
+        .with_context(|| format!("failed to open {}", log_path.display()))?
+        .set_len(len)
+        .with_context(|| format!("failed to truncate {}", log_path.display()))?;
+    Ok(())
+}
+
+/// make the journal and the cursor agree before appending
+///
+/// bytes past the acknowledged length are an interrupted run's, complete or
+/// not, and get fetched again. a journal shorter than the cursor claims, or
+/// missing, is not trusted and gets fetched from the start. a cursor from
+/// before the acknowledged length existed adopts the complete lines and keeps
+/// its item index, which the server handed out: the journal was seen to hold
+/// repeated lines, so its line count says nothing about that index, and a
+/// page fetched twice is folded once. a folded state past the acknowledged
+/// bytes is dropped with them
+fn repair_log(cache_dir: &Path, cursor: &mut CursorData) -> Result<()> {
+    let log_path = cache_dir.join(LOG_FILE);
+    let length = match fs::metadata(&log_path) {
+        Ok(meta) => meta.len(),
+        Err(error) if error.kind() == ErrorKind::NotFound => {
+            if cursor.next_start_index > 0 {
+                remove_if_present(&cache_dir.join(STATE_CACHE_FILE))?;
+                cursor.next_start_index = 0;
+            }
+            cursor.log_offset = Some(0);
+            return Ok(());
+        }
+        Err(error) => {
+            return Err(error).with_context(|| format!("failed to read {}", log_path.display()));
+        }
+    };
+    let acknowledged = match cursor.log_offset {
+        Some(offset) if offset <= length => offset,
+        Some(_) => {
+            cursor.next_start_index = 0;
+            0
+        }
+        None => complete_length(&log_path)?,
+    };
+    if acknowledged < length {
+        truncate_log(&log_path, acknowledged)?;
+    }
+    cursor.log_offset = Some(acknowledged);
+    if read_state_cache(cache_dir).is_some_and(|cache| cache.log_offset > acknowledged) {
+        remove_if_present(&cache_dir.join(STATE_CACHE_FILE))?;
+    }
+    Ok(())
+}
+
+/// append what the server holds past the cursor, authenticating first to bind the journal to the account behind the credentials
+fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
+    // what the disk holds now, so a repair alone is persisted even when the server has nothing new
+    let stored = read_cursor(cache_dir);
+    let history_key = client.authenticate()?;
+    let mut cursor = cursor_for_history(cache_dir, &history_key)?;
+    repair_log(cache_dir, &mut cursor)?;
+
+    let log_path = cache_dir.join(LOG_FILE);
+    let mut log = OpenOptions::new()
         .create(true)
         .append(true)
         .open(&log_path)
         .with_context(|| format!("failed to open {}", log_path.display()))?;
 
     loop {
-        let page = match client.get_items_page(start_index) {
-            Ok(v) => v,
-            Err(_) => {
-                let _ = client.authenticate()?;
-                client.get_items_page(start_index)?
-            }
-        };
-
+        let page = client.get_items_page(cursor.next_start_index)?;
         let items = page
             .get("items")
             .and_then(Value::as_array)
@@ -116,19 +307,20 @@ pub fn sync_append_log(client: &mut ThingsCloudClient, cache_dir: &Path) -> Resu
             .and_then(Value::as_i64)
             .unwrap_or(client.head_index);
 
-        for item in &items {
-            writeln!(fp, "{}", serde_json::to_string(item)?)?;
-        }
-
         if !items.is_empty() {
-            fp.flush()?;
-            start_index += items.len() as i64;
-            write_cursor(
-                &cursor_path,
-                start_index,
-                client.history_key.as_deref().unwrap_or_default(),
-                client.head_index,
-            )?;
+            let mut lines = String::new();
+            for item in &items {
+                lines.push_str(&serde_json::to_string(item)?);
+                lines.push('\n');
+            }
+            log.write_all(lines.as_bytes())?;
+            // the data reaches disk before the cursor claims it
+            log.sync_all()?;
+            cursor.next_start_index += items.len() as i64;
+            cursor.log_offset = Some(log.metadata()?.len());
+            cursor.head_index = client.head_index;
+            cursor.updated_at = Some(now_timestamp());
+            write_cursor(cache_dir, &cursor)?;
         }
 
         if items.is_empty() || end >= latest {
@@ -136,58 +328,49 @@ pub fn sync_append_log(client: &mut ThingsCloudClient, cache_dir: &Path) -> Resu
         }
     }
 
-    let current_history_key = client.history_key.clone().unwrap_or_default();
-    if current_history_key != cursor.history_key || client.head_index != cursor.head_index {
-        write_cursor(
-            &cursor_path,
-            start_index,
-            &current_history_key,
-            client.head_index,
-        )?;
+    cursor.head_index = client.head_index;
+    if !cursor.same_position(&stored) {
+        cursor.updated_at = Some(now_timestamp());
+        write_cursor(cache_dir, &cursor)?;
     }
-
     Ok(())
 }
 
-fn read_state_cache(cache_dir: &Path) -> (RawState, u64) {
-    let path = cache_dir.join("state_cache.json");
-    if !path.exists() {
-        return (RawState::new(), 0);
-    }
-    let Ok(raw) = fs::read_to_string(&path) else {
-        return (RawState::new(), 0);
+/// fold the journal past the cached state
+///
+/// a cached state is used only when the journal still starts with the bytes
+/// it was folded from, checked by length and checksum. a journal that was
+/// replaced or cut is therefore folded again from its first line, and an
+/// incomplete last line waits for the run that completes it
+fn fold_locked(cache_dir: &Path) -> Result<RawState> {
+    let log_path = cache_dir.join(LOG_FILE);
+    let length = match fs::metadata(&log_path) {
+        Ok(meta) => meta.len(),
+        Err(error) if error.kind() == ErrorKind::NotFound => return Ok(RawState::new()),
+        Err(error) => {
+            return Err(error).with_context(|| format!("failed to read {}", log_path.display()));
+        }
     };
-    let Ok(cache) = serde_json::from_str::<StateCacheData>(&raw) else {
-        return (RawState::new(), 0);
+
+    let cache = match read_state_cache(cache_dir).filter(|cache| cache.log_offset <= length) {
+        Some(cache) if prefix_checksum(&log_path, cache.log_offset)? == cache.checksum => {
+            Some(cache)
+        }
+        _ => None,
     };
-
-    if cache.version != STATE_CACHE_VERSION {
-        return (RawState::new(), 0);
-    }
-
-    (cache.state, cache.log_offset)
-}
-
-fn write_state_cache(cache_dir: &Path, state: &RawState, log_offset: u64) -> Result<()> {
-    let path = cache_dir.join("state_cache.json");
-    let payload = serde_json::to_string(&StateCacheData {
-        version: STATE_CACHE_VERSION,
-        log_offset,
-        state: state.clone(),
-    })?;
-    let tmp = path.with_extension("tmp");
-    fs::write(&tmp, payload)?;
-    fs::rename(tmp, path)?;
-    Ok(())
-}
-
-pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
-    let log_path = cache_dir.join("things.log");
-    if !log_path.exists() {
-        return Ok(RawState::new());
-    }
-
-    let (mut state, byte_offset) = read_state_cache(cache_dir);
+    let stale = cache.is_none() && cache_dir.join(STATE_CACHE_FILE).exists();
+    let (mut state, byte_offset, mut hasher, mut lines) = cache.map_or_else(
+        || (RawState::new(), 0, Hasher::new(), Vec::new()),
+        |cache| {
+            (
+                cache.state,
+                cache.log_offset,
+                Hasher::new_with_initial(cache.checksum),
+                cache.lines,
+            )
+        },
+    );
+    let mut seen: HashSet<u64> = lines.iter().copied().collect();
     let mut new_lines = 0u64;
 
     let mut file =
@@ -208,12 +391,20 @@ pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
         if !line.ends_with('\n') {
             break;
         }
+        hasher.update(line.as_bytes());
 
         let stripped = line.trim();
         if stripped.is_empty() {
             safe_offset = reader.stream_position()?;
             continue;
         }
+        let hash = line_hash(stripped);
+        if !seen.insert(hash) {
+            warn!(target: "things::replay", byte = entry_offset, "a repeated journal line, folded once");
+            safe_offset = reader.stream_position()?;
+            continue;
+        }
+        lines.push(hash);
         let item: WireItem = serde_json::from_str(stripped).map_err(|error| {
             anyhow!(
                 "Corrupt log entry at {} byte {}: {}",
@@ -227,68 +418,61 @@ pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
         safe_offset = reader.stream_position()?;
     }
 
-    if new_lines > 0 {
-        write_state_cache(cache_dir, &state, safe_offset)?;
+    if new_lines > 0 || stale {
+        write_state_cache(cache_dir, &state, safe_offset, hasher.finalize(), &lines)?;
     }
 
     Ok(state)
 }
 
+/// synchronize the journal with the server and fold it, under the cache lock
 pub fn get_state_with_append_log(
     client: &mut ThingsCloudClient,
-    cache_dir: PathBuf,
+    cache_dir: &Path,
 ) -> Result<RawState> {
-    let mut sync_client = client.clone();
-    let sync_cache_dir = cache_dir.clone();
-
-    let sync_worker = std::thread::spawn(move || -> Result<SyncSnapshot> {
-        sync_append_log(&mut sync_client, &sync_cache_dir)?;
-        Ok(SyncSnapshot {
-            history_key: sync_client.history_key,
-            head_index: sync_client.head_index,
-        })
-    });
-
-    let _stale_state = fold_state_from_append_log(&cache_dir)?;
-
-    let sync_snapshot = sync_worker
-        .join()
-        .map_err(|_| anyhow!("sync worker panicked"))??;
-
-    client.history_key = sync_snapshot.history_key;
-    client.head_index = sync_snapshot.head_index;
-
-    fold_state_from_append_log(&cache_dir)
+    let _lock = lock_cache(cache_dir)?;
+    sync_locked(client, cache_dir)?;
+    fold_locked(cache_dir)
 }
 
-pub fn fold_state_from_append_log_or_empty(cache_dir: &Path) -> RawState {
-    fold_state_from_append_log(cache_dir).unwrap_or_default()
-}
-
-pub fn read_cached_head_index(cache_dir: &Path) -> i64 {
-    read_cursor(&cache_dir.join("cursor.json")).head_index
-}
-
-pub fn sync_append_log_or_err(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
-    sync_append_log(client, cache_dir).map_err(|e| anyhow!(e.to_string()))
+/// the state folded from the journal on disk, without touching the server
+pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
+    let _lock = lock_cache(cache_dir)?;
+    fold_locked(cache_dir)
 }
 
 #[cfg(test)]
 mod tests {
+    use std::fs::TryLockError;
+
     use super::*;
+
+    const TASK_ID: &str = "A7h5eCi24RvAWKC3Hv3muf";
+    const SETTINGS_ONE: &str =
+        r#"{"3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A":{"t":0,"e":"Settings5","p":{}}}"#;
+    const SETTINGS_TWO: &str =
+        r#"{"4C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00B":{"t":0,"e":"Settings5","p":{}}}"#;
+
+    fn seed_log(cache_dir: &Path, content: &str) {
+        fs::write(cache_dir.join(LOG_FILE), content).expect("seed log");
+    }
+
+    fn log_content(cache_dir: &Path) -> String {
+        fs::read_to_string(cache_dir.join(LOG_FILE)).expect("log")
+    }
 
     #[test]
     fn state_cache_version_change_refolds_the_append_log() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let cache_dir = temp_dir.path();
-        let task_id = "A7h5eCi24RvAWKC3Hv3muf";
+        let task_id = TASK_ID;
         let log = format!(
             "{{\"{task_id}\":{{\"t\":0,\"e\":\"Task6\",\"p\":{{\"tt\":\"Current task\",\"ss\":0}}}}}}\n\
              {{\"{task_id}\":{{\"t\":1,\"e\":\"Task7\",\"p\":{{\"md\":2.0}}}}}}\n"
         );
-        fs::write(cache_dir.join("things.log"), &log).expect("seed log");
+        seed_log(cache_dir, &log);
         fs::write(
-            cache_dir.join("state_cache.json"),
+            cache_dir.join(STATE_CACHE_FILE),
             format!(
                 "{{\"version\":{},\"log_offset\":{},\"state\":{{}}}}",
                 STATE_CACHE_VERSION - 1,
@@ -304,9 +488,9 @@ mod tests {
         let task = store.get_task(task_id).expect("Task7 task after refold");
         assert_eq!(task.title, "Current task");
         assert_eq!(task.entity, crate::wire::wire_object::EntityType::Task7);
-        let (cached_state, offset) = read_state_cache(cache_dir);
-        assert_eq!(cached_state, state);
-        assert_eq!(offset, log.len() as u64);
+        let cache = read_state_cache(cache_dir).expect("rewritten cache");
+        assert_eq!(cache.state, state);
+        assert_eq!(cache.log_offset, log.len() as u64);
     }
 
     #[test]
@@ -318,7 +502,7 @@ mod tests {
         let log = format!(
             r#"{{"{action_group_id}":{{"t":0,"e":"Task3","p":{{"tt":"Heading","ss":0,"tp":2,"st":1}}}},"{task_id}":{{"t":0,"e":"Task3","p":{{"tt":"Legacy child","ss":0,"tp":0,"st":1,"agr":["{action_group_id}"]}}}}}}"#
         ) + "\n";
-        fs::write(cache_dir.join("things.log"), log).expect("seed legacy log");
+        seed_log(cache_dir, &log);
 
         let state = fold_state_from_append_log(cache_dir).expect("fold legacy action-group IDs");
         let store = crate::store::ThingsStore::from_raw_state(&state);
@@ -334,7 +518,7 @@ mod tests {
     fn fold_state_reports_the_offset_and_parse_error() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let cache_dir = temp_dir.path();
-        fs::write(cache_dir.join("things.log"), "{not-json}\n").expect("seed corrupt log");
+        seed_log(cache_dir, "{not-json}\n");
 
         let error = fold_state_from_append_log(cache_dir)
             .expect_err("corrupt log must fail")
@@ -348,35 +532,224 @@ mod tests {
     fn fold_state_ignores_trailing_partial_line() {
         let temp_dir = tempfile::tempdir().expect("tempdir");
         let cache_dir = temp_dir.path();
-        let log_path = cache_dir.join("things.log");
-
-        let line_one = r#"{"3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A":{"t":0,"e":"Settings5","p":{}}}"#;
-        let line_two = r#"{"4C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00B":{"t":0,"e":"Settings5","p":{}}}"#;
-        let split_at = line_two.len() / 2;
-
-        fs::write(
-            &log_path,
-            format!("{}\n{}", line_one, &line_two[..split_at]),
-        )
-        .expect("seed log");
+        let split_at = SETTINGS_TWO.len() / 2;
+        seed_log(
+            cache_dir,
+            &format!("{}\n{}", SETTINGS_ONE, &SETTINGS_TWO[..split_at]),
+        );
 
         let first_state = fold_state_from_append_log(cache_dir).expect("first fold");
         assert_eq!(first_state.len(), 1);
-
-        let (_, first_offset) = read_state_cache(cache_dir);
-        assert_eq!(first_offset, (line_one.len() + 1) as u64);
+        let first_offset = read_state_cache(cache_dir).expect("cache").log_offset;
+        assert_eq!(first_offset, (SETTINGS_ONE.len() + 1) as u64);
 
         let mut fp = OpenOptions::new()
             .append(true)
-            .open(&log_path)
+            .open(cache_dir.join(LOG_FILE))
             .expect("open log for append");
-        writeln!(fp, "{}", &line_two[split_at..]).expect("append line remainder");
+        writeln!(fp, "{}", &SETTINGS_TWO[split_at..]).expect("append line remainder");
 
         let second_state = fold_state_from_append_log(cache_dir).expect("second fold");
         assert_eq!(second_state.len(), 2);
 
-        let expected_offset = fs::metadata(&log_path).expect("log metadata").len();
-        let (_, second_offset) = read_state_cache(cache_dir);
+        let expected_offset = fs::metadata(cache_dir.join(LOG_FILE))
+            .expect("log metadata")
+            .len();
+        let second_offset = read_state_cache(cache_dir).expect("cache").log_offset;
         assert_eq!(second_offset, expected_offset);
+    }
+
+    #[test]
+    fn fold_state_drops_a_cached_state_past_the_end_of_the_journal() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        seed_log(cache_dir, &format!("{SETTINGS_ONE}\n"));
+        assert_eq!(
+            fold_state_from_append_log(cache_dir).expect("fold").len(),
+            1
+        );
+
+        // the journal is cut behind the cache's back
+        seed_log(cache_dir, "");
+        assert!(
+            fold_state_from_append_log(cache_dir)
+                .expect("refold")
+                .is_empty()
+        );
+        assert_eq!(read_state_cache(cache_dir).expect("cache").log_offset, 0);
+
+        // and replaced by a shorter one with another object
+        seed_log(cache_dir, &format!("{SETTINGS_ONE}\n"));
+        assert_eq!(
+            fold_state_from_append_log(cache_dir).expect("fold").len(),
+            1
+        );
+        seed_log(cache_dir, &format!("{SETTINGS_TWO}\n"));
+        let state = fold_state_from_append_log(cache_dir).expect("refold");
+        assert_eq!(state.len(), 1);
+        assert!(state.contains_key(&"4C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00B".parse().expect("id")));
+    }
+
+    #[test]
+    fn a_repeated_journal_line_is_folded_once_even_across_folds() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let checksum = crc32fast::hash("done".as_bytes());
+        let create = format!(
+            r#"{{"{TASK_ID}":{{"t":0,"e":"Task6","p":{{"tt":"Notes","tp":0,"ss":0,"st":1,"nt":{{"_t":"tx","t":1,"ch":0,"v":"todo"}}}}}}}}"#
+        );
+        let delta = format!(
+            r#"{{"{TASK_ID}":{{"t":1,"e":"Task7","p":{{"nt":{{"_t":"tx","t":2,"ps":[{{"p":0,"l":4,"r":"done","ch":{checksum}}}]}}}}}}}}"#
+        );
+        // the delta twice in a row, then once more after a fold in between
+        seed_log(cache_dir, &format!("{create}\n{delta}\n{delta}\n"));
+        let state = fold_state_from_append_log(cache_dir).expect("fold");
+        let task = crate::store::ThingsStore::from_raw_state(&state)
+            .get_task(TASK_ID)
+            .expect("task");
+        assert_eq!(task.notes.as_deref(), Some("done"));
+        assert!(!task.degraded);
+        assert_eq!(read_state_cache(cache_dir).expect("cache").lines.len(), 2);
+
+        let mut fp = OpenOptions::new()
+            .append(true)
+            .open(cache_dir.join(LOG_FILE))
+            .expect("append");
+        writeln!(fp, "{delta}").expect("append the delta again");
+        let state = fold_state_from_append_log(cache_dir).expect("fold");
+        let task = crate::store::ThingsStore::from_raw_state(&state)
+            .get_task(TASK_ID)
+            .expect("task");
+        assert_eq!(task.notes.as_deref(), Some("done"));
+        assert!(!task.degraded);
+    }
+
+    #[test]
+    fn repair_cuts_what_the_cursor_does_not_acknowledge() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let acknowledged = format!("{SETTINGS_ONE}\n");
+        // a complete line and a partial one from an interrupted run
+        seed_log(
+            cache_dir,
+            &format!("{acknowledged}{SETTINGS_TWO}\n{}", &SETTINGS_TWO[..10]),
+        );
+        // folded before the interruption was noticed
+        write_state_cache(
+            cache_dir,
+            &RawState::new(),
+            (acknowledged.len() + SETTINGS_TWO.len() + 1) as u64,
+            0,
+            &[],
+        )
+        .expect("seed cache");
+        let mut cursor = CursorData {
+            next_start_index: 1,
+            history_key: "h".to_string(),
+            head_index: 1,
+            log_offset: Some(acknowledged.len() as u64),
+            updated_at: None,
+        };
+
+        repair_log(cache_dir, &mut cursor).expect("repair");
+
+        assert_eq!(log_content(cache_dir), acknowledged);
+        assert_eq!(cursor.next_start_index, 1);
+        assert_eq!(cursor.log_offset, Some(acknowledged.len() as u64));
+        assert!(read_state_cache(cache_dir).is_none());
+    }
+
+    #[test]
+    fn repair_adopts_the_complete_lines_for_a_cursor_without_an_offset() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let complete = format!("{SETTINGS_ONE}\n{SETTINGS_TWO}\n");
+        seed_log(cache_dir, &format!("{complete}{}", &SETTINGS_ONE[..7]));
+        let mut cursor = CursorData {
+            next_start_index: 2,
+            history_key: "h".to_string(),
+            head_index: 2,
+            log_offset: None,
+            updated_at: None,
+        };
+
+        repair_log(cache_dir, &mut cursor).expect("repair");
+
+        assert_eq!(log_content(cache_dir), complete);
+        assert_eq!(cursor.next_start_index, 2);
+        assert_eq!(cursor.log_offset, Some(complete.len() as u64));
+    }
+
+    #[test]
+    fn repair_starts_over_when_the_journal_shrank_or_vanished() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        seed_log(cache_dir, &format!("{SETTINGS_ONE}\n"));
+        write_state_cache(cache_dir, &RawState::new(), 500, 0, &[]).expect("seed cache");
+        let mut cursor = CursorData {
+            next_start_index: 7,
+            history_key: "h".to_string(),
+            head_index: 7,
+            log_offset: Some(500),
+            updated_at: None,
+        };
+
+        repair_log(cache_dir, &mut cursor).expect("repair");
+        assert_eq!(log_content(cache_dir), "");
+        assert_eq!(cursor.next_start_index, 0);
+        assert_eq!(cursor.log_offset, Some(0));
+        assert!(read_state_cache(cache_dir).is_none());
+
+        fs::remove_file(cache_dir.join(LOG_FILE)).expect("remove log");
+        write_state_cache(cache_dir, &RawState::new(), 0, 0, &[]).expect("seed cache");
+        let mut cursor = CursorData {
+            next_start_index: 7,
+            history_key: "h".to_string(),
+            head_index: 7,
+            log_offset: Some(0),
+            updated_at: None,
+        };
+        repair_log(cache_dir, &mut cursor).expect("repair");
+        assert_eq!(cursor.next_start_index, 0);
+        assert!(read_state_cache(cache_dir).is_none());
+    }
+
+    #[test]
+    fn another_history_resets_the_whole_cache() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        seed_log(cache_dir, &format!("{SETTINGS_ONE}\n"));
+        write_state_cache(cache_dir, &RawState::new(), 9, 0, &[]).expect("seed cache");
+        let stored = CursorData {
+            next_start_index: 1,
+            history_key: "old".to_string(),
+            head_index: 1,
+            log_offset: Some(9),
+            updated_at: None,
+        };
+        write_cursor(cache_dir, &stored).expect("seed cursor");
+
+        let same = cursor_for_history(cache_dir, "old").expect("same history");
+        assert_eq!(same, stored);
+        assert!(cache_dir.join(LOG_FILE).exists());
+
+        let fresh = cursor_for_history(cache_dir, "new").expect("other history");
+        assert_eq!(fresh.history_key, "new");
+        assert_eq!(fresh.next_start_index, 0);
+        assert_eq!(fresh.log_offset, Some(0));
+        assert!(!cache_dir.join(LOG_FILE).exists());
+        assert!(read_state_cache(cache_dir).is_none());
+        assert_eq!(read_cursor(cache_dir).history_key, "new");
+    }
+
+    #[test]
+    fn the_cache_lock_excludes_a_second_holder() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let held = lock_cache(cache_dir).expect("lock");
+        let other = File::open(cache_dir.join(LOCK_FILE)).expect("lock file");
+        assert!(matches!(other.try_lock(), Err(TryLockError::WouldBlock)));
+        drop(held);
+        other.try_lock().expect("free after release");
     }
 }
