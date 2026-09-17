@@ -52,7 +52,10 @@ impl Command for ProjectArgs {
         let children = store
             .tasks(None, Some(false), None)
             .into_iter()
-            .filter(|t| store.effective_project_uuid(t).as_ref() == Some(&project.uuid))
+            .filter(|t| {
+                !t.is_recurrence_template()
+                    && store.effective_project_uuid(t).as_ref() == Some(&project.uuid)
+            })
             .collect::<Vec<_>>();
 
         let json = cli.json;

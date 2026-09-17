@@ -65,6 +65,9 @@ impl Command for AreaArgs {
             .tasks(status_filter, Some(false), None)
             .into_iter()
             .filter(|t| {
+                if t.is_recurrence_template() {
+                    return false;
+                }
                 t.area.as_ref() == Some(&area.uuid)
                     && !t.is_project()
                     && store.effective_project_uuid(t).is_none()
