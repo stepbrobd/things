@@ -8,7 +8,12 @@ use crate::{
     arg_types::IdentifierToken,
     commands::Command,
     common::{DIM, GREEN, ICONS, colored},
-    wire::wire_object::{EntityType, WireObject},
+    ids::ThingsId,
+    store::Task,
+    wire::{
+        task::TaskPatch,
+        wire_object::{EntityType, WireObject},
+    },
 };
 
 #[derive(Debug, Args)]
@@ -18,13 +23,25 @@ pub struct DeleteArgs {
     pub item_ids: Vec<IdentifierToken>,
 }
 
+/// the trash flag on a task, what the app writes when the delete key is pressed
+fn trash(now: f64) -> WireObject {
+    WireObject::update(
+        EntityType::Task7,
+        TaskPatch {
+            trashed: Some(true),
+            modification_date: Some(Some(now)),
+            ..Default::default()
+        },
+    )
+}
+
 #[derive(Debug, Clone)]
 struct DeletePlan {
-    targets: Vec<(String, EntityType, String)>,
+    targets: Vec<(String, EntityType, String, usize)>,
     changes: BTreeMap<String, WireObject>,
 }
 
-fn build_delete_plan(args: &DeleteArgs, store: &crate::store::ThingsStore) -> DeletePlan {
+fn build_delete_plan(args: &DeleteArgs, store: &crate::store::ThingsStore, now: f64) -> DeletePlan {
     let mut targets: Vec<(String, EntityType, String)> = Vec::new();
     let mut seen = HashSet::new();
 
@@ -90,11 +107,64 @@ fn build_delete_plan(args: &DeleteArgs, store: &crate::store::ThingsStore) -> De
         }
     }
 
+    // a project takes its to-dos and headings along, an area its projects and to-dos, as in the app
+    let contents = |parent: &ThingsId, in_area: bool| -> Vec<Task> {
+        store
+            .tasks_by_uuid
+            .values()
+            .filter(|task| {
+                !task.trashed
+                    && if in_area {
+                        task.area.as_ref() == Some(parent)
+                    } else {
+                        task.project.as_ref() == Some(parent)
+                    }
+            })
+            .cloned()
+            .collect()
+    };
     let mut changes = BTreeMap::new();
+    let mut counts = Vec::new();
     for (uuid, entity, _title) in &targets {
-        changes.insert(uuid.clone(), WireObject::delete(entity.clone()));
+        let mut taken = 0usize;
+        match entity {
+            EntityType::Area3 => {
+                changes.insert(uuid.clone(), WireObject::delete(entity.clone()));
+                let area_id: ThingsId = uuid.parse().expect("resolved id");
+                for task in contents(&area_id, true) {
+                    if task.is_project() {
+                        for child in contents(&task.uuid, false) {
+                            changes.insert(child.uuid.to_string(), trash(now));
+                            taken += 1;
+                        }
+                    }
+                    changes.insert(task.uuid.to_string(), trash(now));
+                    taken += 1;
+                }
+            }
+            _ => {
+                changes.insert(uuid.clone(), trash(now));
+                let task_id: ThingsId = uuid.parse().expect("resolved id");
+                if store
+                    .tasks_by_uuid
+                    .get(&task_id)
+                    .is_some_and(Task::is_project)
+                {
+                    for child in contents(&task_id, false) {
+                        changes.insert(child.uuid.to_string(), trash(now));
+                        taken += 1;
+                    }
+                }
+            }
+        }
+        counts.push(taken);
     }
 
+    let targets = targets
+        .into_iter()
+        .zip(counts)
+        .map(|((uuid, entity, title), taken)| (uuid, entity, title, taken))
+        .collect();
     DeletePlan { targets, changes }
 }
 
@@ -106,7 +176,7 @@ impl Command for DeleteArgs {
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
         let store = cli.load_store()?;
-        let plan = build_delete_plan(self, &store);
+        let plan = build_delete_plan(self, &store, ctx.now_timestamp());
 
         if plan.targets.is_empty() {
             return Ok(());
@@ -115,13 +185,19 @@ impl Command for DeleteArgs {
         ctx.commit_changes(plan.changes, None)
             .map_err(|e| anyhow::anyhow!("Failed to delete items: {e}"))?;
 
-        for (uuid, _entity, title) in plan.targets {
+        for (uuid, _entity, title, taken) in plan.targets {
+            let along = if taken > 0 {
+                colored(format!("  (with {taken} items)"), &[DIM], cli.no_color)
+            } else {
+                String::new()
+            };
             writeln!(
                 out,
-                "{} {}  {}",
+                "{} {}  {}{}",
                 colored(format!("{} Deleted", ICONS.deleted), &[GREEN], cli.no_color),
                 title,
-                colored(&uuid, &[DIM], cli.no_color)
+                colored(&uuid, &[DIM], cli.no_color),
+                along
             )?;
         }
 
@@ -150,7 +226,7 @@ mod tests {
 
     impl crate::cmd_ctx::CmdCtx for FailingCtx {
         fn now_timestamp(&self) -> f64 {
-            unreachable!()
+            1.0
         }
 
         fn today_timestamp(&self) -> i64 {
@@ -249,10 +325,11 @@ mod tests {
                 item_ids: vec![IdentifierToken::from(TASK_A)],
             },
             &build_store(vec![task(TASK_A, "Alpha", false)]),
+            1.0,
         );
         assert_eq!(
             serde_json::to_value(single.changes).expect("to value"),
-            serde_json::json!({ TASK_A: {"t":2,"e":"Task7","p":{}} })
+            serde_json::json!({ TASK_A: {"t":1,"e":"Task7","p":{"md":1.0,"tr":true}} })
         );
 
         let multi = build_delete_plan(
@@ -260,11 +337,12 @@ mod tests {
                 item_ids: vec![IdentifierToken::from(TASK_A), IdentifierToken::from(AREA_A)],
             },
             &build_store(vec![task(TASK_A, "Alpha", false), area(AREA_A, "Work")]),
+            1.0,
         );
         assert_eq!(
             serde_json::to_value(multi.changes).expect("to value"),
             serde_json::json!({
-                TASK_A: {"t":2,"e":"Task7","p":{}},
+                TASK_A: {"t":1,"e":"Task7","p":{"md":1.0,"tr":true}},
                 AREA_A: {"t":2,"e":"Area3","p":{}}
             })
         );
@@ -277,10 +355,11 @@ mod tests {
                 task(TASK_A, "Active", false),
                 task(TASK_B, "Trashed", true),
             ]),
+            1.0,
         );
         assert_eq!(
             serde_json::to_value(skip_trashed.changes).expect("to value"),
-            serde_json::json!({ TASK_A: {"t":2,"e":"Task7","p":{}} })
+            serde_json::json!({ TASK_A: {"t":1,"e":"Task7","p":{"md":1.0,"tr":true}} })
         );
     }
 }
