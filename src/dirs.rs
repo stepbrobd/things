@@ -4,53 +4,36 @@ use std::{
 };
 
 const APP_NAME: &str = "things";
-const LEGACY_APP_NAME: &str = "things-cli";
 
-fn state_home() -> PathBuf {
-    dirs::state_dir()
-        .or_else(dirs::data_local_dir)
-        .unwrap_or_else(|| PathBuf::from("."))
-}
-
-/// The pre-`dirs`-crate location of the app's state directory. Always the
-/// Linux XDG path, even on macOS/Windows, so that users migrating from an
-/// earlier Unix build still get their legacy directory picked up.
-fn legacy_state_home() -> PathBuf {
-    if let Ok(custom) = std::env::var("XDG_STATE_HOME") {
-        return PathBuf::from(custom);
+/// The XDG base directory named by `var`, or `default` under the home
+/// directory when the variable is unset or empty, on every platform.
+fn xdg_home(var: &str, default: &[&str]) -> PathBuf {
+    match std::env::var(var) {
+        Ok(custom) if !custom.is_empty() => PathBuf::from(custom),
+        _ => {
+            let mut path = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+            path.extend(default);
+            path
+        }
     }
-    dirs::home_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join(".local")
-        .join("state")
-}
-
-pub fn app_state_dir() -> PathBuf {
-    let target = state_home().join(APP_NAME);
-    let legacy = legacy_state_home().join(LEGACY_APP_NAME);
-
-    if target.exists() || !legacy.exists() {
-        return target;
-    }
-
-    if fs::rename(&legacy, &target).is_ok() {
-        return target;
-    }
-
-    target
 }
 
 pub fn append_log_dir() -> PathBuf {
-    app_state_dir().join("append-log")
+    xdg_home("XDG_STATE_HOME", &[".local", "state"])
+        .join(APP_NAME)
+        .join("append-log")
 }
 
 pub fn auth_file_path() -> PathBuf {
-    app_state_dir().join("auth.json")
+    xdg_home("XDG_CONFIG_HOME", &[".config"])
+        .join(APP_NAME)
+        .join("auth.json")
 }
 
-/// Create `dir` and narrow it to owner-only. The state directory holds the
-/// Things Cloud password and an append log carrying every task title and note,
-/// so the default 0755 leaves that readable by any other local user.
+/// Create `dir` and narrow it to owner-only. The config directory holds the
+/// Things Cloud password and the state directory an append log carrying every
+/// task title and note, so the default 0755 leaves that readable by any other
+/// local user.
 pub fn create_private_dir(dir: &Path) -> std::io::Result<()> {
     fs::create_dir_all(dir)?;
     #[cfg(unix)]
