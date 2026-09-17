@@ -2,11 +2,11 @@ use std::{collections::BTreeMap, str::FromStr};
 
 use std::collections::BTreeMap as ChangeMap;
 
-use chrono::{DateTime, Datelike, Days, Months, NaiveDate};
+use chrono::{Datelike, Days, Months, NaiveDate};
 use serde_json::{Value, json};
 
 use crate::{
-    common::{parse_day, task6_note},
+    common::{day_of, day_timestamp, parse_day, task6_note},
     ids::ThingsId,
     store::{Task, ThingsStore},
     wire::{
@@ -161,23 +161,10 @@ pub fn bound(times: Option<i32>, until: Option<&str>) -> Result<Bound, String> {
         (Some(times), None) if times >= 1 => Ok(Bound::Times(times)),
         (Some(times), None) => Err(format!("--times {times}: expected a positive number")),
         (None, Some(until)) => Ok(Bound::Until(
-            parse_day(Some(until), "--until")?
-                .expect("a day was given")
-                .date_naive(),
+            parse_day(Some(until), "--until")?.expect("a day was given"),
         )),
         (None, None) => Ok(Bound::Never),
     }
-}
-
-pub fn day_timestamp(day: NaiveDate) -> i64 {
-    day.and_hms_opt(0, 0, 0)
-        .expect("midnight")
-        .and_utc()
-        .timestamp()
-}
-
-pub fn day_of(timestamp: i64) -> Option<NaiveDate> {
-    DateTime::from_timestamp(timestamp, 0).map(|day| day.date_naive())
 }
 
 fn weekday_index(day: NaiveDate) -> u32 {

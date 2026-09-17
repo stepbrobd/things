@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use chrono::{DateTime, FixedOffset, Local, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
+use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 use crc32fast::Hasher;
 
 use crate::{
@@ -138,54 +138,60 @@ pub fn fmt_date(dt: Option<DateTime<Utc>>) -> String {
         .unwrap_or_default()
 }
 
+/// the local calendar day of an instant, with the offset in force at that instant rather than today's
 pub fn fmt_date_local(dt: Option<DateTime<Utc>>) -> String {
-    let fixed_local = fixed_local_offset();
-    dt.map(|d| d.with_timezone(&fixed_local).format("%Y-%m-%d").to_string())
+    dt.map(|d| d.with_timezone(&Local).format("%Y-%m-%d").to_string())
         .unwrap_or_default()
 }
 
-fn fixed_local_offset() -> FixedOffset {
-    let seconds = Local::now().offset().local_minus_utc();
-    FixedOffset::east_opt(seconds).unwrap_or_else(|| FixedOffset::east_opt(0).expect("UTC offset"))
+/// a calendar day as the wire stores it, the unix timestamp of 00:00 UTC on that day
+pub fn day_timestamp(day: NaiveDate) -> i64 {
+    day.and_hms_opt(0, 0, 0)
+        .expect("midnight")
+        .and_utc()
+        .timestamp()
 }
 
-pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<DateTime<Local>>, String> {
+/// the calendar day a wire day timestamp names
+pub fn day_of(timestamp: i64) -> Option<NaiveDate> {
+    DateTime::from_timestamp(timestamp, 0).map(|day| day.date_naive())
+}
+
+/// a YYYY-MM-DD flag as the calendar day it names
+///
+/// no time zone takes part: the day goes on the wire at UTC midnight through
+/// `day_timestamp`, and neither today's local offset nor the offset on that
+/// day can move it to the day before
+pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<NaiveDate>, String> {
     let Some(day) = day else {
         return Ok(None);
     };
-    let parsed = NaiveDate::parse_from_str(day, "%Y-%m-%d")
-        .map_err(|_| format!("Invalid {label} date: {day} (expected YYYY-MM-DD)"))?;
-    let fixed_local = fixed_local_offset();
-    let local_dt = parsed
-        .and_hms_opt(0, 0, 0)
-        .and_then(|d| fixed_local.from_local_datetime(&d).single())
-        .map(|d| d.with_timezone(&Local))
-        .ok_or_else(|| format!("Invalid {label} date: {day} (expected YYYY-MM-DD)"))?;
-    Ok(Some(local_dt))
+    NaiveDate::parse_from_str(day, "%Y-%m-%d")
+        .map(Some)
+        .map_err(|_| format!("Invalid {label} date: {day} (expected YYYY-MM-DD)"))
 }
 
-/// an RFC 3339 instant, or a YYYY-MM-DD day taken at UTC midnight, as a wire timestamp
+/// an RFC 3339 instant, or a YYYY-MM-DD day taken at local midnight, the instant that day began where the command runs, as a wire timestamp
+///
+/// an instant, unlike a day stamp, is shown under its local day, so a day
+/// given for one has to fall inside that local day
 pub fn parse_instant(text: &str, label: &str) -> Result<f64, String> {
     if let Ok(instant) = DateTime::parse_from_rfc3339(text) {
         return Ok(instant.timestamp_millis() as f64 / 1000.0);
     }
-    parse_day(Some(text), label)?
-        .map(|day| day_to_timestamp(day) as f64)
-        .ok_or_else(|| format!("Invalid {label}: {text} (expected RFC 3339 or YYYY-MM-DD)"))
+    let day = parse_day(Some(text), label)?
+        .ok_or_else(|| format!("Invalid {label}: {text} (expected RFC 3339 or YYYY-MM-DD)"))?;
+    Local
+        .from_local_datetime(&day.and_hms_opt(0, 0, 0).expect("midnight"))
+        .earliest()
+        .map(|instant| instant.timestamp() as f64)
+        .ok_or_else(|| format!("Invalid {label}: {text} has no midnight in the local time zone"))
 }
 
 pub fn parse_reminder(time: &str) -> Result<i64, String> {
     NaiveTime::parse_from_str(time, "%H:%M")
         .map(|t| i64::from(t.num_seconds_from_midnight()))
         .map_err(|_| format!("Invalid --reminder time: {time} (expected HH:MM)"))
-}
-
-pub fn day_to_timestamp(day: DateTime<Local>) -> i64 {
-    day.date_naive()
-        .and_hms_opt(0, 0, 0)
-        .expect("midnight")
-        .and_utc()
-        .timestamp()
 }
 
 pub fn task6_note(value: &str) -> TaskNotes {
@@ -281,9 +287,9 @@ fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> 
 
 #[cfg(test)]
 mod tests {
-    use chrono::{FixedOffset, TimeZone, Utc};
+    use chrono::{FixedOffset, Local, NaiveTime, TimeZone, Utc};
 
-    use super::local_date_as_utc_midnight;
+    use super::{day_of, day_timestamp, local_date_as_utc_midnight, parse_day, parse_instant};
 
     #[test]
     fn today_uses_the_local_date_after_utc_midnight() {
@@ -294,5 +300,33 @@ mod tests {
             local_date_as_utc_midnight(local_now),
             Utc.with_ymd_and_hms(2026, 8, 27, 0, 0, 0).unwrap()
         );
+    }
+
+    #[test]
+    fn a_day_flag_goes_on_the_wire_at_utc_midnight_in_winter_and_summer() {
+        // the values the app writes for these days, whatever offset the
+        // process runs under today and whatever offset holds on the day itself
+        let wire = |text: &str| parse_day(Some(text), "--when").map(|day| day.map(day_timestamp));
+        assert_eq!(wire("2027-01-15"), Ok(Some(1_799_971_200)));
+        assert_eq!(wire("2027-01-20"), Ok(Some(1_800_403_200)));
+        assert_eq!(wire("2027-07-15"), Ok(Some(1_815_609_600)));
+        assert_eq!(parse_day(None, "--when"), Ok(None));
+        assert!(parse_day(Some("2027-13-01"), "--when").is_err());
+    }
+
+    #[test]
+    fn a_day_given_for_an_instant_falls_inside_that_local_day() {
+        let instant = parse_instant("2027-07-15", "--completed-on").expect("instant");
+        let local = Local
+            .timestamp_opt(instant as i64, 0)
+            .single()
+            .expect("an instant");
+        assert_eq!(local.date_naive(), day_of(1_815_609_600).expect("day"));
+        assert_eq!(local.time(), NaiveTime::MIN);
+        assert_eq!(
+            parse_instant("2027-07-15T10:20:30Z", "--completed-on"),
+            Ok(1_815_646_830.0)
+        );
+        assert!(parse_instant("July", "--completed-on").is_err());
     }
 }

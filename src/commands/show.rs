@@ -6,7 +6,7 @@ use clap::Args;
 use crate::{
     app::Cli,
     commands::{Command, write_json},
-    common::{DIM, ICONS, colored, fmt_date},
+    common::{DIM, ICONS, colored, fmt_date, fmt_date_local},
     ui::views::json::common::build_tasks_json,
     wire::task::TaskStart,
 };
@@ -129,12 +129,16 @@ impl Command for ShowArgs {
                     .unwrap_or_else(|_| "a repeat".to_string())
             )?;
         }
-        let mut dates = vec![format!("created {}", fmt_date(task.creation_date))];
+        // instants show under their local day, the deadline above is a day stamp
+        let mut dates = vec![format!("created {}", fmt_date_local(task.creation_date))];
         if task.modification_date.is_some() {
-            dates.push(format!("modified {}", fmt_date(task.modification_date)));
+            dates.push(format!(
+                "modified {}",
+                fmt_date_local(task.modification_date)
+            ));
         }
         if task.stop_date.is_some() {
-            dates.push(format!("completed {}", fmt_date(task.stop_date)));
+            dates.push(format!("completed {}", fmt_date_local(task.stop_date)));
         }
         writeln!(out, "{} {}", field("Dates"), dates.join(", "))?;
         if let Some(notes) = task

@@ -12,11 +12,11 @@ use crate::{
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs},
     common::{
-        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_instant, parse_reminder,
-        resolve_tag_ids, task6_note,
+        DIM, GREEN, ICONS, colored, day_of, day_timestamp, parse_day, parse_instant,
+        parse_reminder, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
-    repeat::{Bound, RepeatSpec, TemplateSource, bound, day_of, template},
+    repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
     store::Task,
     wire::{
         checklist::{ChecklistItemPatch, ChecklistItemProps},
@@ -236,7 +236,7 @@ fn apply_schedule(
                 }
                 Err(e) => return Err(e),
             };
-            let day_ts = day_to_timestamp(when_day);
+            let day_ts = day_timestamp(when_day);
             update.start_location = Some(if day_ts <= today_ts {
                 TaskStart::Anytime
             } else {
@@ -255,7 +255,7 @@ fn apply_schedule(
             Ok(None) => return Err("--deadline requires YYYY-MM-DD".to_string()),
             Err(e) => return Err(e),
         };
-        update.deadline = Some(Some(day_to_timestamp(day) as f64));
+        update.deadline = Some(Some(day_timestamp(day) as f64));
         label(format!("deadline={deadline}"));
     }
     if args.clear_deadline {

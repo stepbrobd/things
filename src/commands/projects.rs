@@ -7,9 +7,7 @@ use iocraft::prelude::*;
 use crate::{
     app::Cli,
     commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
-    common::{
-        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, resolve_tag_ids, task6_note,
-    },
+    common::{DIM, GREEN, ICONS, colored, day_timestamp, parse_day, resolve_tag_ids, task6_note},
     ids::ThingsId,
     ui::{
         render_element_to_string,
@@ -351,7 +349,7 @@ impl Command for ProjectsArgs {
                                 return Ok(());
                             }
                         };
-                        let ts = day_to_timestamp(day);
+                        let ts = day_timestamp(day);
                         props.start_location = TaskStart::Someday;
                         props.scheduled_date = Some(ts);
                         props.today_index_reference = Some(ts);
@@ -376,7 +374,7 @@ impl Command for ProjectsArgs {
                             return Ok(());
                         }
                     };
-                    props.deadline = Some(day_to_timestamp(day) as i64);
+                    props.deadline = Some(day_timestamp(day));
                 }
 
                 let uuid = ctx.next_id();

@@ -9,11 +9,11 @@ use crate::{
     app::Cli,
     commands::Command,
     common::{
-        DIM, GREEN, ICONS, colored, day_to_timestamp, parse_day, parse_reminder, resolve_tag_ids,
-        task6_note,
+        DIM, GREEN, ICONS, colored, day_of, day_timestamp, parse_day, parse_reminder,
+        resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
-    repeat::{Bound, RepeatSpec, TemplateSource, bound, day_of, day_timestamp, template},
+    repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
     store::Task,
     wire::{
         task::{TaskProps, TaskStart, TaskStatus, TaskType},
@@ -310,7 +310,7 @@ fn build_new_plan(
                 }
                 Err(err) => return Err(err),
             };
-            let day_ts = day_to_timestamp(parsed);
+            let day_ts = day_timestamp(parsed);
             props.start_location = TaskStart::Someday;
             props.scheduled_date = Some(day_ts);
             props.today_index_reference = Some(day_ts);
@@ -368,7 +368,7 @@ fn build_new_plan(
             Ok(None) => return Err("--deadline requires YYYY-MM-DD".to_string()),
             Err(err) => return Err(err),
         };
-        props.deadline = Some(day_to_timestamp(parsed));
+        props.deadline = Some(day_timestamp(parsed));
     }
 
     let anchor_is_today = anchor
@@ -784,7 +784,7 @@ mod tests {
         )
         .expect("in project");
         let p = &serde_json::to_value(in_project.changes).expect("to value")[NEW_UUID]["p"];
-        let deadline_ts = day_to_timestamp(
+        let deadline_ts = day_timestamp(
             parse_day(Some("2032-05-06"), "--deadline")
                 .expect("parse")
                 .expect("day"),

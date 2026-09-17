@@ -6,7 +6,7 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use chrono::{DateTime, Days, FixedOffset, Local, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, Days, Local, NaiveDate, TimeZone, Utc};
 pub use entities::{
     Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateObject,
     StateProperties, Tag, TagStateProps, Task, TaskStateProps,
@@ -14,11 +14,12 @@ pub use entities::{
 pub use state::{RawState, fold_item, fold_items};
 
 use crate::{
+    common::day_timestamp,
     ids::{
         ThingsId,
         matching::{prefix_matches, shortest_unique_prefixes},
     },
-    repeat::{day_timestamp, next_occurrence_of_rule},
+    repeat::next_occurrence_of_rule,
     wire::{
         task::{TaskStart, TaskStatus, TaskType},
         wire_object::EntityType,
@@ -48,11 +49,6 @@ fn ts_to_dt(ts: Option<f64>) -> Option<DateTime<Utc>> {
         nanos = 0;
     }
     Utc.timestamp_opt(secs, nanos).single()
-}
-
-fn fixed_local_offset() -> FixedOffset {
-    let seconds = Local::now().offset().local_minus_utc();
-    FixedOffset::east_opt(seconds).unwrap_or_else(|| FixedOffset::east_opt(0).expect("UTC offset"))
 }
 
 impl ThingsStore {
@@ -430,11 +426,8 @@ impl ThingsStore {
         out
     }
 
-    pub fn logbook(
-        &self,
-        from_date: Option<DateTime<Local>>,
-        to_date: Option<DateTime<Local>>,
-    ) -> Vec<Task> {
+    /// completed and canceled items, filtered by the local calendar day of their completion instant
+    pub fn logbook(&self, from_date: Option<NaiveDate>, to_date: Option<NaiveDate>) -> Vec<Task> {
         let mut out: Vec<Task> = self
             .tasks_by_uuid
             .values()
@@ -452,23 +445,12 @@ impl ThingsStore {
                     return false;
                 };
 
-                let stop_day = stop_date
-                    .with_timezone(&fixed_local_offset())
-                    .date_naive()
-                    .and_hms_opt(0, 0, 0)
-                    .and_then(|d| fixed_local_offset().from_local_datetime(&d).single())
-                    .map(|d| d.with_timezone(&Local));
-
-                if let Some(from_day) = from_date
-                    && let Some(sd) = stop_day
-                    && sd < from_day
-                {
+                // the offset in force at that instant, not today's
+                let stop_day = stop_date.with_timezone(&Local).date_naive();
+                if from_date.is_some_and(|from_day| stop_day < from_day) {
                     return false;
                 }
-                if let Some(to_day) = to_date
-                    && let Some(sd) = stop_day
-                    && sd > to_day
-                {
+                if to_date.is_some_and(|to_day| stop_day > to_day) {
                     return false;
                 }
 
