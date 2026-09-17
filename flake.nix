@@ -24,7 +24,6 @@
             fileset = lib.fileset.unions [
               ./Cargo.toml
               ./Cargo.lock
-              ./rustfmt.toml
               (crane.fileset.commonCargoSources ./src)
               (crane.fileset.commonCargoSources ./tests)
               ./tests/cli
