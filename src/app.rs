@@ -53,6 +53,9 @@ pub struct Cli {
     /// For testing: override current UNIX timestamp
     #[arg(long, global = true, hide = true, value_name = "TIMESTAMP")]
     pub now_ts: Option<f64>,
+    /// For testing: derive new ids from a seed instead of random bytes
+    #[arg(long, global = true, hide = true, value_name = "SEED")]
+    pub id_seed: Option<u64>,
     /// For testing: load state from a JSON journal file instead of syncing.
     /// The file must contain a JSON array of WireItem objects (each is a
     /// map of uuid -> WireObject).

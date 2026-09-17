@@ -22,6 +22,10 @@ impl ThingsId {
         ThingsId(uuid_to_bytes(&uuid))
     }
 
+    pub fn from_u128(value: u128) -> Self {
+        ThingsId(uuid_to_bytes(&Uuid::from_u128(value)))
+    }
+
     pub fn as_bytes(&self) -> &[u8; 16] {
         &self.0
     }

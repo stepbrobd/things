@@ -37,6 +37,8 @@ pub struct DefaultCmdCtx {
     no_cloud: bool,
     today_ts_override: Option<i64>,
     now_ts_override: Option<f64>,
+    id_seed: Option<u64>,
+    ids_issued: u64,
     writer: Option<Box<dyn CloudWriter>>,
 }
 
@@ -46,6 +48,8 @@ impl DefaultCmdCtx {
             no_cloud: cli.no_cloud,
             today_ts_override: cli.today_ts,
             now_ts_override: cli.now_ts,
+            id_seed: cli.id_seed,
+            ids_issued: 0,
             writer: None,
         }
     }
@@ -75,7 +79,11 @@ impl CmdCtx for DefaultCmdCtx {
     }
 
     fn next_id(&mut self) -> String {
-        ThingsId::random().to_string()
+        let Some(seed) = self.id_seed else {
+            return ThingsId::random().to_string();
+        };
+        self.ids_issued += 1;
+        ThingsId::from_u128((u128::from(seed) << 64) | u128::from(self.ids_issued)).to_string()
     }
 
     fn commit_changes(
