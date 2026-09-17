@@ -44,6 +44,8 @@ things find --query "rent" --deadline "<=2026-03-31"
 things new "Follow up with team" --when today
 things schedule <task-id> --deadline 2026-04-10
 things schedule <task-id> --when 2026-04-10 --reminder 09:00
+things new "Water plants" --when today --repeat daily --reminder 09:00
+things new "Pay rent" --when 2026-10-01 --repeat monthly:1 --times 12
 things mark <task-id> --done
 ```
 
@@ -57,8 +59,15 @@ operations on `edit` and `mark`. Projects, areas and tags have `new` and `edit`
 subcommands.
 
 Reminders are set with `--reminder HH:MM` on `new` and `schedule`, cleared with
-`--clear-reminder`, and shown as `@HH:MM` on task lines. Not yet supported:
-repeat rules, which the sync reads but does not write.
+`--clear-reminder`, and shown as `@HH:MM` on task lines.
+
+Repeat rules are set with `--repeat` on `new` and `schedule`: `daily`, `weekly`,
+`weekly:mon,thu`, `monthly:15`, `monthly:last`, `yearly:12-31` or `after:2w` for
+after completion, with `/N` for every N units as in `weekly/2:sat`. `--times N`
+or `--until YYYY-MM-DD` bound the rule. The to-do needs a when date, which moves
+to the first matching day, and becomes the first instance of a hidden template
+exactly as the app writes it, so the Apple clients create the following
+instances on their days.
 
 ## Development
 
