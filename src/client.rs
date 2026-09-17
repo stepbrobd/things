@@ -21,7 +21,7 @@ const SCHEMA: &str = "301";
 const WRITE_PUSH_PRIORITY: &str = "10";
 
 fn app_instance_id() -> String {
-    std::env::var("THINGS_APP_INSTANCE_ID").unwrap_or_else(|_| "things3-cloud".to_string())
+    "things".to_string()
 }
 
 fn now_ts() -> f64 {
