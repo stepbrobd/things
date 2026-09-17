@@ -167,6 +167,16 @@ struct EditPlan {
     labels: Vec<String>,
 }
 
+/// the transition to an undated to-do, which clears the day, the place in Today, the evening flag and the reminder, whether a move to the Inbox or a when of anytime or someday brought it about
+fn unschedule(update: &mut TaskPatch, task: &Task) {
+    update.scheduled_date = Some(None);
+    update.today_index_reference = Some(None);
+    update.evening_bit = Some(0);
+    if task.alarm_time_offset.is_some() {
+        update.alarm_time_offset = Some(None);
+    }
+}
+
 /// when, deadline, reminder and repeat, the fields the app's popovers edit
 #[allow(clippy::too_many_arguments)]
 fn apply_schedule(
@@ -212,12 +222,7 @@ fn apply_schedule(
             } else {
                 TaskStart::Someday
             });
-            update.scheduled_date = Some(None);
-            update.today_index_reference = Some(None);
-            update.evening_bit = Some(0);
-            if task.alarm_time_offset.is_some() {
-                update.alarm_time_offset = Some(None);
-            }
+            unschedule(update, task);
             label(format!("when={when_l}"));
         } else if when_l == "today" || when_l == "evening" {
             update.start_location = Some(TaskStart::Anytime);
@@ -445,13 +450,16 @@ fn build_edit_plan(
 
     if !move_raw.trim().is_empty() {
         if move_l == "inbox" {
+            if args.when.is_some() || args.reminder.is_some() || args.repeat.is_some() {
+                return Err(
+                    "--move inbox cannot be combined with --when, --reminder or --repeat, an Inbox to-do has no day."
+                        .to_string(),
+                );
+            }
             shared_update.parent_project_ids = Some(vec![]);
             shared_update.area_ids = Some(vec![]);
             shared_update.action_group_ids = Some(vec![]);
             shared_update.start_location = Some(TaskStart::Inbox);
-            shared_update.scheduled_date = Some(None);
-            shared_update.today_index_reference = Some(None);
-            shared_update.evening_bit = Some(0);
             labels.push("move=inbox".to_string());
         } else if move_l == "clear" {
             labels.push("move=clear".to_string());
@@ -591,6 +599,9 @@ fn build_edit_plan(
             if task.start == TaskStart::Inbox {
                 update.start_location = Some(TaskStart::Anytime);
             }
+        }
+        if move_l == "inbox" {
+            unschedule(&mut update, task);
         }
 
         if let Some(move_from_inbox_st) = move_from_inbox_st
@@ -1026,6 +1037,70 @@ mod tests {
         let p = assert_task_update(&project_move, TASK_UUID);
         assert_eq!(p.get("pr"), Some(&json!([PROJECT_UUID])));
         assert_eq!(p.get("st"), Some(&json!(1)));
+    }
+
+    #[test]
+    fn moving_to_the_inbox_clears_the_day_and_the_reminder() {
+        let scheduled = (
+            TASK_UUID.to_string(),
+            WireObject::create(
+                EntityType::Task7,
+                TaskProps {
+                    title: "Dated".to_string(),
+                    start_location: TaskStart::Anytime,
+                    scheduled_date: Some(TODAY),
+                    today_index_reference: Some(TODAY),
+                    evening_bit: 1,
+                    alarm_time_offset: Some(32400),
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
+            ),
+        );
+        let store = build_store(vec![scheduled]);
+        let args = |move_target: Option<&str>, when: Option<&str>| EditArgs {
+            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            title: None,
+            notes: None,
+            move_target: move_target.map(str::to_string),
+            tag_delta: TagDeltaArgs {
+                add_tags: None,
+                remove_tags: None,
+            },
+            add_checklist: vec![],
+            remove_checklist: None,
+            rename_checklist: vec![],
+            completed_on: None,
+            created_on: None,
+            when: when.map(str::to_string),
+            deadline_date: None,
+            clear_deadline: false,
+            reminder: None,
+            clear_reminder: false,
+            repeat: None,
+            times: None,
+            until: None,
+        };
+        let mut id_gen = || "X".to_string();
+        for (move_target, when) in [(Some("inbox"), None), (None, Some("someday"))] {
+            let plan = build_edit_plan(&args(move_target, when), &store, NOW, TODAY, &mut id_gen)
+                .expect("plan");
+            let p = assert_task_update(&plan, TASK_UUID);
+            assert_eq!(p.get("sr"), Some(&json!(null)));
+            assert_eq!(p.get("tir"), Some(&json!(null)));
+            assert_eq!(p.get("sb"), Some(&json!(0)));
+            assert_eq!(p.get("ato"), Some(&json!(null)));
+        }
+        let err = build_edit_plan(
+            &args(Some("inbox"), Some("today")),
+            &store,
+            NOW,
+            TODAY,
+            &mut id_gen,
+        )
+        .expect_err("inbox and a day");
+        assert!(err.starts_with("--move inbox cannot be combined"));
     }
 
     #[test]
