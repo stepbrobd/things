@@ -44,20 +44,60 @@ impl MatchResult {
     }
 }
 
-fn matches_project_filter(
-    filter: &IdentifierToken,
-    project_uuid: &str,
-    project_title_lower: &str,
-) -> bool {
-    let token = filter.as_str();
-    let lowered = token.to_ascii_lowercase();
-    project_uuid.starts_with(token) || project_title_lower.contains(&lowered)
+/// a container filter as typed and lowercased once, matching an id prefix or a title substring
+struct ContainerFilter {
+    token: String,
+    lowered: String,
 }
 
-fn matches_area_filter(filter: &IdentifierToken, area_uuid: &str, area_title_lower: &str) -> bool {
-    let token = filter.as_str();
-    let lowered = token.to_ascii_lowercase();
-    area_uuid.starts_with(token) || area_title_lower.contains(&lowered)
+impl ContainerFilter {
+    fn new(filter: &IdentifierToken) -> Self {
+        Self {
+            token: filter.as_str().to_string(),
+            lowered: filter.as_str().to_ascii_lowercase(),
+        }
+    }
+
+    fn matches(&self, uuid: &str, title_lower: &str) -> bool {
+        uuid.starts_with(&self.token) || title_lower.contains(&self.lowered)
+    }
+}
+
+/// what the filters need, computed once for the whole search rather than per task
+struct Prepared {
+    query: Option<String>,
+    statuses: Option<Vec<TaskStatus>>,
+    project_filters: Vec<ContainerFilter>,
+    area_filters: Vec<ContainerFilter>,
+    deadline: Vec<(&'static str, DateTime<Utc>)>,
+    scheduled: Vec<(&'static str, DateTime<Utc>)>,
+    created: Vec<(&'static str, DateTime<Utc>)>,
+    completed_on: Vec<(&'static str, DateTime<Utc>)>,
+}
+
+impl Prepared {
+    fn new(args: &FindArgs, today: &DateTime<Utc>) -> Result<Self, String> {
+        let dates = |flag: &str, exprs: &[String]| {
+            exprs
+                .iter()
+                .map(|expr| parse_date_expr(expr, flag, today))
+                .collect::<Result<Vec<_>, _>>()
+        };
+        Ok(Self {
+            query: args.query.as_ref().map(|query| query.to_ascii_lowercase()),
+            statuses: build_status_set(args),
+            project_filters: args
+                .project_filters
+                .iter()
+                .map(ContainerFilter::new)
+                .collect(),
+            area_filters: args.area_filters.iter().map(ContainerFilter::new).collect(),
+            deadline: dates("--deadline", &args.deadline)?,
+            scheduled: dates("--scheduled", &args.scheduled)?,
+            created: dates("--created", &args.created)?,
+            completed_on: dates("--completed-on", &args.completed_on)?,
+        })
+    }
 }
 
 #[derive(Debug, Default, Args)]
@@ -166,19 +206,7 @@ impl Command for FindArgs {
     ) -> Result<()> {
         let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
-
-        for (flag, exprs) in [
-            ("--deadline", &self.deadline),
-            ("--scheduled", &self.scheduled),
-            ("--created", &self.created),
-            ("--completed-on", &self.completed_on),
-        ] {
-            for expr in exprs {
-                if let Err(err) = parse_date_expr(expr, flag, &today) {
-                    bail!("{err}");
-                }
-            }
-        }
+        let prepared = Prepared::new(self, &today).map_err(anyhow::Error::msg)?;
 
         let mut resolved_tag_uuids = Vec::new();
         for tag_filter in &self.tag_filters {
@@ -195,7 +223,7 @@ impl Command for FindArgs {
             .tasks_by_uuid
             .values()
             .filter_map(|task| {
-                let result = matches(task, &store, self, &resolved_tag_uuids, &today);
+                let result = matches(task, &store, self, &resolved_tag_uuids, &prepared, &today);
                 if result.matched {
                     Some((task.clone(), result))
                 } else {
@@ -352,33 +380,33 @@ fn matches(
     store: &ThingsStore,
     args: &FindArgs,
     resolved_tag_uuids: &[ThingsId],
+    prepared: &Prepared,
     today: &DateTime<Utc>,
 ) -> MatchResult {
     if task.is_heading() || task.trashed {
         return MatchResult::no();
     }
 
-    if let Some(allowed_statuses) = build_status_set(args)
+    if let Some(allowed_statuses) = &prepared.statuses
         && !allowed_statuses.contains(&task.status)
     {
         return MatchResult::no();
     }
 
     let mut checklist_only = false;
-    if let Some(query) = &args.query {
-        let q = query.to_ascii_lowercase();
-        let title_match = task.title.to_ascii_lowercase().contains(&q);
+    if let Some(q) = &prepared.query {
+        let title_match = task.title.to_ascii_lowercase().contains(q);
         let notes_match = args.notes
             && task
                 .notes
                 .as_ref()
-                .map(|n| n.to_ascii_lowercase().contains(&q))
+                .map(|n| n.to_ascii_lowercase().contains(q))
                 .unwrap_or(false);
         let checklist_match = args.checklists
             && task
                 .checklist_items
                 .iter()
-                .any(|item| item.title.to_ascii_lowercase().contains(&q));
+                .any(|item| item.title.to_ascii_lowercase().contains(q));
 
         if !title_match && !notes_match && !checklist_match {
             return MatchResult::no();
@@ -403,10 +431,11 @@ fn matches(
         };
 
         let project_title = project.title.to_ascii_lowercase();
-        let matched = args
+        let project_uuid = project_uuid.to_string();
+        let matched = prepared
             .project_filters
             .iter()
-            .any(|f| matches_project_filter(f, &project_uuid.to_string(), &project_title));
+            .any(|filter| filter.matches(&project_uuid, &project_title));
         if !matched {
             return MatchResult::no();
         }
@@ -421,10 +450,11 @@ fn matches(
         };
 
         let area_title = area.title.to_ascii_lowercase();
-        let matched = args
+        let area_uuid = area_uuid.to_string();
+        let matched = prepared
             .area_filters
             .iter()
-            .any(|f| matches_area_filter(f, &area_uuid.to_string(), &area_title));
+            .any(|filter| filter.matches(&area_uuid, &area_title));
         if !matched {
             return MatchResult::no();
         }
@@ -452,36 +482,17 @@ fn matches(
         return MatchResult::no();
     }
 
-    for expr in &args.deadline {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--deadline", today) else {
-            return MatchResult::no();
-        };
-        if !date_matches(task.deadline, op, threshold) {
-            return MatchResult::no();
-        }
-    }
-    for expr in &args.scheduled {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--scheduled", today) else {
-            return MatchResult::no();
-        };
-        if !date_matches(task.start_date, op, threshold) {
-            return MatchResult::no();
-        }
-    }
-    for expr in &args.created {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--created", today) else {
-            return MatchResult::no();
-        };
-        if !date_matches(task.creation_date, op, threshold) {
-            return MatchResult::no();
-        }
-    }
-    for expr in &args.completed_on {
-        let Ok((op, threshold)) = parse_date_expr(expr, "--completed-on", today) else {
-            return MatchResult::no();
-        };
-        if !date_matches(task.stop_date, op, threshold) {
-            return MatchResult::no();
+    let date_filters = [
+        (task.deadline, &prepared.deadline),
+        (task.start_date, &prepared.scheduled),
+        (task.creation_date, &prepared.created),
+        (task.stop_date, &prepared.completed_on),
+    ];
+    for (field, filters) in date_filters {
+        for (op, threshold) in filters {
+            if !date_matches(field, op, *threshold) {
+                return MatchResult::no();
+            }
         }
     }
 
