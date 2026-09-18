@@ -639,9 +639,8 @@ pub fn template(
     first: NaiveDate,
     source: TemplateSource,
     now: f64,
-) -> TaskProps {
-    // parsed days have four digit years, the day after one is representable
-    let day_after_first = first.succ_opt().expect("the day after a parsed day");
+) -> Option<TaskProps> {
+    let day_after_first = first.succ_opt()?;
     let next = match &spec.cadence {
         Cadence::AfterCompletion(_) => Some(day_after_first),
         _ => next_occurrence_of_rule(&rule, first, 1),
@@ -652,7 +651,7 @@ pub fn template(
         }
         _ => None,
     };
-    TaskProps {
+    Some(TaskProps {
         title: source.title,
         notes: source.notes,
         start_location: TaskStart::Someday,
@@ -674,7 +673,7 @@ pub fn template(
         creation_date: Some(now),
         modification_date: Some(now),
         ..Default::default()
-    }
+    })
 }
 
 #[cfg(test)]
@@ -1238,7 +1237,8 @@ mod tests {
                 today,
                 source(),
                 1.0,
-            );
+            )
+            .expect("template");
             assert_eq!(
                 made.instance_creation_start_date,
                 Some(day_timestamp(day("2026-09-18")))
@@ -1251,7 +1251,8 @@ mod tests {
             today,
             source(),
             1.0,
-        );
+        )
+        .expect("template");
         assert_eq!(
             made.today_index_reference,
             Some(day_timestamp(day("2026-09-18")))
@@ -1281,7 +1282,8 @@ mod tests {
             today,
             source(),
             1.0,
-        );
+        )
+        .expect("template");
         assert_eq!(
             made.instance_creation_start_date,
             Some(day_timestamp(day("2026-09-21")))
@@ -1302,7 +1304,8 @@ mod tests {
             first,
             source(),
             1.0,
-        );
+        )
+        .expect("template");
         assert_eq!(
             made.after_completion_reference_date,
             Some(day_timestamp(day("2027-12-17")))

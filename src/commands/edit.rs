@@ -380,9 +380,11 @@ fn apply_schedule(
         let template_uuid = next_id();
         let template_id = ThingsId::from_str(&template_uuid).map_err(|e| e.to_string())?;
         update.recurrence_template_ids = Some(vec![template_id.clone()]);
+        let template = template(&spec, rule, first, source, now)
+            .ok_or_else(|| format!("The day after {first} cannot be represented"))?;
         changes.insert(
             template_uuid,
-            WireObject::create(EntityType::Task7, template(&spec, rule, first, source, now)),
+            WireObject::create(EntityType::Task7, template),
         );
         changes.extend(checklist_items(checklist, &template_id, now, next_id));
     } else if args.times.is_some() || args.until.is_some() {

@@ -493,7 +493,9 @@ fn build_new_plan(
             conflict_overrides: props.conflict_overrides.clone(),
             checklist: Vec::new(),
         };
-        template_change = Some((template_uuid, template(&spec, rule, first, source, now)));
+        let template = template(&spec, rule, first, source, now)
+            .ok_or_else(|| format!("The day after {first} cannot be represented"))?;
+        template_change = Some((template_uuid, template));
     }
 
     let mut changes = BTreeMap::new();
