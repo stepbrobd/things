@@ -1141,18 +1141,22 @@ mod tests {
 
     #[test]
     fn a_repeat_added_by_an_edit_mirrors_the_edited_to_do() {
+        const TAG: &str = "Bt11111111111111111111";
+        const AREA: &str = "Ba11111111111111111111";
         let store = build_store(vec![
             task(TASK_UUID, "Old title"),
             checklist(CHECK_A, TASK_UUID, "Step one", 1),
             checklist(CHECK_B, TASK_UUID, "Step two", 2),
+            tag(TAG, "Work"),
+            area(AREA, "Home"),
         ]);
         let args = EditArgs {
             task_ids: vec![IdentifierToken::from(TASK_UUID)],
             title: Some("New title".to_string()),
             notes: Some("New notes".to_string()),
-            move_target: None,
+            move_target: Some(AREA.to_string()),
             tag_delta: TagDeltaArgs {
-                add_tags: None,
+                add_tags: Some("Work".to_string()),
                 remove_tags: None,
             },
             add_checklist: vec!["Step three".to_string()],
@@ -1163,7 +1167,7 @@ mod tests {
             when: Some("today".to_string()),
             deadline_date: None,
             clear_deadline: false,
-            reminder: None,
+            reminder: Some("09:30".to_string()),
             clear_reminder: false,
             repeat: Some("daily".to_string()),
             times: None,
@@ -1179,6 +1183,18 @@ mod tests {
         assert_eq!(template.get("tt"), Some(&json!("New title")));
         assert_eq!(template["nt"]["v"], json!("New notes"));
         assert!(template.get("rr").is_some_and(|rule| !rule.is_null()));
+        // the tags, the container and the reminder are the edited to-do's
+        let edited = plan
+            .changes
+            .get(TASK_UUID)
+            .expect("the to-do")
+            .properties_map();
+        assert_eq!(template.get("tg"), Some(&json!([TAG])));
+        assert_eq!(template.get("ar"), Some(&json!([AREA])));
+        assert!(template.get("ato").is_some_and(|offset| !offset.is_null()));
+        for key in ["tg", "ar", "ato"] {
+            assert_eq!(template.get(key), edited.get(key), "{key}");
+        }
         let copies = [3, 4]
             .iter()
             .map(|n| plan.changes.get(&id(*n)).expect("copy").properties_map())
