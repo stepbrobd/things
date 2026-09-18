@@ -41,18 +41,30 @@ prefixes. Run `things <command> --help` for filters, checklist edits, reminders,
 and ordering options.
 
 Repeats support `daily`, `weekly:mon,wed,fri`, `monthly:15`, and `yearly`, with
-intervals and bounds described in `things new --help`. `edit --repeat` can add a
-rule to a non-repeating task but cannot change an existing rule.
-After-completion rules such as `after:2w` can be created, but completing them
-requires an Apple client.
+intervals and bounds described in `things new --help`. `edit --repeat` adds a
+rule to a non-repeating task and leaves an existing rule alone. A checklist is
+copied onto the rule and onto every instance. A to-do with a deadline cannot be
+given a rule yet, because the app stores a repeat's deadline as an offset the
+CLI has not observed, and a rule with a deadline made by an Apple client is left
+to those clients. After-completion rules such as `after:2w` can be created, and
+completing them requires an Apple client. Rules in shapes the CLI has not seen
+the app write are shown and never evaluated.
+
+A command that fails exits with status 1 without writing its own changes. A
+batch of ids is checked whole before anything is written. Due repeat instances
+are created before the command runs, and a failure there is reported while the
+command still runs.
 
 ## Sync and configuration
 
 Loading data syncs first. Even view commands can create due fixed-schedule
 repeat instances. There is no background scheduler. If sync fails, commands warn
-and use cached data, with writes refused.
+and use cached data, with writes refused. An object whose history did not replay
+completely is reported and never written, `THINGS_LOG=warn` names it.
 
 The sync cache lives under `$XDG_STATE_HOME/things`, defaulting to
-`~/.local/state/things` on every platform. `THINGS_LOG` controls logging, and
+`~/.local/state/things` on every platform. It is bound to the account it was
+fetched for, so changing credentials fetches that account's history from the
+start, and concurrent runs take turns on it. `THINGS_LOG` controls logging, and
 `THINGS_LOG_FORMAT` selects `pretty`, `simplified`, or `json`. `NO_COLOR`
 disables color.
