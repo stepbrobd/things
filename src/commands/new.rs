@@ -279,7 +279,12 @@ fn build_new_plan(
                 Err(err) => return Err(err),
             };
             let day_ts = day_timestamp(parsed);
-            props.start_location = TaskStart::Someday;
+            // a day that has come starts in anytime, as the app files a to-do dated today
+            props.start_location = if day_ts <= today_ts {
+                TaskStart::Anytime
+            } else {
+                TaskStart::Someday
+            };
             props.scheduled_date = Some(day_ts);
             props.today_index_reference = Some(day_ts);
         }
@@ -828,6 +833,46 @@ mod tests {
         let rb = serde_json::to_value(rebalance.changes).expect("to value");
         assert_eq!(rb[NEW_UUID]["p"]["ix"], json!(2048));
         assert_eq!(rb[INBOX_OTHER_UUID]["p"], json!({"ix":3072,"md":NOW}));
+    }
+
+    #[test]
+    fn a_dated_to_do_starts_in_anytime_once_its_day_has_come() {
+        let mut id_gen = || NEW_UUID.to_string();
+        let args = |when: &str| NewArgs {
+            title: "Dated".to_string(),
+            in_target: "inbox".to_string(),
+            when: Some(when.to_string()),
+            before_id: None,
+            after_id: None,
+            notes: String::new(),
+            tags: None,
+            deadline_date: None,
+            reminder: None,
+            repeat: None,
+            times: None,
+            until: None,
+        };
+        // TODAY is 2023-11-14
+        let today = build_new_plan(
+            &args("2023-11-14"),
+            &build_store(vec![]),
+            NOW,
+            TODAY,
+            &mut id_gen,
+        )
+        .expect("today");
+        let p = &serde_json::to_value(today.changes).expect("to value")[NEW_UUID]["p"];
+        assert_eq!(p["st"], json!(1));
+        let later = build_new_plan(
+            &args("2023-11-20"),
+            &build_store(vec![]),
+            NOW,
+            TODAY,
+            &mut id_gen,
+        )
+        .expect("later");
+        let p = &serde_json::to_value(later.changes).expect("to value")[NEW_UUID]["p"];
+        assert_eq!(p["st"], json!(2));
     }
 
     #[test]
