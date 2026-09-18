@@ -161,11 +161,13 @@ pub fn run() -> Result<()> {
         .take()
         .unwrap_or(Commands::Today(Default::default()));
     let mut ctx = DefaultCmdCtx::from_cli(&cli);
-    if !matches!(command, Commands::Auth(_) | Commands::Completions(_))
-        && let Err(err) = materialize_due(&cli, &mut ctx)
-    {
-        // the pass stands in for the Apple clients, its failure is reported and the command still runs
-        eprintln!("{err:#}");
+    if !matches!(command, Commands::Auth(_) | Commands::Completions(_)) {
+        // a state that does not load fails the run here, once, before the pass and the command ask for it
+        cli.ensure_state()?;
+        if let Err(err) = materialize_due(&cli, &mut ctx) {
+            // the pass stands in for the Apple clients, its failure is reported and the command still runs
+            eprintln!("{err:#}");
+        }
     }
     command.run_with_ctx(&cli, &mut std::io::stdout(), &mut ctx)
 }
