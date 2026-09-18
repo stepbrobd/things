@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Result, bail};
-use chrono::{DateTime, Duration, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, Duration, Local, NaiveDate, TimeZone, Utc};
 use clap::{ArgGroup, Args};
 use iocraft::prelude::*;
 
@@ -322,23 +322,23 @@ fn parse_date_expr(
     Ok((op, date))
 }
 
-fn date_matches(field: Option<DateTime<Utc>>, op: &str, threshold: DateTime<Utc>) -> bool {
+/// compare a field to a day: a day stamp by the day it names, an instant by its local day, as the logbook files it
+fn date_matches(
+    field: Option<DateTime<Utc>>,
+    instant: bool,
+    op: &str,
+    threshold: DateTime<Utc>,
+) -> bool {
     let Some(field) = field else {
         return false;
     };
 
-    let field_day = field
-        .with_timezone(&Utc)
-        .date_naive()
-        .and_hms_opt(0, 0, 0)
-        .map(|d| Utc.from_utc_datetime(&d));
-    let threshold_day = threshold
-        .date_naive()
-        .and_hms_opt(0, 0, 0)
-        .map(|d| Utc.from_utc_datetime(&d));
-    let (Some(field_day), Some(threshold_day)) = (field_day, threshold_day) else {
-        return false;
+    let field_day = if instant {
+        field.with_timezone(&Local).date_naive()
+    } else {
+        field.date_naive()
     };
+    let threshold_day = threshold.date_naive();
 
     match op {
         ">" => field_day > threshold_day,
@@ -482,15 +482,16 @@ fn matches(
         return MatchResult::no();
     }
 
+    // deadline and scheduled day are day stamps, creation and completion are instants
     let date_filters = [
-        (task.deadline, &prepared.deadline),
-        (task.start_date, &prepared.scheduled),
-        (task.creation_date, &prepared.created),
-        (task.stop_date, &prepared.completed_on),
+        (task.deadline, false, &prepared.deadline),
+        (task.start_date, false, &prepared.scheduled),
+        (task.creation_date, true, &prepared.created),
+        (task.stop_date, true, &prepared.completed_on),
     ];
-    for (field, filters) in date_filters {
+    for (field, instant, filters) in date_filters {
         for (op, threshold) in filters {
-            if !date_matches(field, op, *threshold) {
+            if !date_matches(field, instant, op, *threshold) {
                 return MatchResult::no();
             }
         }
@@ -501,4 +502,29 @@ fn matches(
     }
 
     MatchResult::yes(checklist_only)
+}
+
+#[cfg(test)]
+mod tests {
+    use chrono::{Local, NaiveDate, TimeZone, Utc};
+
+    use super::date_matches;
+
+    #[test]
+    fn an_instant_matches_the_day_it_falls_in_locally_and_a_day_stamp_its_own_day() {
+        let day = NaiveDate::from_ymd_opt(2026, 3, 25).expect("day");
+        let threshold = Utc.from_utc_datetime(&day.and_hms_opt(0, 0, 0).expect("midnight"));
+        // the first instant of that local day, whatever the zone
+        let instant = Local
+            .from_local_datetime(&day.and_hms_opt(0, 0, 0).expect("midnight"))
+            .earliest()
+            .expect("midnight")
+            .with_timezone(&Utc);
+        assert!(date_matches(Some(instant), true, "=", threshold));
+        assert!(date_matches(Some(instant), true, ">=", threshold));
+        assert!(!date_matches(Some(instant), true, "<", threshold));
+        // a day stamp is utc midnight of its day
+        assert!(date_matches(Some(threshold), false, "=", threshold));
+        assert!(!date_matches(None, false, "=", threshold));
+    }
 }
