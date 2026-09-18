@@ -512,6 +512,13 @@ pub fn due_instances(
             if due > today {
                 return None;
             }
+            // the app keeps tir on the day of the instance it will create next, a template whose tir names another day is read differently by the app and left to it
+            if let Some(shown) = template.today_index_reference.and_then(day_of)
+                && shown != due
+            {
+                warn!(target: "things::replay", uuid = %template.uuid, %shown, %due, "tir is not the day the rule yields, the template is left alone");
+                return None;
+            }
             let Some(created) = template.instance_creation_count.checked_add(1) else {
                 warn!(target: "things::replay", uuid = %template.uuid, "the instance count cannot advance, the template is left alone");
                 return None;
@@ -731,6 +738,26 @@ mod tests {
         )
     }
 
+    /// a template as the app leaves it, `tir` on the day of the next instance
+    fn template_shown_on(rule_json: &str, search_from: &str, shown: &str) -> (String, WireObject) {
+        (
+            TEMPLATE.to_string(),
+            WireObject::create(
+                EntityType::Task7,
+                TaskProps {
+                    title: "Renew".to_string(),
+                    start_location: TaskStart::Someday,
+                    recurrence_rule: Some(rule(rule_json)),
+                    instance_creation_start_date: Some(day_timestamp(day(search_from))),
+                    today_index_reference: Some(day_timestamp(day(shown))),
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
+            ),
+        )
+    }
+
     fn instance_object(uuid: &str, on: &str) -> (String, WireObject) {
         (
             uuid.to_string(),
@@ -762,6 +789,22 @@ mod tests {
         let mut ids = (1..).map(id);
         let mut next_id = || ids.next().expect("id");
         due_instances(store, day(today), 2.0, &mut next_id)
+    }
+
+    #[test]
+    fn a_tir_on_another_day_than_the_rule_yields_leaves_the_template_alone() {
+        let agreeing = store_of(vec![template_shown_on(
+            DAILY_UNTIL_MAR_25,
+            "2026-03-20",
+            "2026-03-20",
+        )]);
+        assert_eq!(due_on(&agreeing, "2026-03-25").len(), 1);
+        let disagreeing = store_of(vec![template_shown_on(
+            DAILY_UNTIL_MAR_25,
+            "2026-03-20",
+            "2026-03-22",
+        )]);
+        assert!(due_on(&disagreeing, "2026-03-25").is_empty());
     }
 
     #[test]
