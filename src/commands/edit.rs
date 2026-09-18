@@ -74,13 +74,13 @@ pub struct EditArgs {
     #[arg(
         long = "completed-on",
         value_name = "DATETIME",
-        help = "Set when a completed task was completed (single task only, RFC 3339 or YYYY-MM-DD)"
+        help = "Set when a completed task was completed (single task only, RFC 3339 or YYYY-MM-DD at local midnight)"
     )]
     pub completed_on: Option<String>,
     #[arg(
         long = "created-on",
         value_name = "DATETIME",
-        help = "Set when the task was created (single task only, RFC 3339 or YYYY-MM-DD)"
+        help = "Set when the task was created (single task only, RFC 3339 or YYYY-MM-DD at local midnight)"
     )]
     pub created_on: Option<String>,
     #[arg(

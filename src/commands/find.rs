@@ -192,7 +192,7 @@ pub struct FindArgs {
         long = "completed-on",
         short = 'o',
         value_name = "EXPR",
-        help = "Completion date filter; implies --completed (repeatable)"
+        help = "Completion date filter, implies --completed (repeatable)"
     )]
     pub completed_on: Vec<String>,
 }

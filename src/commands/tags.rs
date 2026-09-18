@@ -160,7 +160,7 @@ impl Command for TagsArgs {
                 let mut top_level = Vec::new();
 
                 for tag in tags {
-                    // a tag whose parent chain comes back to itself shows at the top level, where the cycle is visible, rather than nowhere
+                    // a tag whose parent chain comes back to itself shows at the top level rather than nowhere
                     let attached = tag.parent_uuid.as_ref().filter(|parent| {
                         by_uuid.contains_key(*parent)
                             && !store.tag_ancestors(parent).contains(&tag.uuid)
