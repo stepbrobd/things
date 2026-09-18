@@ -40,7 +40,7 @@ impl CloudWriter for LoggingCloudWriter {
                 "ancestor_index": ancestor_index.unwrap_or(self.inner.head_index()),
                 "changes": &changes,
             }))
-            .unwrap_or_else(|_| "{}".to_string())
+            .unwrap_or_else(|error| json!({ "error": error.to_string() }).to_string())
         } else {
             String::new()
         };
