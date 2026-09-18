@@ -3,8 +3,10 @@
 //! two agree on, and the state folded from the journal so far
 //!
 //! every reader and writer holds the directory's lock, the journal is synced
-//! to disk before the cursor claims its bytes, and a journal the cursor cannot
-//! vouch for is repaired or fetched again rather than folded as it is
+//! to disk before the cursor claims its bytes, and a sync repairs or fetches
+//! again a journal the cursor cannot vouch for before appending to it. the
+//! offline fold, `--no-cloud` or a sync that failed, shows the journal as it
+//! lies, repaired or not
 
 use std::{
     collections::HashSet,
@@ -18,7 +20,7 @@ use anyhow::{Context, Result, anyhow};
 use crc32fast::Hasher;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::warn;
+use tracing::{debug, warn};
 
 use crate::{
     client::{ThingsCloudClient, now_timestamp},
@@ -56,7 +58,7 @@ impl CursorData {
     }
 }
 
-/// the state folded from the first `log_offset` bytes of the journal, whose crc32 is `checksum`, with the hash of every line folded so a line the journal repeats is folded once
+/// the state folded from the first `log_offset` bytes of the journal, whose crc32 is `checksum`, with the hash of every line folded, which makes a line the journal repeats fold once
 #[derive(Debug, Clone, Deserialize, Default)]
 struct StateCacheData {
     #[serde(default)]
@@ -105,11 +107,23 @@ fn lock_cache(cache_dir: &Path) -> Result<CacheLock> {
     Ok(CacheLock { _file: file })
 }
 
+/// the stored cursor, a blank one when the file is missing, and a blank one with a warning when the file cannot be read or parsed, which the history binding then treats as nobody's
 fn read_cursor(cache_dir: &Path) -> CursorData {
-    fs::read_to_string(cache_dir.join(CURSOR_FILE))
-        .ok()
-        .and_then(|raw| serde_json::from_str(&raw).ok())
-        .unwrap_or_default()
+    let path = cache_dir.join(CURSOR_FILE);
+    match fs::read_to_string(&path) {
+        Ok(raw) => match serde_json::from_str(&raw) {
+            Ok(cursor) => cursor,
+            Err(error) => {
+                warn!(target: "things::sync", path = %path.display(), %error, "the cursor does not parse, the cache is treated as nobody's");
+                CursorData::default()
+            }
+        },
+        Err(error) if error.kind() == ErrorKind::NotFound => CursorData::default(),
+        Err(error) => {
+            warn!(target: "things::sync", path = %path.display(), %error, "the cursor cannot be read, the cache is treated as nobody's");
+            CursorData::default()
+        }
+    }
 }
 
 /// write through a staging file synced to disk and renamed into place: a crash leaves the old file or the whole new one
@@ -130,10 +144,29 @@ fn write_cursor(cache_dir: &Path, cursor: &CursorData) -> Result<()> {
     )
 }
 
+/// the folded state on disk when it is of this version, otherwise nothing and the journal is folded from its first line, with a warning when the file is there and cannot be used
 fn read_state_cache(cache_dir: &Path) -> Option<StateCacheData> {
-    let raw = fs::read_to_string(cache_dir.join(STATE_CACHE_FILE)).ok()?;
-    let cache: StateCacheData = serde_json::from_str(&raw).ok()?;
-    (cache.version == STATE_CACHE_VERSION).then_some(cache)
+    let path = cache_dir.join(STATE_CACHE_FILE);
+    let raw = match fs::read_to_string(&path) {
+        Ok(raw) => raw,
+        Err(error) if error.kind() == ErrorKind::NotFound => return None,
+        Err(error) => {
+            warn!(target: "things::sync", path = %path.display(), %error, "the state cache cannot be read, the journal is folded from its first line");
+            return None;
+        }
+    };
+    let cache: StateCacheData = match serde_json::from_str(&raw) {
+        Ok(cache) => cache,
+        Err(error) => {
+            warn!(target: "things::sync", path = %path.display(), %error, "the state cache does not parse, the journal is folded from its first line");
+            return None;
+        }
+    };
+    if cache.version != STATE_CACHE_VERSION {
+        debug!(target: "things::sync", found = cache.version, expected = STATE_CACHE_VERSION, "the state cache is of another version, the journal is folded from its first line");
+        return None;
+    }
+    Some(cache)
 }
 
 fn write_state_cache(
@@ -235,9 +268,9 @@ fn truncate_log(log_path: &Path, len: u64) -> Result<()> {
 /// missing, is not trusted and gets fetched from the start. a cursor from
 /// before the acknowledged length existed adopts the complete lines and keeps
 /// its item index, which the server handed out: the journal was seen to hold
-/// repeated lines, so its line count says nothing about that index, and a
-/// page fetched twice is folded once. a folded state past the acknowledged
-/// bytes is dropped with them
+/// repeated lines, which means its line count says nothing about that index,
+/// and a page fetched twice is folded once. a folded state past the
+/// acknowledged bytes is dropped with them
 fn repair_log(cache_dir: &Path, cursor: &mut CursorData) -> Result<()> {
     let log_path = cache_dir.join(LOG_FILE);
     let length = match fs::metadata(&log_path) {
@@ -274,7 +307,7 @@ fn repair_log(cache_dir: &Path, cursor: &mut CursorData) -> Result<()> {
 
 /// append what the server holds past the cursor, authenticating first to bind the journal to the account behind the credentials
 fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
-    // what the disk holds now, so a repair alone is persisted even when the server has nothing new
+    // what the disk holds now, which lets a repair alone be persisted even when the server has nothing new
     let stored = read_cursor(cache_dir);
     let history_key = client.authenticate()?;
     let mut cursor = cursor_for_history(cache_dir, &history_key)?;
@@ -341,7 +374,12 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
 /// a cached state is used only when the journal still starts with the bytes
 /// it was folded from, checked by length and checksum. a journal that was
 /// replaced or cut is therefore folded again from its first line, and an
-/// incomplete last line waits for the run that completes it
+/// incomplete last line waits for the run that completes it. a line whose
+/// bytes were folded before, anywhere in the journal, is skipped: the server
+/// repeats items in adjacent pairs and a run from before the acknowledged
+/// length existed could append a page twice, while a later line that repeats
+/// an earlier one with another meaning would take a repeated delete of a
+/// reused id, which no client writes
 fn fold_locked(cache_dir: &Path) -> Result<RawState> {
     let log_path = cache_dir.join(LOG_FILE);
     let length = match fs::metadata(&log_path) {
