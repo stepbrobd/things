@@ -129,8 +129,13 @@ fn read_cursor(cache_dir: &Path) -> CursorData {
 /// write through a staging file synced to disk and renamed into place: a crash leaves the old file or the whole new one
 fn write_durable(path: &Path, payload: &[u8]) -> Result<()> {
     let tmp = path.with_extension("tmp");
-    let mut file =
-        File::create(&tmp).with_context(|| format!("failed to write {}", tmp.display()))?;
+    // a stale staging file, or a link planted under its name, goes first and create_new refuses to follow anything
+    remove_if_present(&tmp)?;
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&tmp)
+        .with_context(|| format!("failed to write {}", tmp.display()))?;
     file.write_all(payload)?;
     file.sync_all()?;
     fs::rename(&tmp, path).with_context(|| format!("failed to replace {}", path.display()))?;
@@ -660,6 +665,28 @@ mod tests {
             .expect("task");
         assert_eq!(task.notes.as_deref(), Some("done"));
         assert!(!task.degraded);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_planted_at_the_staging_name_is_not_followed() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let victim = cache_dir.join("victim");
+        fs::write(&victim, "original").expect("seed victim");
+        let target = cache_dir.join(STATE_CACHE_FILE);
+        std::os::unix::fs::symlink(&victim, target.with_extension("tmp")).expect("plant link");
+
+        write_durable(&target, b"{}").expect("write");
+
+        assert_eq!(fs::read_to_string(&victim).expect("victim"), "original");
+        assert_eq!(fs::read_to_string(&target).expect("target"), "{}");
+        assert!(
+            !fs::symlink_metadata(&target)
+                .expect("metadata")
+                .file_type()
+                .is_symlink()
+        );
     }
 
     #[test]
