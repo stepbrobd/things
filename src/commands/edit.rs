@@ -16,13 +16,14 @@ use crate::{
         parse_reminder, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
+    ordering::allocate,
     repeat::{Bound, ChecklistCopy, RepeatSpec, TemplateSource, bound, checklist_items, template},
     store::Task,
     wire::{
         checklist::{ChecklistItemPatch, ChecklistItemProps},
         notes::{StructuredTaskNotes, TaskNotes},
         task::{TaskPatch, TaskStart, TaskStatus},
-        wire_object::{EntityType, WireObject},
+        wire_object::{EntityType, Properties, WireObject},
     },
 };
 
@@ -720,39 +721,75 @@ fn build_edit_plan(
         }
 
         if !args.add_checklist.is_empty() {
-            let max_ix = task
-                .checklist_items
+            // the new items take the slots after the last one, the items already there move only when the run has to be respaced
+            let mut run: Vec<(ThingsId, i32)> = checklist
                 .iter()
-                .map(|i| i.index)
-                .max()
-                .unwrap_or(0);
-            for (idx, title) in args.add_checklist.iter().enumerate() {
+                .map(|(uuid, _, index)| (uuid.clone(), *index))
+                .collect();
+            run.sort_by_key(|(_, index)| *index);
+            let before: HashMap<ThingsId, i32> = run.iter().cloned().collect();
+            let mut added: HashMap<ThingsId, String> = HashMap::new();
+            for title in &args.add_checklist {
                 let title = title.trim();
                 if title.is_empty() {
                     return Err("Checklist item title cannot be empty.".to_string());
                 }
-                let index = max_ix + idx as i32 + 1;
-                let uuid = next_id();
-                changes.insert(
-                    uuid.clone(),
-                    WireObject::create(
-                        EntityType::ChecklistItem3,
-                        ChecklistItemProps {
-                            title: title.to_string(),
-                            task_ids: vec![task.uuid.clone()],
-                            status: TaskStatus::Incomplete,
-                            sort_index: index,
-                            creation_date: Some(now),
-                            modification_date: Some(now),
-                            ..Default::default()
-                        },
-                    ),
-                );
-                checklist.push((
-                    ThingsId::from_str(&uuid).map_err(|e| e.to_string())?,
-                    title.to_string(),
-                    index,
-                ));
+                let uuid = ThingsId::from_str(&next_id()).map_err(|e| e.to_string())?;
+                let (index, moved) = allocate(&run, run.len());
+                for (moved_uuid, slot) in moved {
+                    if let Some(member) = run.iter_mut().find(|(id, _)| *id == moved_uuid) {
+                        member.1 = slot;
+                    }
+                }
+                run.push((uuid.clone(), index));
+                added.insert(uuid, title.to_string());
+            }
+            for (uuid, index) in run {
+                if let Some(title) = added.remove(&uuid) {
+                    changes.insert(
+                        uuid.to_string(),
+                        WireObject::create(
+                            EntityType::ChecklistItem3,
+                            ChecklistItemProps {
+                                title: title.clone(),
+                                task_ids: vec![task.uuid.clone()],
+                                status: TaskStatus::Incomplete,
+                                sort_index: index,
+                                creation_date: Some(now),
+                                modification_date: Some(now),
+                                ..Default::default()
+                            },
+                        ),
+                    );
+                    checklist.push((uuid, title, index));
+                } else if before.get(&uuid) != Some(&index) {
+                    // a rename in the same command already holds a patch for the item, the slot joins it
+                    match changes.get_mut(&uuid.to_string()) {
+                        Some(WireObject {
+                            payload: Properties::ChecklistUpdate(patch),
+                            ..
+                        }) => {
+                            patch.sort_index = Some(index);
+                            patch.modification_date = Some(now);
+                        }
+                        _ => {
+                            changes.insert(
+                                uuid.to_string(),
+                                WireObject::update(
+                                    EntityType::ChecklistItem3,
+                                    ChecklistItemPatch {
+                                        sort_index: Some(index),
+                                        modification_date: Some(now),
+                                        ..Default::default()
+                                    },
+                                ),
+                            );
+                        }
+                    }
+                    if let Some(member) = checklist.iter_mut().find(|(id, _, _)| *id == uuid) {
+                        member.2 = index;
+                    }
+                }
             }
             if !labels.iter().any(|l| l == "add-checklist") {
                 labels.push("add-checklist".to_string());
@@ -1149,7 +1186,8 @@ mod tests {
         assert_eq!(copies[0].get("tt"), Some(&json!("Step won")));
         assert_eq!(copies[0].get("ts"), Some(&json!([id(2)])));
         assert_eq!(copies[1].get("tt"), Some(&json!("Step three")));
-        assert_eq!(copies[1].get("ix"), Some(&json!(3)));
+        // the removed item's slot is free again, the added item takes it
+        assert_eq!(copies[1].get("ix"), Some(&json!(2)));
         assert!(!plan.changes.contains_key(&id(5)));
 
         // a deadline has no place on the template yet, the edit is refused
@@ -1159,6 +1197,55 @@ mod tests {
         };
         let err = build_edit_plan(&dated, &store, NOW, TODAY, &mut id_gen).expect_err("deadline");
         assert!(err.contains("clear the deadline"));
+    }
+
+    #[test]
+    fn a_checklist_at_the_index_limit_is_respaced_before_the_new_item() {
+        let store = build_store(vec![
+            task(TASK_UUID, "Bounded"),
+            checklist(CHECK_A, TASK_UUID, "Step one", i32::MAX),
+        ]);
+        let args = EditArgs {
+            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            title: None,
+            notes: None,
+            move_target: None,
+            tag_delta: TagDeltaArgs {
+                add_tags: None,
+                remove_tags: None,
+            },
+            add_checklist: vec!["Step two".to_string()],
+            remove_checklist: None,
+            rename_checklist: vec![format!("{}:Step won", &CHECK_A[..6])],
+            completed_on: None,
+            created_on: None,
+            when: None,
+            deadline_date: None,
+            clear_deadline: false,
+            reminder: None,
+            clear_reminder: false,
+            repeat: None,
+            times: None,
+            until: None,
+        };
+        let mut ids = (1..).map(|n: u128| ThingsId::from_u128(n).to_string());
+        let mut id_gen = || ids.next().expect("id");
+        let plan = build_edit_plan(&args, &store, NOW, TODAY, &mut id_gen).expect("plan");
+
+        // the item at the limit moves to the first slot of the respaced run and keeps its rename, the new item follows
+        let moved = plan
+            .changes
+            .get(CHECK_A)
+            .expect("the item moves")
+            .properties_map();
+        assert_eq!(moved.get("ix"), Some(&json!(1024)));
+        assert_eq!(moved.get("tt"), Some(&json!("Step won")));
+        let added = plan
+            .changes
+            .get(&ThingsId::from_u128(1).to_string())
+            .expect("the new item")
+            .properties_map();
+        assert_eq!(added.get("ix"), Some(&json!(2048)));
     }
 
     #[test]
