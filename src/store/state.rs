@@ -62,6 +62,9 @@ fn apply_task_patch(
     if let Some(alarm_time_offset) = patch.alarm_time_offset {
         task.alarm_time_offset = alarm_time_offset;
     }
+    if let Some(due_date_offset) = patch.due_date_offset {
+        task.due_date_offset = due_date_offset;
+    }
     if let Some(modification_date) = patch.modification_date {
         task.modification_date = modification_date;
     }

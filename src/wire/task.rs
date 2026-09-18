@@ -235,6 +235,10 @@ pub struct TaskPatch {
     )]
     pub alarm_time_offset: Option<Option<i64>>,
 
+    /// `do`: due date offset in days, the deadline of a repeat's instances counted from their day.
+    #[serde(rename = "do", skip_serializing_if = "Option::is_none")]
+    pub due_date_offset: Option<i32>,
+
     /// `tp`: task type.
     #[serde(rename = "tp", skip_serializing_if = "Option::is_none")]
     pub item_type: Option<TaskType>,
@@ -374,6 +378,7 @@ impl TaskPatch {
             && self.trashed.is_none()
             && self.creation_date.is_none()
             && self.modification_date.is_none()
+            && self.due_date_offset.is_none()
     }
 
     pub fn into_properties(self) -> BTreeMap<String, Value> {

@@ -491,6 +491,9 @@ pub fn due_instances(
                 && !template.instance_creation_paused
                 // a template whose replay failed is never written through
                 && !template.degraded
+                // a template with a deadline is left to the Apple clients, the app keeps an instance's deadline as an offset no capture has shown written
+                && template.deadline.is_none()
+                && template.due_date_offset == 0
         })
         .collect();
     templates.sort_by(|a, b| a.uuid.cmp(&b.uuid));
@@ -1079,6 +1082,37 @@ mod tests {
         let made = due_on(&store, "2026-03-25");
         assert_eq!(made.len(), 1);
         assert_eq!(made[0].day, day("2026-03-25"));
+    }
+
+    #[test]
+    fn a_marked_or_dated_template_is_left_to_the_apple_clients() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        // a patch that does not parse marks the template
+        let mut items: Vec<WireItem> = vec![
+            [template_object(daily, "2026-03-25", 1)]
+                .into_iter()
+                .collect(),
+        ];
+        items.push(
+            serde_json::from_str(&format!(
+                r#"{{"{TEMPLATE}":{{"t":1,"e":"Task7","p":{{"ss":"future"}}}}}}"#
+            ))
+            .expect("item"),
+        );
+        let store = ThingsStore::from_raw_state(&fold_items(items));
+        assert!(store.get_task(TEMPLATE).expect("template").degraded);
+        assert!(due_on(&store, "2026-03-25").is_empty());
+
+        // a deadline, absolute or as an offset, the CLI cannot carry onto an instance yet
+        for (deadline, offset) in [(Some(day_timestamp(day("2026-03-27"))), 0), (None, 2)] {
+            let (uuid, mut object) = template_object(daily, "2026-03-25", 1);
+            if let crate::wire::wire_object::Properties::TaskCreate(props) = &mut object.payload {
+                props.deadline = deadline;
+                props.due_date_offset = offset;
+            }
+            let store = store_of(vec![(uuid, object)]);
+            assert!(due_on(&store, "2026-03-25").is_empty());
+        }
     }
 
     #[test]

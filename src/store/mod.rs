@@ -214,6 +214,7 @@ impl ThingsStore {
             instance_creation_count: p.instance_creation_count,
             evening: p.evening_bit != 0,
             alarm_time_offset: p.alarm_time_offset,
+            due_date_offset: p.due_date_offset,
             degraded,
             recurrence_rule: p.recurrence_rule.clone(),
             repeater: p.repeater.clone(),

@@ -58,6 +58,8 @@ pub struct TaskStateProps {
     pub instance_creation_paused: bool,
     pub evening_bit: i32,
     pub alarm_time_offset: Option<i64>,
+    /// `do`, the deadline of a repeat's instances as days after their day
+    pub due_date_offset: i32,
     pub leaves_tombstone: bool,
     pub trashed: bool,
     pub creation_date: Option<f64>,
@@ -165,6 +167,8 @@ pub struct Task {
     pub recurrence_rule: Option<RecurrenceRule>,
     pub repeater: Option<serde_json::Value>,
     pub recurrence_templates: Vec<ThingsId>,
+    /// `do`, the deadline of a repeat's instances as days after their day
+    pub due_date_offset: i32,
     /// the object's replay did not complete, what is shown may be behind the history and no write goes through it
     pub degraded: bool,
     pub checklist_items: Vec<ChecklistItem>,
@@ -274,6 +278,7 @@ impl From<TaskProps> for TaskStateProps {
             instance_creation_paused: props.instance_creation_paused,
             evening_bit: props.evening_bit,
             alarm_time_offset: props.alarm_time_offset,
+            due_date_offset: props.due_date_offset,
             leaves_tombstone: props.leaves_tombstone,
             trashed: props.trashed,
             creation_date: props.creation_date,
