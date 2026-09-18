@@ -230,12 +230,10 @@ impl<'de> Deserialize<'de> for WireObject {
             raw.entity_type.as_ref(),
             properties.clone(),
         );
+        // a payload of a known kind that does not parse is kept opaque, the fold marks its object rather than failing whole
         let payload = match parsed {
             Ok(payload) => payload,
-            Err(_) if raw.entity_type.as_ref().is_some_and(EntityType::is_task) => {
-                Properties::Unknown(properties)
-            }
-            Err(error) => return Err(serde::de::Error::custom(error)),
+            Err(_) => Properties::Unknown(properties),
         };
         Ok(Self {
             operation_type: raw.operation_type,
@@ -351,6 +349,24 @@ pub enum EntityType {
 impl EntityType {
     pub fn is_task(&self) -> bool {
         matches!(self, Self::Task3 | Self::Task4 | Self::Task6 | Self::Task7)
+    }
+
+    /// the kinds the store keeps as typed objects, whose payloads must parse for the object to be whole
+    pub fn is_stored(&self) -> bool {
+        matches!(
+            self,
+            Self::Task3
+                | Self::Task4
+                | Self::Task6
+                | Self::Task7
+                | Self::ChecklistItem
+                | Self::ChecklistItem2
+                | Self::ChecklistItem3
+                | Self::Tag3
+                | Self::Tag4
+                | Self::Area2
+                | Self::Area3
+        )
     }
 
     pub fn can_upgrade_to_task7(&self) -> bool {

@@ -374,11 +374,16 @@ mod tests {
     }
 
     #[test]
-    fn malformed_non_task_payloads_still_fail_deserialization() {
-        let result =
-            serde_json::from_str::<WireObject>(r#"{"t":1,"e":"Area3","p":{"ix":"future"}}"#);
+    fn a_malformed_payload_of_any_kind_is_kept_opaque() {
+        let object =
+            serde_json::from_str::<WireObject>(r#"{"t":1,"e":"Area3","p":{"ix":"future"}}"#)
+                .expect("the object deserializes");
 
-        assert!(result.is_err());
+        assert!(matches!(
+            object.payload,
+            crate::wire::wire_object::Properties::Unknown(_)
+        ));
+        assert!(object.properties().is_err());
     }
 
     #[test]

@@ -207,12 +207,12 @@ fn wire_object_properties(obj: &WireObject) -> StateProperties {
     }
 }
 
-/// a task entity the CLI knows whose payload did not parse is kept as an opaque object and marked, as is a task an update reaches before any create, while a future entity is opaque by design
+/// an object of a stored kind whose payload did not parse is kept opaque and marked, as is one an update reaches before any create, while a future kind is opaque by design
 fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
     let properties = wire_object_properties(&obj);
-    let known_task = obj.entity_type.as_ref().is_some_and(EntityType::is_task);
-    let unparsed = known_task && matches!(properties, StateProperties::Other);
-    let create_less = known_task && obj.operation_type == OperationType::Update;
+    let stored = obj.entity_type.as_ref().is_some_and(EntityType::is_stored);
+    let unparsed = stored && matches!(obj.payload, Properties::Unknown(_));
+    let create_less = stored && obj.operation_type == OperationType::Update;
     let degraded = unparsed || create_less;
     if unparsed {
         warn!(target: "things::replay", uuid = %uuid, "the object's payload did not parse, it is kept opaque");
@@ -256,7 +256,7 @@ fn apply_update_payload(
         }
         (_, Properties::Ignored(_)) => None,
         (_, Properties::Unknown(_)) => entity_type
-            .is_some_and(EntityType::is_task)
+            .is_some_and(EntityType::is_stored)
             .then(|| "the patch did not parse".to_string()),
         (_, payload) => {
             existing.properties = payload.into();
@@ -413,6 +413,30 @@ mod tests {
         // the object is marked, what is shown may be behind the history
         assert!(state[&task_id].degraded);
         assert_eq!(degraded_ids(&state), vec![task_id]);
+    }
+
+    #[test]
+    fn a_malformed_checklist_patch_marks_the_item_instead_of_failing_the_fold() {
+        const ITEM_ID: &str = "5uwoHPi5m5i8QJa6Rae6Cn";
+        let create = wire_item(&format!(
+            r#"{{"{ITEM_ID}":{{"t":0,"e":"ChecklistItem3","p":{{"tt":"Step","ss":0,"ts":["{TASK_ID}"],"ix":0}}}}}}"#
+        ));
+        let update = wire_item(&format!(
+            r#"{{"{ITEM_ID}":{{"t":1,"e":"ChecklistItem3","p":{{"ss":"future"}}}}}}"#
+        ));
+        assert!(matches!(
+            update.get(ITEM_ID).expect("update").payload,
+            Properties::Unknown(_)
+        ));
+
+        let state = fold_items([task6_create(), create, update]);
+        let item_id = ITEM_ID.parse::<ThingsId>().expect("valid id");
+        let StateProperties::ChecklistItem(item) = &state[&item_id].properties else {
+            panic!("the malformed patch replaced the item's typed state");
+        };
+        assert_eq!(item.title, "Step");
+        assert!(state[&item_id].degraded);
+        assert_eq!(degraded_ids(&state), vec![item_id]);
     }
 
     #[test]
