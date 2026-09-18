@@ -35,7 +35,8 @@ $ run.sh things --today-ts 1774396800 --json show Tu11111111111111111111
     "trashed": false,
     "is_new": false,
     "instance_creation_paused": false,
-    "leaves_tombstone": false
+    "leaves_tombstone": false,
+    "degraded": false
   },
   "indexes": {
     "sort_index": 1,
@@ -82,7 +83,8 @@ $ run.sh things --today-ts 1774396800 --json show Th11111111111111111111
     "trashed": false,
     "is_new": false,
     "instance_creation_paused": false,
-    "leaves_tombstone": false
+    "leaves_tombstone": false,
+    "degraded": false
   },
   "indexes": {
     "sort_index": 2,

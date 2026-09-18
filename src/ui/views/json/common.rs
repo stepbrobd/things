@@ -97,6 +97,8 @@ pub struct TaskFlagsJson {
     pub is_new: bool,
     pub instance_creation_paused: bool,
     pub leaves_tombstone: bool,
+    /// the object's history did not replay completely, the CLI shows what it has and refuses to write it
+    pub degraded: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -330,6 +332,7 @@ fn task_to_json(task: &Task, store: &ThingsStore, today: &DateTime<Utc>) -> Reso
             is_new: task.is_staged_for_today(today),
             instance_creation_paused: task.instance_creation_paused,
             leaves_tombstone: task.leaves_tombstone,
+            degraded: task.degraded,
         },
         indexes: TaskIndexesJson {
             sort_index: task.index,
