@@ -345,7 +345,12 @@ impl Command for ProjectsArgs {
                             }
                         };
                         let ts = day_timestamp(day);
-                        props.start_location = TaskStart::Someday;
+                        // a day that has come puts the project in anytime, as the app does
+                        props.start_location = if ts <= ctx.today_timestamp() {
+                            TaskStart::Anytime
+                        } else {
+                            TaskStart::Someday
+                        };
                         props.scheduled_date = Some(ts);
                         props.today_index_reference = Some(ts);
                     }
