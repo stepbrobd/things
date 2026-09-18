@@ -1,73 +1,112 @@
 # Things
 
-A command line client for [Things 3](https://culturedcode.com/things/) using
-Things Cloud directly. Hard fork of
+`things` is an unofficial command-line client for
+[Things 3](https://culturedcode.com/things/) that reads and writes Things Cloud
+directly. It works without Things.app and is a hard fork of
 [evanpurkhiser/things3-cloud](https://github.com/evanpurkhiser/things3-cloud).
 
-## Run and authenticate
+Cultured Code does not publish or support the Things Cloud API. Protocol changes
+may break this client.
 
-```sh
+## Run
+
+```nu
 nix run github:stepbrobd/things -- auth
 nix run github:stepbrobd/things -- today
 ```
 
-Optional binary cache: <https://cache.ysun.co>, key
-`cache.ysun.co-1:WxPYwT5g3kt9XhUhHPpNLZKI9HIOsVVAuqSHpok8Qt4=`.
+Prebuilt Nix outputs are available from this cache:
 
-Run `things auth` to save credentials as plaintext in
-`$XDG_CONFIG_HOME/things/auth.json`. `THINGS_EMAIL` and `THINGS_PASSWORD`
-override the file. The default config directory is `~/.config`.
+- Cache: <https://cache.ysun.co>
+- Public key: `cache.ysun.co-1:WxPYwT5g3kt9XhUhHPpNLZKI9HIOsVVAuqSHpok8Qt4=`
 
-## Usage
+`things auth` saves the Things Cloud email and password as plaintext JSON in
+`$XDG_CONFIG_HOME/things/auth.json`. The default path is
+`~/.config/things/auth.json`, and the file is created with mode `0600` on Unix.
+`THINGS_EMAIL` and `THINGS_PASSWORD` override the corresponding fields.
 
-```sh
-things today
-things show <id>
-things find rent --deadline '<=2026-10-31'
+## Use
+
+```nu
+things
+things show ABCD
+things find rent --deadline "<=2026-10-31"
 things new "Water plants" --when today --repeat daily --reminder 09:00
-things edit <id> --when 2026-10-01 --deadline 2026-10-07
-things mark <id> --done
+things edit ABCD --when 2026-10-01 --deadline 2026-10-07
+things mark ABCD --done
 things --json upcoming
-things completions bash
+things completions nushell
 ```
 
-Views: `inbox`, `today` (default), `upcoming`, `anytime`, `someday`, `logbook`,
-`projects`, `areas`, `tags`, `project <id>`, and `area <id>`. Use `--detailed`
-for notes and checklists, or global `--json` for structured read output.
+Running `things` without a subcommand shows Today. `ABCD` above represents a
+full ID or a unique prefix.
 
-Mutations: `new`, `edit`, `mark`, `reorder`, and `delete`. Projects, areas, and
-tags also have `new` and `edit` subcommands. Use full IDs or unambiguous
-prefixes. Run `things <command> --help` for filters, checklist edits, reminders,
-and ordering options.
+The other views are `inbox`, `upcoming`, `anytime`, `someday`, `logbook`,
+`projects`, `areas`, `tags`, `project ID`, and `area ID`. Views that accept
+`--detailed` use it to include notes and checklists. Add the global `--json`
+option for structured output where the selected command supports it.
 
-Repeats support `daily`, `weekly:mon,wed,fri`, `monthly:15`, and `yearly`, with
-intervals and bounds described in `things new --help`. `edit --repeat` adds a
-rule to a non-repeating task and leaves an existing rule alone. A repeat cannot
-start on a day that has passed. A checklist is copied onto the rule and onto
-every instance. A to-do with a deadline cannot be given a rule yet, because the
-app stores a repeat's deadline as an offset the CLI has not observed, and a rule
-with a deadline made by an Apple client is left to those clients.
-After-completion rules such as `after:2w` can be created, and completing them
-requires an Apple client. Rules in shapes the CLI has not seen the app write are
-shown and never evaluated, and a rule whose next day, as the app recorded it, is
-not the day the CLI computes is left to the Apple clients.
+Task mutations use `new`, `edit`, `mark`, `reorder`, and `delete`. The
+`projects` and `areas` commands provide `list`, `new`, and `edit` subcommands.
+`tags` also provides `delete`.
 
-A command that fails exits with status 1 without writing its own changes. A
-batch of ids is checked whole before anything is written. Due repeat instances
-are created before the command runs, and a failure there is reported while the
-command still runs.
+Run `things <command> --help` for filters, checklist operations, scheduling,
+reminders, and ordering.
 
-## Sync and configuration
+## Repeat rules
 
-Loading data syncs first. Even view commands can create due fixed-schedule
-repeat instances. There is no background scheduler. If sync fails, commands warn
-and use cached data, with writes refused. An object whose history did not replay
-completely is reported and never written, `THINGS_LOG=warn` names it and the
-JSON views flag it with `degraded`.
+`--repeat` accepts these forms:
 
-The sync cache lives under `$XDG_STATE_HOME/things`, defaulting to
-`~/.local/state/things` on every platform. It is bound to the account it was
-fetched for, so changing credentials fetches that account's history from the
-start, and concurrent runs take turns on it. `THINGS_LOG` controls logging, and
-`THINGS_LOG_FORMAT` selects `pretty`, `simplified`, or `json`. `NO_COLOR`
-disables color.
+- `daily`
+- `weekly` or `weekly:mon,wed,fri`
+- `monthly:15` or `monthly:last`
+- `yearly` or `yearly:12-31`
+- `after:2w`, with `d`, `w`, `m`, and `y` units
+
+Put `/N` after a fixed cadence to repeat every N periods, as in `daily/3` or
+`weekly/2:sat`. `--times N` and `--until YYYY-MM-DD` provide mutually exclusive
+bounds.
+
+A new task with a repeat requires `--when`. Adding a repeat with `edit` requires
+an existing or newly assigned scheduled day. The first occurrence must be today
+or later. Without a selector, that day supplies the weekday, day of the month,
+or month and day. Checklists are copied to the repeat template and each
+generated instance.
+
+Repeat rules have these limits:
+
+- A task with a deadline cannot receive a new repeat rule. Things stores the
+  repeating deadline as an offset whose wire format has not been verified
+  against an Apple client.
+- An `after:` rule can be created and displayed. Completing it requires an Apple
+  client.
+- A rule created by an Apple client remains visible when the CLI cannot evaluate
+  its shape exactly. Its instances are left to Apple clients.
+- A template is also left to Apple clients when its recorded next day differs
+  from the day computed from its rule.
+
+## Sync and local state
+
+Every command that reads account data syncs before it runs. The CLI then creates
+any due fixed-schedule repeat instances before running the selected command,
+including a view command. There is no background scheduler.
+
+The sync cache is in `$XDG_STATE_HOME/things`, which defaults to
+`~/.local/state/things`. It is bound to the authenticated account. Changing
+accounts fetches that account's history from the beginning, and concurrent runs
+serialize access to the cache.
+
+When sync fails, the command warns and reads cached state. Writes are refused
+for that run. If an object's history does not replay completely, the CLI reports
+it, refuses writes to that object, and sets `flags.degraded` in JSON output.
+
+The selected command exits with status 1 on failure. Batch mutations validate
+every target before their own write. The repeat pass runs first and may create
+due instances even when the selected command later fails.
+
+`THINGS_LOG` controls the log filter. `THINGS_LOG_FORMAT` selects `pretty`,
+`simplified`, or `json`. `NO_COLOR` disables color.
+
+## License
+
+[MIT](license.txt)
