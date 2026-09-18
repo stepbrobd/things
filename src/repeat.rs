@@ -5,6 +5,8 @@ use std::collections::BTreeMap as ChangeMap;
 use chrono::{Datelike, Days, Months, NaiveDate};
 use serde_json::{Value, json};
 
+use tracing::warn;
+
 use crate::{
     common::{day_of, day_timestamp, parse_day, task6_note},
     ids::ThingsId,
@@ -510,7 +512,10 @@ pub fn due_instances(
             if due > today {
                 return None;
             }
-            let created = template.instance_creation_count + 1;
+            let Some(created) = template.instance_creation_count.checked_add(1) else {
+                warn!(target: "things::replay", uuid = %template.uuid, "the instance count cannot advance, the template is left alone");
+                return None;
+            };
             // the search resumes tomorrow, which makes a missed stretch yield this one instance and not one per missed day
             let resume = today.succ_opt()?;
             let following = next_occurrence_of_rule(rule, today, created);
@@ -757,6 +762,18 @@ mod tests {
         let mut ids = (1..).map(id);
         let mut next_id = || ids.next().expect("id");
         due_instances(store, day(today), 2.0, &mut next_id)
+    }
+
+    #[test]
+    fn a_count_that_cannot_advance_leaves_the_template_alone() {
+        let counting = store_of(vec![template_object(DAILY_UNTIL_MAR_25, "2026-03-20", 0)]);
+        assert_eq!(due_on(&counting, "2026-03-25").len(), 1);
+        let exhausted = store_of(vec![template_object(
+            DAILY_UNTIL_MAR_25,
+            "2026-03-20",
+            i32::MAX,
+        )]);
+        assert!(due_on(&exhausted, "2026-03-25").is_empty());
     }
 
     fn template_patch(made: &Materialized) -> BTreeMap<String, Value> {
