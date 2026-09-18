@@ -42,13 +42,15 @@ and ordering options.
 
 Repeats support `daily`, `weekly:mon,wed,fri`, `monthly:15`, and `yearly`, with
 intervals and bounds described in `things new --help`. `edit --repeat` adds a
-rule to a non-repeating task and leaves an existing rule alone. A checklist is
-copied onto the rule and onto every instance. A to-do with a deadline cannot be
-given a rule yet, because the app stores a repeat's deadline as an offset the
-CLI has not observed, and a rule with a deadline made by an Apple client is left
-to those clients. After-completion rules such as `after:2w` can be created, and
-completing them requires an Apple client. Rules in shapes the CLI has not seen
-the app write are shown and never evaluated.
+rule to a non-repeating task and leaves an existing rule alone. A repeat cannot
+start on a day that has passed. A checklist is copied onto the rule and onto
+every instance. A to-do with a deadline cannot be given a rule yet, because the
+app stores a repeat's deadline as an offset the CLI has not observed, and a rule
+with a deadline made by an Apple client is left to those clients.
+After-completion rules such as `after:2w` can be created, and completing them
+requires an Apple client. Rules in shapes the CLI has not seen the app write are
+shown and never evaluated, and a rule whose next day, as the app recorded it, is
+not the day the CLI computes is left to the Apple clients.
 
 A command that fails exits with status 1 without writing its own changes. A
 batch of ids is checked whole before anything is written. Due repeat instances
@@ -60,7 +62,8 @@ command still runs.
 Loading data syncs first. Even view commands can create due fixed-schedule
 repeat instances. There is no background scheduler. If sync fails, commands warn
 and use cached data, with writes refused. An object whose history did not replay
-completely is reported and never written, `THINGS_LOG=warn` names it.
+completely is reported and never written, `THINGS_LOG=warn` names it and the
+JSON views flag it with `degraded`.
 
 The sync cache lives under `$XDG_STATE_HOME/things`, defaulting to
 `~/.local/state/things` on every platform. It is bound to the account it was
