@@ -246,14 +246,19 @@ fn cursor_for_history(cache_dir: &Path, history_key: &str) -> Result<CursorData>
     Ok(cursor)
 }
 
-/// the byte length of the journal up to and including its last newline
-fn complete_length(log_path: &Path) -> Result<u64> {
+/// the byte length of the journal up to and including its last newline, and the lines holding text within it
+fn complete_lines(log_path: &Path) -> Result<(u64, i64)> {
     let bytes =
         fs::read(log_path).with_context(|| format!("failed to read {}", log_path.display()))?;
-    Ok(bytes
+    let length = bytes
         .iter()
         .rposition(|byte| *byte == b'\n')
-        .map_or(0, |at| at as u64 + 1))
+        .map_or(0, |at| at + 1);
+    let lines = bytes[..length]
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.iter().all(u8::is_ascii_whitespace))
+        .count();
+    Ok((length as u64, lines as i64))
 }
 
 fn truncate_log(log_path: &Path, len: u64) -> Result<()> {
@@ -273,9 +278,10 @@ fn truncate_log(log_path: &Path, len: u64) -> Result<()> {
 /// missing, is not trusted and gets fetched from the start. a cursor from
 /// before the acknowledged length existed adopts the complete lines and keeps
 /// its item index, which the server handed out: the journal was seen to hold
-/// repeated lines, which means its line count says nothing about that index,
-/// and a page fetched twice is folded once. a folded state past the
-/// acknowledged bytes is dropped with them
+/// repeated lines, which means its line count says nothing exact about that
+/// index, and a page fetched twice is folded once. fewer lines than the index
+/// mean a tail was lost and the journal is fetched from the start. a folded
+/// state past the acknowledged bytes is dropped with them
 fn repair_log(cache_dir: &Path, cursor: &mut CursorData) -> Result<()> {
     let log_path = cache_dir.join(LOG_FILE);
     let length = match fs::metadata(&log_path) {
@@ -298,7 +304,16 @@ fn repair_log(cache_dir: &Path, cursor: &mut CursorData) -> Result<()> {
             cursor.next_start_index = 0;
             0
         }
-        None => complete_length(&log_path)?,
+        None => {
+            let (complete, lines) = complete_lines(&log_path)?;
+            if lines < cursor.next_start_index {
+                warn!(target: "things::sync", lines, index = cursor.next_start_index, "the journal holds fewer lines than the cursor acknowledges, it is fetched from the start");
+                cursor.next_start_index = 0;
+                0
+            } else {
+                complete
+            }
+        }
     };
     if acknowledged < length {
         truncate_log(&log_path, acknowledged)?;
@@ -743,6 +758,28 @@ mod tests {
         assert_eq!(log_content(cache_dir), complete);
         assert_eq!(cursor.next_start_index, 2);
         assert_eq!(cursor.log_offset, Some(complete.len() as u64));
+    }
+
+    #[test]
+    fn repair_starts_over_for_a_cursor_without_an_offset_beyond_the_journal() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        seed_log(cache_dir, &format!("{SETTINGS_ONE}\n"));
+        write_state_cache(cache_dir, &RawState::new(), 60, 0, &[]).expect("seed cache");
+        let mut cursor = CursorData {
+            next_start_index: 7,
+            history_key: "h".to_string(),
+            head_index: 7,
+            log_offset: None,
+            updated_at: None,
+        };
+
+        repair_log(cache_dir, &mut cursor).expect("repair");
+
+        assert_eq!(log_content(cache_dir), "");
+        assert_eq!(cursor.next_start_index, 0);
+        assert_eq!(cursor.log_offset, Some(0));
+        assert!(read_state_cache(cache_dir).is_none());
     }
 
     #[test]
