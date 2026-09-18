@@ -1,35 +1,68 @@
-use std::{fs, io::Write};
+use std::{
+    fs,
+    io::{ErrorKind, Write},
+    path::Path,
+};
 
 use anyhow::{Context, Result, anyhow};
-use figment::{
-    Figment,
-    providers::{Env, Format, Json},
-};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::dirs::{auth_file_path, create_private_dir};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Serialize)]
 struct AuthPayload {
     email: String,
     password: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+/// the auth file as written, each field taken as it is, which keeps a
+/// password made of digits a password
+#[derive(Deserialize, Default)]
+struct AuthFile {
+    #[serde(default)]
+    email: Option<Value>,
+    #[serde(default)]
+    password: Option<Value>,
+}
+
 struct AuthConfig {
     email: Option<String>,
     password: Option<String>,
 }
 
-fn load_auth_config(path: &std::path::Path) -> Result<AuthConfig> {
-    let mut figment = Figment::new();
-    if path.exists() {
-        figment = figment.merge(Json::file(path));
+/// a field of the auth file as text, refused in any other shape without repeating the value
+fn text_field(value: Option<Value>, field: &str, path: &Path) -> Result<Option<String>> {
+    match value {
+        None | Some(Value::Null) => Ok(None),
+        Some(Value::String(text)) => Ok(Some(text)),
+        Some(_) => Err(anyhow!(
+            "The {field} in {} is not a JSON string, quote it",
+            path.display()
+        )),
     }
-    figment
-        .merge(Env::prefixed("THINGS_"))
-        .extract()
-        .with_context(|| format!("Failed reading auth config at {}", path.display()))
+}
+
+/// the auth file under `THINGS_EMAIL` and `THINGS_PASSWORD`, each variable standing in for the file's field when `var` yields it, as the text it holds
+fn load_auth_config(path: &Path, var: impl Fn(&str) -> Option<String>) -> Result<AuthConfig> {
+    let file = match fs::read_to_string(path) {
+        Ok(raw) => serde_json::from_str::<AuthFile>(&raw)
+            .with_context(|| format!("Failed reading auth config at {}", path.display()))?,
+        Err(error) if error.kind() == ErrorKind::NotFound => AuthFile::default(),
+        Err(error) => {
+            return Err(error)
+                .with_context(|| format!("Failed reading auth config at {}", path.display()));
+        }
+    };
+    let email = match var("THINGS_EMAIL") {
+        Some(text) => Some(text),
+        None => text_field(file.email, "email", path)?,
+    };
+    let password = match var("THINGS_PASSWORD") {
+        Some(text) => Some(text),
+        None => text_field(file.password, "password", path)?,
+    };
+    Ok(AuthConfig { email, password })
 }
 
 fn validate_auth(email: &str, password: &str) -> Result<(String, String)> {
@@ -49,7 +82,7 @@ fn validate_auth(email: &str, password: &str) -> Result<(String, String)> {
 pub fn load_auth() -> Result<(String, String)> {
     let path = auth_file_path();
 
-    let cfg = load_auth_config(&path)?;
+    let cfg = load_auth_config(&path, |name| std::env::var(name).ok())?;
 
     let Some(email) = cfg.email else {
         return Err(anyhow!(
@@ -74,7 +107,7 @@ pub fn write_auth(email: &str, password: &str) -> Result<std::path::PathBuf> {
     Ok(path)
 }
 
-fn write_auth_at(path: &std::path::Path, email: &str, password: &str) -> Result<()> {
+fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
     let (email, password) = validate_auth(email, password)?;
     let parent = path
         .parent()
@@ -130,6 +163,47 @@ mod tests {
 
         let mode = fs::metadata(&path).expect("metadata").permissions().mode();
         assert_eq!(mode & 0o777, 0o600);
+    }
+
+    #[test]
+    fn a_password_made_of_digits_is_read_as_text() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        fs::write(
+            &path,
+            r#"{"email":"user@example.com","password":"27182818"}"#,
+        )
+        .expect("seed");
+        let config = load_auth_config(&path, |_| None).expect("config");
+        assert_eq!(config.password.as_deref(), Some("27182818"));
+
+        let config = load_auth_config(&path, |name| {
+            (name == "THINGS_PASSWORD").then(|| "0031415".to_string())
+        })
+        .expect("config");
+        assert_eq!(config.email.as_deref(), Some("user@example.com"));
+        assert_eq!(config.password.as_deref(), Some("0031415"));
+    }
+
+    #[test]
+    fn a_field_that_is_not_a_string_is_refused_without_being_repeated() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        fs::write(&path, r#"{"email":"user@example.com","password":31415926}"#).expect("seed");
+        let Err(error) = load_auth_config(&path, |_| None) else {
+            panic!("a number is not a password");
+        };
+        let text = format!("{error:#}");
+        assert!(text.contains("password"), "{text}");
+        assert!(!text.contains("31415926"), "{text}");
+    }
+
+    #[test]
+    fn a_missing_file_leaves_both_fields_to_the_environment() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        let config = load_auth_config(&path, |_| None).expect("config");
+        assert!(config.email.is_none() && config.password.is_none());
     }
 
     #[test]
