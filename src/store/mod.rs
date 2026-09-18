@@ -342,19 +342,20 @@ impl ThingsStore {
             .collect();
 
         // equal keys keep a fixed order, the id breaks the tie
-        out.sort_by_key(|task| {
+        fn key(task: &Task) -> (i32, Reverse<i64>, Reverse<i32>, &ThingsId) {
             if task.today_index == 0 {
                 let sr_ts = task.start_date.map(|d| d.timestamp()).unwrap_or(0);
-                (0i32, Reverse(sr_ts), Reverse(task.index), task.uuid.clone())
+                (0, Reverse(sr_ts), Reverse(task.index), &task.uuid)
             } else {
                 (
-                    1i32,
+                    1,
                     Reverse(task.today_index as i64),
                     Reverse(task.index),
-                    task.uuid.clone(),
+                    &task.uuid,
                 )
             }
-        });
+        }
+        out.sort_by(|a, b| key(a).cmp(&key(b)));
         out
     }
 
