@@ -311,6 +311,11 @@ fn build_new_plan(
             return Err("--repeat requires --when today or YYYY-MM-DD".to_string());
         };
         let first = spec.first_occurrence(when_day);
+        if first < day_of(today_ts).expect("today") {
+            return Err(format!(
+                "A repeat cannot start on {first}, which has passed, set --when today or a later day"
+            ));
+        }
         if first != when_day {
             let first_ts = day_timestamp(first);
             props.scheduled_date = Some(first_ts);

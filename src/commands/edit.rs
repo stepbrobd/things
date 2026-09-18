@@ -321,6 +321,11 @@ fn apply_schedule(
                 "{when_day} is not a day of {rule_text}, the next one is {first}, set --when {first}"
             ));
         }
+        if first < day_of(today_ts).expect("today") {
+            return Err(format!(
+                "A repeat cannot start on {first}, which has passed, set --when today or a later day"
+            ));
+        }
         if let Bound::Until(until) = bound
             && until < first
         {

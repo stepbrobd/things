@@ -1,0 +1,6 @@
+```trycmd
+$ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000333.0 edit A7h5eCi24RvAWKC3Hv3muf --when 2023-11-01 --repeat daily
+? 1
+A repeat cannot start on 2023-11-01, which has passed, set --when today or a later day
+
+```
