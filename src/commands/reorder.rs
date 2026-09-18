@@ -12,7 +12,7 @@ use crate::{
     commands::Command,
     common::{DIM, GREEN, ICONS, colored},
     ids::ThingsId,
-    ordering::allocate,
+    ordering::{allocate, today_group},
     wire::{
         task::{TaskPatch, TaskStart, TaskStatus},
         wire_object::{EntityType, WireObject},
@@ -91,10 +91,7 @@ fn build_reorder_plan(
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
 
     if is_today_reorder {
-        let anchor_tir = anchor
-            .today_index_reference
-            .or_else(|| anchor.start_date.map(|d| d.timestamp()))
-            .unwrap_or(today_ts);
+        let anchor_tir = today_group(&anchor, today_ts);
         // the item joins the anchor's day group and takes a slot next to the anchor among that group's today indexes
         let mut group: Vec<&crate::store::Task> = store
             .tasks_by_uuid
@@ -104,11 +101,7 @@ fn build_reorder_plan(
                     && !task.trashed
                     && task.status == TaskStatus::Incomplete
                     && is_today_orderable(task)
-                    && task
-                        .today_index_reference
-                        .or_else(|| task.start_date.map(|d| d.timestamp()))
-                        .unwrap_or(today_ts)
-                        == anchor_tir
+                    && today_group(task, today_ts) == anchor_tir
             })
             .collect();
         group.sort_by_key(|task| (task.today_index, Reverse(task.index), task.uuid.clone()));

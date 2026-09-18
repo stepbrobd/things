@@ -13,7 +13,7 @@ use crate::{
         resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
-    ordering::allocate,
+    ordering::{allocate, today_group},
     repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
     store::Task,
     wire::{
@@ -449,17 +449,17 @@ fn build_new_plan(
             .checked_sub(1)
             .and_then(|at| today_siblings.get(at));
         let next_today = today_siblings.get(today_insert_at);
-        let tir = next_today.or(prev_today).map_or(today_ts, |task| {
-            task.today_index_reference.unwrap_or(today_ts)
-        });
+        let tir = next_today
+            .or(prev_today)
+            .map_or(today_ts, |task| today_group(task, today_ts));
         let group: Vec<(ThingsId, i32)> = today_siblings
             .iter()
-            .filter(|task| task.today_index_reference.unwrap_or(today_ts) == tir)
+            .filter(|task| today_group(task, today_ts) == tir)
             .map(|task| (task.uuid.clone(), task.today_index))
             .collect();
         let hole = today_siblings[..today_insert_at]
             .iter()
-            .filter(|task| task.today_index_reference.unwrap_or(today_ts) == tir)
+            .filter(|task| today_group(task, today_ts) == tir)
             .count();
         let (today_index, moved) = allocate(&group, hole);
         props.today_index_reference = Some(tir);

@@ -3,7 +3,14 @@
 //! between two neighbors when the gap allows one, otherwise the run is
 //! respaced and the members that move come back as patches
 
-use crate::ids::ThingsId;
+use crate::{ids::ThingsId, store::Task};
+
+/// the day group a today index counts in: `tir` when a client set it, otherwise the scheduled day, otherwise today
+pub fn today_group(task: &Task, today_ts: i64) -> i64 {
+    task.today_index_reference
+        .or_else(|| task.start_date.map(|day| day.timestamp()))
+        .unwrap_or(today_ts)
+}
 
 /// the distance between members of a respaced run
 pub const STRIDE: i32 = 1024;
