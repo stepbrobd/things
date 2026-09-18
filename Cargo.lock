@@ -2054,7 +2054,7 @@ dependencies = [
 
 [[package]]
 name = "things"
-version = "2026.918.0"
+version = "2026.918.1"
 dependencies = [
  "anyhow",
  "chrono",
