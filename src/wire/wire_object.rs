@@ -97,6 +97,23 @@ impl WireObject {
         }
     }
 
+    /// the payload without the fields that do not parse on their own, for an object that is kept in view and marked
+    pub fn readable_properties(&self) -> Result<Properties, serde_json::Error> {
+        let Properties::Unknown(map) = &self.payload else {
+            return self.properties();
+        };
+        let parses = |key: &String, value: &Value| {
+            let single = BTreeMap::from([(key.clone(), value.clone())]);
+            Self::properties_from(self.operation_type, self.entity_type.as_ref(), single).is_ok()
+        };
+        let readable = map
+            .iter()
+            .filter(|(key, value)| parses(key, value))
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect();
+        Self::properties_from(self.operation_type, self.entity_type.as_ref(), readable)
+    }
+
     pub fn properties_map(&self) -> BTreeMap<String, Value> {
         match &self.payload {
             Properties::TaskCreate(props) => to_map(props),

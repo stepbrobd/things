@@ -11,7 +11,7 @@ pub use entities::{
     Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateObject,
     StateProperties, Tag, TagStateProps, Task, TaskStateProps,
 };
-pub use state::{RawState, degraded_ids, fold_item, fold_items};
+pub use state::{RawState, degraded_checklist_owners, degraded_ids, fold_item, fold_items};
 
 use crate::{
     common::{day_of, day_timestamp},
@@ -159,6 +159,12 @@ impl ThingsStore {
                     }
                 }
                 _ => {}
+            }
+        }
+
+        for owner in degraded_checklist_owners(raw_state) {
+            if let Some(task) = self.tasks_by_uuid.get_mut(&owner) {
+                task.degraded = true;
             }
         }
 

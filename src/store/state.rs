@@ -210,19 +210,31 @@ fn wire_object_properties(obj: &WireObject) -> StateProperties {
     }
 }
 
-/// an object of a stored kind whose payload did not parse is kept opaque and marked, as is one an update reaches before any create and a task of a kind this CLI does not read
+/// an object of a stored kind whose payload did not parse keeps the fields that do and is marked, as is one an update reaches before any create, a task whose note cannot be read and a task of a kind this CLI does not read
 fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
-    let properties = wire_object_properties(&obj);
     let stored = obj.entity_type.as_ref().is_some_and(EntityType::is_stored);
     let unparsed = stored && matches!(obj.payload, Properties::Unknown(_));
+    let properties = if unparsed {
+        obj.readable_properties()
+            .map_or(StateProperties::Other, Into::into)
+    } else {
+        wire_object_properties(&obj)
+    };
     let create_less = stored && obj.operation_type == OperationType::Update;
+    let unreadable_note = matches!(
+        &obj.payload,
+        Properties::TaskCreate(props)
+            if props.notes.as_ref().is_some_and(|notes| notes.apply_to(None).is_err())
+    );
     let future = obj
         .entity_type
         .as_ref()
         .is_some_and(|entity| entity.is_task_family() && !stored);
-    let degraded = unparsed || create_less || future;
+    let degraded = unparsed || create_less || unreadable_note || future;
     if unparsed {
-        warn!(target: "things::replay", uuid = %uuid, "the object's payload did not parse, it is kept opaque");
+        warn!(target: "things::replay", uuid = %uuid, "the object's payload did not parse, the fields that do are kept");
+    } else if unreadable_note {
+        warn!(target: "things::replay", uuid = %uuid, "the task's note cannot be read");
     } else if create_less {
         warn!(target: "things::replay", uuid = %uuid, "an update reached the object before any create, it is kept partial");
     } else if future {
@@ -334,8 +346,22 @@ pub fn degraded_ids(state: &RawState) -> Vec<ThingsId> {
         .filter(|(_, object)| object.degraded)
         .map(|(uuid, _)| uuid.clone())
         .collect();
+    ids.extend(degraded_checklist_owners(state));
     ids.sort();
+    ids.dedup();
     ids
+}
+
+/// the tasks a marked checklist item belongs to, whose checklist is not whole either
+pub fn degraded_checklist_owners(state: &RawState) -> impl Iterator<Item = ThingsId> + '_ {
+    state
+        .values()
+        .filter(|object| object.degraded)
+        .filter_map(|object| match &object.properties {
+            StateProperties::ChecklistItem(item) => Some(item.task_ids.iter().cloned()),
+            _ => None,
+        })
+        .flatten()
 }
 
 pub fn fold_items(items: impl IntoIterator<Item = WireItem>) -> RawState {
@@ -481,7 +507,10 @@ mod tests {
         };
         assert_eq!(item.title, "Step");
         assert!(state[&item_id].degraded);
-        assert_eq!(degraded_ids(&state), vec![item_id]);
+        // the item's to-do is refused with it
+        let mut marked = vec![item_id, TASK_ID.parse::<ThingsId>().expect("valid id")];
+        marked.sort();
+        assert_eq!(degraded_ids(&state), marked);
     }
 
     #[test]
@@ -504,14 +533,41 @@ mod tests {
     }
 
     #[test]
-    fn an_unparseable_create_of_a_known_task_is_kept_opaque_and_marked() {
+    fn an_unparseable_create_keeps_what_parses_and_is_marked() {
         let create = wire_item(&format!(
             r#"{{"{TASK_ID}":{{"t":0,"e":"Task7","p":{{"tt":"Odd","ss":"future"}}}}}}"#
         ));
         let state = fold_items([create]);
         let task_id = TASK_ID.parse::<ThingsId>().expect("valid task id");
-        assert!(matches!(state[&task_id].properties, StateProperties::Other));
+        let StateProperties::Task(task) = &state[&task_id].properties else {
+            panic!("the title parses and stays in view");
+        };
+        assert_eq!(task.title, "Odd");
         assert!(state[&task_id].degraded);
+
+        // a note in a format this CLI does not read marks its task too
+        let create = wire_item(&format!(
+            r#"{{"{TASK_ID}":{{"t":0,"e":"Task7","p":{{"tt":"Odd","nt":{{"_t":"tx","t":3,"v":"x"}}}}}}}}"#
+        ));
+        assert!(fold_items([create])[&task_id].degraded);
+
+        // so does a checklist item of it that did not replay
+        let item = "Ck11111111111111111111";
+        let items = [
+            task6_create(),
+            wire_item(&format!(
+                r#"{{"{item}":{{"t":0,"e":"ChecklistItem3","p":{{"tt":"Step","ts":["{TASK_ID}"],"ss":"x"}}}}}}"#
+            )),
+        ];
+        let state = fold_items(items);
+        assert!(!state[&task_id].degraded);
+        assert!(degraded_ids(&state).contains(&task_id));
+        assert!(
+            ThingsStore::from_raw_state(&state)
+                .get_task(TASK_ID)
+                .expect("task")
+                .degraded
+        );
     }
 
     #[test]
