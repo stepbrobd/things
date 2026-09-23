@@ -685,12 +685,13 @@ fn build_edit_plan(
             .map(|item| (item.uuid.clone(), item.title.clone(), item.index))
             .collect::<Vec<_>>();
 
+        let mut removed = HashSet::new();
         if let Some(remove_raw) = &args.remove_checklist {
             let (items, err) = resolve_checklist_items(task, remove_raw);
             if !err.is_empty() {
                 return Err(err);
             }
-            let removed = items.into_iter().map(|i| i.uuid).collect::<HashSet<_>>();
+            removed = items.into_iter().map(|i| i.uuid).collect::<HashSet<_>>();
             for uuid in &removed {
                 changes.insert(
                     uuid.to_string(),
@@ -716,6 +717,11 @@ fn build_edit_plan(
                 }
                 if matches.len() > 1 {
                     return Err(format!("Ambiguous checklist item prefix: '{short_id}'"));
+                }
+                if removed.contains(&matches[0].uuid) {
+                    return Err(format!(
+                        "Checklist item '{short_id}' cannot be removed and renamed in one edit."
+                    ));
                 }
                 changes.insert(
                     matches[0].uuid.to_string(),
@@ -1556,36 +1562,42 @@ mod tests {
         let new_check = |n: u128| ThingsId::from_u128(n).to_string();
         let mut ids = vec![new_check(1), new_check(2)].into_iter();
         let mut id_gen = || ids.next().expect("next id");
-        let plan = build_edit_plan(
-            &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
-                title: None,
-                notes: None,
-                move_target: None,
-                tag_delta: TagDeltaArgs {
-                    add_tags: None,
-                    remove_tags: None,
-                },
-                add_checklist: vec!["Step three".to_string(), "Step four".to_string()],
-                remove_checklist: Some(format!("{},{}", &CHECK_A[..6], &CHECK_B[..6])),
-                rename_checklist: vec![format!("{}:Renamed", &CHECK_A[..6])],
-                completed_on: None,
-                created_on: None,
-                when: None,
-                deadline_date: None,
-                clear_deadline: false,
-                reminder: None,
-                clear_reminder: false,
-                repeat: None,
-                times: None,
-                until: None,
+        let args = |remove: &str| EditArgs {
+            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            title: None,
+            notes: None,
+            move_target: None,
+            tag_delta: TagDeltaArgs {
+                add_tags: None,
+                remove_tags: None,
             },
+            add_checklist: vec!["Step three".to_string(), "Step four".to_string()],
+            remove_checklist: Some(remove.to_string()),
+            rename_checklist: vec![format!("{}:Renamed", &CHECK_A[..6])],
+            completed_on: None,
+            created_on: None,
+            when: None,
+            deadline_date: None,
+            clear_deadline: false,
+            reminder: None,
+            clear_reminder: false,
+            repeat: None,
+            times: None,
+            until: None,
+        };
+        // an item cannot be removed and renamed at once
+        let err = build_edit_plan(
+            &args(&format!("{},{}", &CHECK_A[..6], &CHECK_B[..6])),
             &store,
             NOW,
             TODAY,
             &mut id_gen,
         )
-        .expect("checklist plan");
+        .expect_err("removed and renamed");
+        assert!(err.contains("cannot be removed and renamed"), "{err}");
+
+        let plan = build_edit_plan(&args(&CHECK_B[..6]), &store, NOW, TODAY, &mut id_gen)
+            .expect("checklist plan");
 
         assert!(matches!(
             plan.changes.get(CHECK_A).map(|o| o.operation_type),
