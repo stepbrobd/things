@@ -1,7 +1,7 @@
 use std::{
     cell::{Cell, RefCell},
     collections::{BTreeMap, HashSet},
-    io::{IsTerminal, Read},
+    io::{IsTerminal, Read, Write},
     path::PathBuf,
     rc::Rc,
 };
@@ -15,7 +15,7 @@ use crate::{
     client::ThingsCloudClient,
     cmd_ctx::{CmdCtx, DefaultCmdCtx},
     commands::{Command, Commands},
-    common::ICONS,
+    common::{ICONS, printable},
     dirs::append_log_dir,
     ids::ThingsId,
     log_cache::{fold_state_from_append_log, get_state_with_append_log},
@@ -141,7 +141,10 @@ impl Cli {
                 Ok(state)
             }
             Err(err) => {
-                eprintln!("Sync failed, showing the cached state: {err:#}");
+                eprintln!(
+                    "Sync failed, showing the cached state: {}",
+                    printable(&format!("{err:#}"))
+                );
                 self.offline.set(true);
                 fold_state_from_append_log(&cache_dir)
             }
@@ -166,10 +169,13 @@ pub fn run() -> Result<()> {
         cli.ensure_state()?;
         if let Err(err) = materialize_due(&cli, &mut ctx) {
             // the pass stands in for the Apple clients, its failure is reported and the command still runs
-            eprintln!("{err:#}");
+            eprintln!("{}", printable(&format!("{err:#}")));
         }
     }
-    command.run_with_ctx(&cli, &mut std::io::stdout(), &mut ctx)
+    let mut out = Vec::new();
+    let result = command.run_with_ctx(&cli, &mut out, &mut ctx);
+    std::io::stdout().write_all(printable(&String::from_utf8_lossy(&out)).as_bytes())?;
+    result
 }
 
 /// create the instances repeating templates are due for, the way the Apple clients do on their day
@@ -199,7 +205,10 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
     for materialized in due {
         eprintln!(
             "{} Created {} for {}  {}",
-            ICONS.repeat, materialized.title, materialized.day, materialized.instance_id
+            ICONS.repeat,
+            printable(&materialized.title),
+            materialized.day,
+            materialized.instance_id
         );
     }
     Ok(())

@@ -194,6 +194,45 @@ pub fn parse_reminder(time: &str) -> Result<i64, String> {
         .map_err(|_| format!("Invalid --reminder time: {time} (expected HH:MM)"))
 }
 
+/// text for the terminal, the CLI's own SGR colors pass and every other control character shows in caret notation
+///
+/// titles and notes come from the cloud, where anyone who can mail a to-do
+/// into the inbox writes them
+pub fn printable(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut skip_to = 0;
+    for (at, c) in text.char_indices() {
+        if at < skip_to {
+            continue;
+        }
+        match c {
+            '\n' | '\t' => out.push(c),
+            '\u{1b}' => match sgr(&text[at..]) {
+                Some(sequence) => {
+                    out.push_str(sequence);
+                    skip_to = at + sequence.len();
+                }
+                None => out.push_str("^["),
+            },
+            '\u{7f}' => out.push_str("^?"),
+            c if c.is_ascii_control() => {
+                out.push('^');
+                out.push(char::from(c as u8 + 0x40));
+            }
+            '\u{80}'..='\u{9f}' => out.push('\u{fffd}'),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+/// the select graphic rendition sequence at the start of `text`
+fn sgr(text: &str) -> Option<&str> {
+    let params = text.strip_prefix("\u{1b}[")?;
+    let len = params.find(|c: char| !c.is_ascii_digit() && c != ';')?;
+    params[len..].starts_with('m').then(|| &text[..len + 3])
+}
+
 pub fn task6_note(value: &str) -> TaskNotes {
     let mut hasher = Hasher::new();
     hasher.update(value.as_bytes());
@@ -289,7 +328,21 @@ fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> 
 mod tests {
     use chrono::{FixedOffset, Local, NaiveTime, TimeZone, Utc};
 
-    use super::{day_of, day_timestamp, local_date_as_utc_midnight, parse_day, parse_instant};
+    use super::{
+        day_of, day_timestamp, local_date_as_utc_midnight, parse_day, parse_instant, printable,
+    };
+
+    #[test]
+    fn printable_keeps_colors_and_escapes_other_controls() {
+        assert_eq!(
+            printable("\u{1b}[1;32m✓ Done\u{1b}[0m\tnote\n"),
+            "\u{1b}[1;32m✓ Done\u{1b}[0m\tnote\n"
+        );
+        assert_eq!(
+            printable("Pay rent\u{1b}]52;c;aGk=\u{7}\u{1b}[2J\rX\u{7f}\u{9b}"),
+            "Pay rent^[]52;c;aGk=^G^[[2J^MX^?\u{fffd}"
+        );
+    }
 
     #[test]
     fn today_uses_the_local_date_after_utc_midnight() {

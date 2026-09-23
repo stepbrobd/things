@@ -1,6 +1,6 @@
 fn main() {
     if let Err(err) = things::app::run() {
-        eprintln!("{err:#}");
+        eprintln!("{}", things::common::printable(&format!("{err:#}")));
         std::process::exit(1);
     }
 }
