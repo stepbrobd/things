@@ -330,8 +330,8 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
                 state.remove(&uuid);
             }
             OperationType::Unknown(operation) => {
+                warn!(target: "things::replay", uuid = %uuid, operation, "an operation this CLI does not read reached the object");
                 if let Some(existing) = state.get_mut(&uuid) {
-                    warn!(target: "things::replay", uuid = %uuid, operation, "an operation this CLI does not know reached the object");
                     existing.degraded = true;
                 }
             }

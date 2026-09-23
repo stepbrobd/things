@@ -40,6 +40,22 @@ where
     Option::<T>::deserialize(deserializer).map(Option::unwrap_or_default)
 }
 
+/// a patch field of one or many, null leaving the field as it is
+pub(crate) fn deserialize_patch_vec_or_single<'de, D, T>(
+    deserializer: D,
+) -> Result<Option<Vec<T>>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    Option::<OneOrMany<T>>::deserialize(deserializer).map(|value| {
+        value.map(|value| match value {
+            OneOrMany::One(v) => vec![v],
+            OneOrMany::Many(v) => v,
+        })
+    })
+}
+
 pub(crate) fn deserialize_vec_or_single<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
 where
     D: Deserializer<'de>,

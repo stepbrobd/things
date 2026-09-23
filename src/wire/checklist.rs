@@ -80,8 +80,13 @@ pub struct ChecklistItemPatch {
     )]
     pub stop_date: Option<Option<f64>>,
 
-    /// `ts`: parent task IDs.
-    #[serde(rename = "ts", skip_serializing_if = "Option::is_none")]
+    /// `ts`: parent task IDs, one or many as in a create.
+    #[serde(
+        rename = "ts",
+        default,
+        deserialize_with = "crate::wire::deserialize_patch_vec_or_single",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub task_ids: Option<Vec<ThingsId>>,
 
     /// `ix`: sort index.

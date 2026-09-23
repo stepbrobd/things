@@ -24,6 +24,27 @@ mod tests {
     const ID_C: &str = "JFdhhhp37fpryAKu8UXwzK";
 
     #[test]
+    fn an_envelope_that_does_not_parse_fails_its_object_and_not_the_line() {
+        let create = format!(r#"{{"{ID_A}":{{"t":0,"e":"Task7","p":{{"tt":"Kept"}}}}}}"#);
+        // a null payload is an empty one
+        let deleted: WireItem =
+            serde_json::from_str(&format!(r#"{{"{ID_B}":{{"t":2,"e":"Task7","p":null}}}}"#))
+                .expect("a null payload");
+        assert_eq!(deleted[ID_B].operation_type, OperationType::Delete);
+        // an entity that is no string reads as an operation this CLI does not know, and marks the object
+        let odd: WireItem =
+            serde_json::from_str(&format!(r#"{{"{ID_A}":{{"t":1,"e":7,"p":{{}}}}}}"#))
+                .expect("an odd envelope");
+        assert_eq!(odd[ID_A].operation_type, OperationType::Unknown(-1));
+        let state = fold_items([serde_json::from_str(&create).expect("create"), odd]);
+        assert!(state[&id(ID_A)].degraded);
+        // a checklist patch names its task as one id or many, as a create does
+        let patch: ChecklistItemPatch =
+            serde_json::from_str(&format!(r#"{{"ts":"{ID_C}"}}"#)).expect("one task id");
+        assert_eq!(patch.task_ids, Some(vec![id(ID_C)]));
+    }
+
+    #[test]
     fn wire_object_deserializes_with_wire_keys() {
         let json = r#"{
             "abc-123": {

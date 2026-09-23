@@ -224,7 +224,11 @@ struct RawWireObject {
     operation_type: OperationType,
     #[serde(rename = "e")]
     entity_type: Option<EntityType>,
-    #[serde(rename = "p", default)]
+    #[serde(
+        rename = "p",
+        default,
+        deserialize_with = "crate::wire::deserialize_default_on_null"
+    )]
     properties: BTreeMap<String, Value>,
 }
 
@@ -240,7 +244,15 @@ impl Serialize for WireObject {
 
 impl<'de> Deserialize<'de> for WireObject {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let raw = RawWireObject::deserialize(deserializer)?;
+        let value = Value::deserialize(deserializer)?;
+        // an envelope this CLI cannot read is an operation it does not know, which marks its object rather than failing the whole line
+        let Ok(raw) = serde_json::from_value::<RawWireObject>(value) else {
+            return Ok(Self {
+                operation_type: OperationType::Unknown(-1),
+                entity_type: None,
+                payload: Properties::Unknown(BTreeMap::new()),
+            });
+        };
         let properties = raw.properties;
         let parsed = WireObject::properties_from(
             raw.operation_type,
