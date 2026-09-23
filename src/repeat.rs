@@ -1146,6 +1146,27 @@ mod tests {
     }
 
     #[test]
+    fn upcoming_shows_the_instance_the_template_makes_next() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        let projected = |store: &ThingsStore| {
+            store
+                .projected_repeats(day("2026-03-25"))
+                .iter()
+                .map(|task| task.start_date.expect("day").date_naive())
+                .collect::<Vec<_>>()
+        };
+        // today's instance moved five days out holds nothing back, the template makes tomorrow's
+        let moved = store_of(vec![
+            template_object(daily, "2026-03-26", 1),
+            instance_object("Ji11111111111111111111", "2026-03-30"),
+        ]);
+        assert_eq!(projected(&moved), vec![day("2026-03-26")]);
+        // an instance due today and not yet made belongs to today, the row shows the next one
+        let due = store_of(vec![template_object(daily, "2026-03-25", 0)]);
+        assert_eq!(projected(&due), vec![day("2026-03-26")]);
+    }
+
+    #[test]
     fn a_marked_or_dated_template_is_left_to_the_apple_clients() {
         let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
         // a patch that does not parse marks the template

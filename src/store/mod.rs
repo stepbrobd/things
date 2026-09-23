@@ -6,7 +6,7 @@ use std::{
     collections::{HashMap, HashSet},
 };
 
-use chrono::{DateTime, Days, Local, NaiveDate, TimeZone, Utc};
+use chrono::{DateTime, Local, NaiveDate, TimeZone, Utc};
 pub use entities::{
     Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateObject,
     StateProperties, Tag, TagStateProps, Task, TaskStateProps,
@@ -14,7 +14,7 @@ pub use entities::{
 pub use state::{RawState, degraded_ids, fold_item, fold_items};
 
 use crate::{
-    common::day_timestamp,
+    common::{day_of, day_timestamp},
     ids::{
         ThingsId,
         matching::{prefix_matches, shortest_unique_prefixes},
@@ -288,9 +288,8 @@ impl ThingsStore {
         out
     }
 
-    /// one row per repeating template for its next occurrence after today, so a rule stays visible between instances
+    /// one row per repeating template for the next instance after today, the one the pass or an Apple client makes next, so a rule stays visible between instances
     pub fn projected_repeats(&self, today: NaiveDate) -> Vec<Task> {
-        let floor = today - Days::new(1);
         self.tasks_by_uuid
             .values()
             .filter(|template| {
@@ -300,24 +299,17 @@ impl ThingsStore {
                     && !template.instance_creation_paused
             })
             .filter_map(|template| {
-                let last_instance = self
-                    .tasks_by_uuid
-                    .values()
-                    .filter(|task| {
-                        !task.trashed && task.recurrence_templates.contains(&template.uuid)
-                    })
-                    .filter_map(|task| task.start_date)
-                    .map(|day| day.date_naive())
-                    .max();
-                let after = last_instance.map_or(floor, |last| last.max(floor));
-                let next = next_occurrence_of_rule(
-                    template.recurrence_rule.as_ref()?,
-                    after,
-                    template.instance_creation_count,
-                )?;
-                if next <= today {
-                    return None;
-                }
+                let rule = template.recurrence_rule.as_ref()?;
+                let count = template.instance_creation_count;
+                // icsd is where the search for the next instance starts, as the pass reads it
+                let search_from = template.instance_creation_start_date.and_then(day_of)?;
+                let due = next_occurrence_of_rule(rule, search_from.pred_opt()?, count)?;
+                // an instance due today or earlier belongs to today, the row shows the one after it
+                let next = if due > today {
+                    due
+                } else {
+                    next_occurrence_of_rule(rule, today, count.checked_add(1)?)?
+                };
                 let mut projected = template.clone();
                 projected.start_date = DateTime::from_timestamp(day_timestamp(next), 0);
                 projected.start = TaskStart::Someday;
