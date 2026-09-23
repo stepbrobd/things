@@ -46,11 +46,10 @@ pub struct ThingsCloudClient {
 }
 
 impl fmt::Debug for ThingsCloudClient {
-    // the password stays out of every dump
+    // the password and the history key stay out of every dump
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("ThingsCloudClient")
             .field("email", &self.email)
-            .field("history_key", &self.history_key)
             .field("head_index", &self.head_index)
             .finish_non_exhaustive()
     }
@@ -68,10 +67,12 @@ impl ThingsCloudClient {
         })
     }
 
+    /// `label` names the request in messages, the url stays out of them since the history key in it alone reads and writes the account
     fn request(
         &self,
         method: reqwest::Method,
         url: &str,
+        label: &str,
         body: Option<Value>,
         extra_headers: &[(&str, String)],
     ) -> Result<Value> {
@@ -99,18 +100,26 @@ impl ThingsCloudClient {
 
         let resp = req
             .send()
-            .with_context(|| format!("request failed: {url}"))?;
+            .map_err(reqwest::Error::without_url)
+            .with_context(|| format!("request failed: {label}"))?;
         let status = resp.status();
-        let text = resp.text().with_context(|| {
-            format!("failed reading body from {url} (HTTP {})", status.as_u16())
-        })?;
+        let text = resp
+            .text()
+            .map_err(reqwest::Error::without_url)
+            .with_context(|| {
+                format!(
+                    "failed reading body from {label} (HTTP {})",
+                    status.as_u16()
+                )
+            })?;
         if !status.is_success() {
-            return Err(anyhow!("HTTP {} for {}: {}", status.as_u16(), url, text));
+            let body: String = text.chars().take(300).collect();
+            return Err(anyhow!("HTTP {} for {label}: {body}", status.as_u16()));
         }
         if text.trim().is_empty() {
             return Ok(json!({}));
         }
-        serde_json::from_str(&text).with_context(|| format!("invalid json from {url}"))
+        serde_json::from_str(&text).with_context(|| format!("invalid json from {label}"))
     }
 
     pub fn authenticate(&mut self) -> Result<String> {
@@ -118,6 +127,7 @@ impl ThingsCloudClient {
         let result = self.request(
             reqwest::Method::GET,
             &url,
+            "the account",
             None,
             &[(
                 "Authorization",
@@ -139,7 +149,13 @@ impl ThingsCloudClient {
             .as_ref()
             .ok_or_else(|| anyhow!("Must authenticate first"))?;
         let url = format!("{BASE_URL}/history/{history_key}/items?start-index={start_index}");
-        self.request(reqwest::Method::GET, &url, None, &[])
+        self.request(
+            reqwest::Method::GET,
+            &url,
+            &format!("the history items from {start_index}"),
+            None,
+            &[],
+        )
     }
 
     pub fn get_all_items(&mut self) -> Result<RawState> {
@@ -205,6 +221,7 @@ impl ThingsCloudClient {
         let result = self.request(
             reqwest::Method::POST,
             &url,
+            &format!("the commit on {idx}"),
             Some(serde_json::to_value(payload)?),
             &[("Push-Priority", WRITE_PUSH_PRIORITY.to_string())],
         )?;
