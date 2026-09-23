@@ -18,7 +18,7 @@ use crate::{
     common::{ICONS, printable},
     dirs::append_log_dir,
     ids::ThingsId,
-    log_cache::{fold_state_from_append_log, get_state_with_append_log},
+    log_cache::{CacheLock, fold_state_from_append_log, get_state_with_append_log},
     logging, repeat,
     store::{RawState, ThingsStore, degraded_ids, fold_item, fold_items},
     wire::wire_object::WireItem,
@@ -68,6 +68,9 @@ pub struct Cli {
     /// the objects whose replay did not complete, which the writer refuses to touch
     #[arg(skip)]
     pub degraded: Rc<RefCell<HashSet<ThingsId>>>,
+    /// the sync cache stays locked through the materialization pass, another run sees its instances rather than making them again
+    #[arg(skip)]
+    pub cache_lock: RefCell<Option<CacheLock>>,
 }
 
 impl Cli {
@@ -136,8 +139,9 @@ impl Cli {
         let (email, password) = load_auth()?;
         let mut client = ThingsCloudClient::new(email, password)?;
         match get_state_with_append_log(&mut client, &cache_dir) {
-            Ok(state) => {
+            Ok((state, lock)) => {
                 *self.cloud.borrow_mut() = Some(client);
+                *self.cache_lock.borrow_mut() = Some(lock);
                 Ok(state)
             }
             Err(err) => {
@@ -171,6 +175,7 @@ pub fn run() -> Result<()> {
             // the pass stands in for the Apple clients, its failure is reported and the command still runs
             eprintln!("{}", printable(&format!("{err:#}")));
         }
+        cli.cache_lock.borrow_mut().take();
     }
     let mut out = Vec::new();
     let result = command.run_with_ctx(&cli, &mut out, &mut ctx);

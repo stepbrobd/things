@@ -88,7 +88,8 @@ fn line_hash(line: &str) -> u64 {
 }
 
 /// held by every reader and writer of the cache directory: two processes never interleave appends, cursor moves and state cache writes
-struct CacheLock {
+#[derive(Debug)]
+pub struct CacheLock {
     _file: File,
 }
 
@@ -483,14 +484,14 @@ fn fold_locked(cache_dir: &Path) -> Result<RawState> {
     Ok(state)
 }
 
-/// synchronize the journal with the server and fold it, under the cache lock
+/// synchronize the journal with the server and fold it, under the cache lock, which the caller keeps until its writes from this state are committed
 pub fn get_state_with_append_log(
     client: &mut ThingsCloudClient,
     cache_dir: &Path,
-) -> Result<RawState> {
-    let _lock = lock_cache(cache_dir)?;
+) -> Result<(RawState, CacheLock)> {
+    let lock = lock_cache(cache_dir)?;
     sync_locked(client, cache_dir)?;
-    fold_locked(cache_dir)
+    Ok((fold_locked(cache_dir)?, lock))
 }
 
 /// the state folded from the journal on disk, without touching the server
