@@ -20,7 +20,8 @@ Prebuilt Nix outputs are available from this cache:
 - Cache: <https://cache.ysun.co>
 - Public key: `cache.ysun.co-1:WxPYwT5g3kt9XhUhHPpNLZKI9HIOsVVAuqSHpok8Qt4=`
 
-`things auth` saves the Things Cloud email and password as plaintext JSON in
+`things auth` signs in to Things Cloud with the email and password it asks for
+and saves them only when the sign-in succeeds, as plaintext JSON in
 `$XDG_CONFIG_HOME/things/auth.json`. The default path is
 `~/.config/things/auth.json`, and the file is created with mode `0600` on Unix.
 `THINGS_EMAIL` and `THINGS_PASSWORD` override the corresponding fields.
@@ -99,18 +100,20 @@ accounts fetches that account's history from the beginning. Concurrent runs
 serialize access to the cache, and a run holds it until its repeat pass has
 committed.
 
-When sync fails, the command warns and reads cached state. Writes are refused
-for that run. If an object's history does not replay completely, the CLI reports
-it, refuses writes to that object, and sets `flags.degraded` in JSON output.
+When sync fails, the command warns, reads cached state and exits with status 3
+instead of 0. Writes are refused for that run. If an object's history does not
+replay completely, the CLI reports it, refuses writes to that object, and sets
+`flags.degraded` in JSON output.
 
 Histories from before Things Cloud moved to base58 ids are not supported.
 Objects keyed by UUIDs are skipped, and an object that the `Task3`, `Task4`,
 `Area2` or first `Tombstone` kinds reach, or that holds a note stored as a plain
 XML string, is reported as not replayed.
 
-The selected command exits with status 1 on failure. Batch mutations validate
-every target before their own write. The repeat pass runs first and may create
-due instances even when the selected command later fails.
+The selected command exits with status 1 on failure and 2 on invalid arguments.
+Batch mutations validate every target before their own write. The repeat pass
+runs first and may create due instances even when the selected command later
+fails.
 
 `THINGS_LOG` sets the log filter, which shows errors alone by default.
 `THINGS_LOG=warn` lists the objects behind a replay notice. `THINGS_LOG_FORMAT`
