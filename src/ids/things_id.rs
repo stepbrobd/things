@@ -5,8 +5,6 @@ use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{self, Visitor},
 };
-use sha1::{Digest, Sha1};
-use uuid::Uuid;
 
 /// a Things 3 entity identifier, the 16 bytes behind a canonical base58 id
 ///
@@ -16,12 +14,11 @@ pub struct ThingsId([u8; 16]);
 
 impl ThingsId {
     pub fn random() -> Self {
-        let uuid = Uuid::from_bytes(random());
-        ThingsId(uuid_to_bytes(&uuid))
+        ThingsId(random())
     }
 
     pub fn from_u128(value: u128) -> Self {
-        ThingsId(uuid_to_bytes(&Uuid::from_u128(value)))
+        ThingsId(value.to_be_bytes())
     }
 
     pub fn as_bytes(&self) -> &[u8; 16] {
@@ -212,14 +209,6 @@ fn base58_decode(input: &str) -> Option<Vec<u8>> {
         out.push(*byte);
     }
     Some(out)
-}
-
-fn uuid_to_bytes(uuid: &Uuid) -> [u8; 16] {
-    let canonical = uuid.to_string().to_uppercase();
-    let digest = Sha1::digest(canonical.as_bytes());
-    let mut bytes = [0u8; 16];
-    bytes.copy_from_slice(&digest[..16]);
-    bytes
 }
 
 #[cfg(test)]

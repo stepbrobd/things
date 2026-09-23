@@ -1,10 +1,10 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Wind down' --when evening
-✓ Created Wind down  MdeYZd3jHuUUVtGH6rRgXy
+✓ Created Wind down  11111116AjePwYNteRv
 {
   "ancestor_index": 0,
   "changes": {
-    "MdeYZd3jHuUUVtGH6rRgXy": {
+    "11111116AjePwYNteRv": {
       "e": "Task7",
       "p": {
         "acrd": null,

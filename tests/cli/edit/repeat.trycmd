@@ -4,22 +4,7 @@ $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000333.0 edit A7h
 {
   "ancestor_index": 0,
   "changes": {
-    "A7h5eCi24RvAWKC3Hv3muf": {
-      "e": "Task7",
-      "p": {
-        "ato": 27000,
-        "md": 1700000333.0,
-        "rt": [
-          "MdeYZd3jHuUUVtGH6rRgXy"
-        ],
-        "sb": 0,
-        "sr": 1700006400,
-        "st": 2,
-        "tir": 1700006400
-      },
-      "t": 1
-    },
-    "MdeYZd3jHuUUVtGH6rRgXy": {
+    "11111116AjePwYNteRv": {
       "e": "Task7",
       "p": {
         "acrd": null,
@@ -76,6 +61,21 @@ $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000333.0 edit A7h
         }
       },
       "t": 0
+    },
+    "A7h5eCi24RvAWKC3Hv3muf": {
+      "e": "Task7",
+      "p": {
+        "ato": 27000,
+        "md": 1700000333.0,
+        "rt": [
+          "11111116AjePwYNteRv"
+        ],
+        "sb": 0,
+        "sr": 1700006400,
+        "st": 2,
+        "tir": 1700006400
+      },
+      "t": 1
     }
   }
 }

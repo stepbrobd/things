@@ -1,10 +1,55 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Weekly review' --when today --repeat weekly:mon
-✓ Created Weekly review  MdeYZd3jHuUUVtGH6rRgXy  (Repeat every week on Monday; starts 2023-11-14)
+✓ Created Weekly review  11111116AjePwYNteRv  (Repeat every week on Monday; starts 2023-11-14)
 {
   "ancestor_index": 0,
   "changes": {
-    "8wjhan6uKa8ZcYxFqvMBNE": {
+    "11111116AjePwYNteRv": {
+      "e": "Task7",
+      "p": {
+        "acrd": null,
+        "agr": [],
+        "ar": [],
+        "ato": null,
+        "cd": 1700000000.0,
+        "dd": null,
+        "dds": null,
+        "dl": [],
+        "do": 0,
+        "icc": 0,
+        "icp": false,
+        "icsd": null,
+        "ix": 0,
+        "lai": null,
+        "lt": false,
+        "md": 1700000000.0,
+        "nt": null,
+        "pr": [],
+        "rmd": null,
+        "rp": null,
+        "rr": null,
+        "rt": [
+          "11111116AjePwYNteRw"
+        ],
+        "sb": 0,
+        "sp": null,
+        "sr": 1700438400,
+        "ss": 0,
+        "st": 2,
+        "tg": [],
+        "ti": 0,
+        "tir": 1700438400,
+        "tp": 0,
+        "tr": false,
+        "tt": "Weekly review",
+        "xx": {
+          "_t": "oo",
+          "sn": {}
+        }
+      },
+      "t": 0
+    },
+    "11111116AjePwYNteRw": {
       "e": "Task7",
       "p": {
         "acrd": null,
@@ -52,51 +97,6 @@ $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Wee
         "tg": [],
         "ti": 0,
         "tir": 1701043200,
-        "tp": 0,
-        "tr": false,
-        "tt": "Weekly review",
-        "xx": {
-          "_t": "oo",
-          "sn": {}
-        }
-      },
-      "t": 0
-    },
-    "MdeYZd3jHuUUVtGH6rRgXy": {
-      "e": "Task7",
-      "p": {
-        "acrd": null,
-        "agr": [],
-        "ar": [],
-        "ato": null,
-        "cd": 1700000000.0,
-        "dd": null,
-        "dds": null,
-        "dl": [],
-        "do": 0,
-        "icc": 0,
-        "icp": false,
-        "icsd": null,
-        "ix": 0,
-        "lai": null,
-        "lt": false,
-        "md": 1700000000.0,
-        "nt": null,
-        "pr": [],
-        "rmd": null,
-        "rp": null,
-        "rr": null,
-        "rt": [
-          "8wjhan6uKa8ZcYxFqvMBNE"
-        ],
-        "sb": 0,
-        "sp": null,
-        "sr": 1700438400,
-        "ss": 0,
-        "st": 2,
-        "tg": [],
-        "ti": 0,
-        "tir": 1700438400,
         "tp": 0,
         "tr": false,
         "tt": "Weekly review",

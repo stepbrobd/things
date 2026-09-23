@@ -2,11 +2,11 @@
 $ run.sh things --id-seed 7 --today-ts 1774396800 --now-ts 1774400000.0 today
 ⭑ Today  (1 tasks)
 
-  M ▢ Stretch  @08:00
+  1 ▢ Stretch  @08:00
 {
   "ancestor_index": 0,
   "changes": {
-    "MdeYZd3jHuUUVtGH6rRgXy": {
+    "11111116AjePwYNteRv": {
       "e": "Task7",
       "p": {
         "acrd": null,
@@ -63,6 +63,6 @@ $ run.sh things --id-seed 7 --today-ts 1774396800 --now-ts 1774400000.0 today
     }
   }
 }
-↻ Created Stretch for 2026-03-25  MdeYZd3jHuUUVtGH6rRgXy
+↻ Created Stretch for 2026-03-25  11111116AjePwYNteRv
 
 ```
