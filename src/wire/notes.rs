@@ -6,7 +6,6 @@ use serde_json::Value;
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum TaskNotes {
-    Plain(String),
     Structured(StructuredTaskNotes),
     Unknown(Value),
 }
@@ -64,7 +63,6 @@ impl TaskNotes {
 
     pub fn apply_to(&self, current: Option<&str>) -> Result<Option<String>, TaskNotesApplyError> {
         match self {
-            Self::Plain(value) => Ok(non_empty(value.clone())),
             Self::Structured(structured) => match structured.format_type {
                 1 => Ok(structured.v.clone().and_then(non_empty)),
                 2 => apply_patches(current, &structured.ps),

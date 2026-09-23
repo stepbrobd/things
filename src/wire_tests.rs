@@ -392,7 +392,7 @@ mod tests {
         assert!(EntityType::Task6.can_upgrade_to_task7());
         assert!(EntityType::Task7.can_upgrade_to_task7());
         assert!(EntityType::Task7.is_task_family());
-        assert!(!EntityType::Task4.can_upgrade_to_task7());
+        assert!(!EntityType::from("Task4".to_string()).is_task());
         assert!(!EntityType::Unknown("Task8".to_string()).is_task());
         assert!(!EntityType::Unknown("Task8".to_string()).can_upgrade_to_task7());
         assert!(EntityType::Unknown("Task8".to_string()).is_task_family());

@@ -8,11 +8,9 @@ use serde::{
 use sha1::{Digest, Sha1};
 use uuid::Uuid;
 
-/// A Things 3 entity identifier.
+/// a Things 3 entity identifier, the 16 bytes behind a canonical base58 id
 ///
-/// Internally stored as canonical 16 bytes (SHA1-truncated UUID digest).
-/// Hyphenated UUIDs, historical `ACTIONGROUP-<UUID>` IDs, and compact base58
-/// IDs are accepted at parse-time.
+/// the uuid ids of histories from before base58 ids are not read
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct ThingsId([u8; 16]);
 
@@ -81,19 +79,7 @@ impl FromStr for ThingsId {
     type Err = ParseThingsIdError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.is_empty() {
-            return Err(ParseThingsIdError(s.to_owned()));
-        }
-
-        // Early Things clients stored project-heading IDs with an
-        // `ACTIONGROUP-` discriminator in both object keys and task
-        // relationships. The UUID suffix identifies the same entity and can
-        // be canonicalized through the normal legacy UUID path.
-        let uuid_candidate = s.strip_prefix("ACTIONGROUP-").unwrap_or(s);
-        if let Ok(uuid) = Uuid::parse_str(uuid_candidate) {
-            return Ok(ThingsId(uuid_to_bytes(&uuid)));
-        }
-        if s.len() > 22 {
+        if s.is_empty() || s.len() > 22 {
             return Err(ParseThingsIdError(s.to_owned()));
         }
         let decoded = base58_decode(s).ok_or_else(|| ParseThingsIdError(s.to_owned()))?;
@@ -120,7 +106,7 @@ impl<'de> Deserialize<'de> for ThingsId {
             type Value = ThingsId;
 
             fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                write!(f, "a Things ID string (compact base58 or hyphenated UUID)")
+                write!(f, "a base58 Things ID")
             }
 
             fn visit_str<E: de::Error>(self, v: &str) -> Result<ThingsId, E> {
@@ -242,46 +228,12 @@ mod tests {
 
     use super::*;
 
-    const LEGACY_UUID: &str = "3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A";
-    const LEGACY_UUID_LOWER: &str = "3c6bbd49-8d11-4fff-8b0e-b8f33fa9c00a";
-    const LEGACY_ACTION_GROUP_ID: &str = "ACTIONGROUP-3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A";
-    fn compact_for_legacy() -> String {
-        ThingsId::from_str(LEGACY_UUID).unwrap().to_string()
-    }
-
-    #[test]
-    fn parse_legacy_uuid_uppercase() {
-        let id: ThingsId = LEGACY_UUID.parse().unwrap();
-        assert_eq!(id.to_string(), compact_for_legacy());
-        assert_eq!(id.to_string().len(), 22);
-    }
-
-    #[test]
-    fn parse_legacy_uuid_lowercase() {
-        let upper: ThingsId = LEGACY_UUID.parse().unwrap();
-        let lower: ThingsId = LEGACY_UUID_LOWER.parse().unwrap();
-        assert_eq!(upper, lower, "UUID parsing must be case-insensitive");
-    }
-
-    #[test]
-    fn parse_legacy_action_group_id_as_its_uuid() {
-        let uuid: ThingsId = LEGACY_UUID.parse().unwrap();
-        let action_group: ThingsId = LEGACY_ACTION_GROUP_ID.parse().unwrap();
-        assert_eq!(action_group, uuid);
-    }
-
-    #[test]
-    fn serde_deserialize_legacy_action_group_id() {
-        let parsed: ThingsId = serde_json::from_str(&format!(r#""{LEGACY_ACTION_GROUP_ID}""#))
-            .expect("deserialize legacy action-group ID");
-        assert_eq!(parsed, LEGACY_UUID.parse().unwrap());
-    }
+    const COMPACT: &str = "A7h5eCi24RvAWKC3Hv3muf";
 
     #[test]
     fn parse_compact_preserved() {
-        let compact = compact_for_legacy();
-        let id: ThingsId = compact.parse().unwrap();
-        assert_eq!(id.to_string(), compact);
+        let id: ThingsId = COMPACT.parse().unwrap();
+        assert_eq!(id.to_string(), COMPACT);
     }
 
     #[test]
@@ -292,7 +244,7 @@ mod tests {
 
     #[test]
     fn display_roundtrip() {
-        let id: ThingsId = LEGACY_UUID.parse().unwrap();
+        let id: ThingsId = COMPACT.parse().unwrap();
         let displayed = id.to_string();
         let reparsed: ThingsId = displayed.parse().unwrap();
         assert_eq!(id, reparsed);
@@ -313,30 +265,22 @@ mod tests {
 
     #[test]
     fn serde_roundtrip_compact() {
-        let id: ThingsId = LEGACY_UUID.parse().unwrap();
+        let id: ThingsId = COMPACT.parse().unwrap();
         let json = serde_json::to_string(&id).unwrap();
         let back: ThingsId = serde_json::from_str(&json).unwrap();
         assert_eq!(id, back);
     }
 
     #[test]
-    fn serde_deserialize_from_legacy_uuid() {
-        let json = format!("\"{}\"", LEGACY_UUID);
-        let id: ThingsId = serde_json::from_str(&json).unwrap();
-        assert_eq!(id.to_string().len(), 22);
-        assert_eq!(id.to_string(), compact_for_legacy());
-    }
-
-    #[test]
     fn into_string() {
-        let id: ThingsId = LEGACY_UUID.parse().unwrap();
+        let id: ThingsId = COMPACT.parse().unwrap();
         let s: String = id.clone().into();
         assert_eq!(s, id.to_string());
     }
 
     #[test]
     fn as_ref_bytes() {
-        let id: ThingsId = LEGACY_UUID.parse().unwrap();
+        let id: ThingsId = COMPACT.parse().unwrap();
         let r: &[u8; 16] = id.as_ref();
         assert_eq!(r, id.as_bytes());
     }
@@ -345,6 +289,14 @@ mod tests {
     fn rejects_invalid_compact_id() {
         assert!("not-a-things-id".parse::<ThingsId>().is_err());
         assert!("0OIl".parse::<ThingsId>().is_err());
+        // ids from before base58 ids are not read
+        for legacy in [
+            "3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A",
+            "ACTIONGROUP-3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A",
+            "3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A-20240131",
+        ] {
+            assert!(legacy.parse::<ThingsId>().is_err(), "{legacy}");
+        }
         assert!(
             "123456789ABCDEFGHJKLMNPQRSTUVWXYZ"
                 .parse::<ThingsId>()
@@ -357,7 +309,7 @@ mod tests {
         let samples = [
             [0u8; 16],
             [255u8; 16],
-            uuid_to_bytes(&Uuid::parse_str(LEGACY_UUID).unwrap()),
+            [0, 0, 7, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13],
         ];
         for sample in samples {
             let (buf, len) = base58_encode_fixed(&sample);
@@ -372,7 +324,7 @@ mod tests {
         let mut samples: Vec<ThingsId> = vec![
             ThingsId([0u8; 16]),
             ThingsId([255u8; 16]),
-            LEGACY_UUID.parse().unwrap(),
+            COMPACT.parse().unwrap(),
         ];
         for _ in 0..20 {
             samples.push(ThingsId::random());

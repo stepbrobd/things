@@ -20,7 +20,7 @@ pub struct TaskProps {
     #[serde(rename = "tt", default)]
     pub title: String,
 
-    /// `nt`: notes payload (legacy XML or modern structured text object).
+    /// `nt`: notes payload as a structured text object, the plain XML string of older histories is not read
     #[serde(rename = "nt", default)]
     pub notes: Option<TaskNotes>,
 

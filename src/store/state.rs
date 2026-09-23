@@ -270,8 +270,9 @@ fn apply_update_payload(
 }
 
 pub fn fold_item(item: WireItem, state: &mut RawState) {
-    for (uuid, obj) in item {
-        let Ok(uuid) = uuid.parse::<ThingsId>() else {
+    for (key, obj) in item {
+        let Ok(uuid) = key.parse::<ThingsId>() else {
+            warn!(target: "things::replay", %key, "an object whose id is not base58 is skipped");
             continue;
         };
         match obj.operation_type {
@@ -452,9 +453,8 @@ mod tests {
         assert_eq!(properties.title, "Partial");
         assert!(state[&task_id].degraded);
         // a settings object without a create is not a task and carries no mark
-        let settings = wire_item(
-            r#"{"3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A":{"t":1,"e":"Settings5","p":{"x":1}}}"#,
-        );
+        let settings =
+            wire_item(r#"{"Se11111111111111111111":{"t":1,"e":"Settings5","p":{"x":1}}}"#);
         let state = fold_items([settings]);
         assert!(state.values().all(|object| !object.degraded));
     }

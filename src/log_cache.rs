@@ -506,10 +506,8 @@ mod tests {
     use super::*;
 
     const TASK_ID: &str = "A7h5eCi24RvAWKC3Hv3muf";
-    const SETTINGS_ONE: &str =
-        r#"{"3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A":{"t":0,"e":"Settings5","p":{}}}"#;
-    const SETTINGS_TWO: &str =
-        r#"{"4C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00B":{"t":0,"e":"Settings5","p":{}}}"#;
+    const SETTINGS_ONE: &str = r#"{"Se11111111111111111111":{"t":0,"e":"Settings5","p":{}}}"#;
+    const SETTINGS_TWO: &str = r#"{"Se21111111111111111111":{"t":0,"e":"Settings5","p":{}}}"#;
 
     fn seed_log(cache_dir: &Path, content: &str) {
         fs::write(cache_dir.join(LOG_FILE), content).expect("seed log");
@@ -549,27 +547,6 @@ mod tests {
         let cache = read_state_cache(cache_dir).expect("rewritten cache");
         assert_eq!(cache.state, state);
         assert_eq!(cache.log_offset, log.len() as u64);
-    }
-
-    #[test]
-    fn fold_state_accepts_legacy_action_group_ids() {
-        let temp_dir = tempfile::tempdir().expect("tempdir");
-        let cache_dir = temp_dir.path();
-        let action_group_id = "ACTIONGROUP-11111111-2222-4333-8444-555555555555";
-        let task_id = "3C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00A";
-        let log = format!(
-            r#"{{"{action_group_id}":{{"t":0,"e":"Task3","p":{{"tt":"Heading","ss":0,"tp":2,"st":1}}}},"{task_id}":{{"t":0,"e":"Task3","p":{{"tt":"Legacy child","ss":0,"tp":0,"st":1,"agr":["{action_group_id}"]}}}}}}"#
-        ) + "\n";
-        seed_log(cache_dir, &log);
-
-        let state = fold_state_from_append_log(cache_dir).expect("fold legacy action-group IDs");
-        let store = crate::store::ThingsStore::from_raw_state(&state);
-        let task = store.get_task(task_id).expect("legacy child task");
-
-        assert_eq!(
-            task.action_group,
-            Some(action_group_id.parse().expect("action-group ID"))
-        );
     }
 
     #[test]
@@ -645,7 +622,7 @@ mod tests {
         seed_log(cache_dir, &format!("{SETTINGS_TWO}\n"));
         let state = fold_state_from_append_log(cache_dir).expect("refold");
         assert_eq!(state.len(), 1);
-        assert!(state.contains_key(&"4C6BBD49-8D11-4FFF-8B0E-B8F33FA9C00B".parse().expect("id")));
+        assert!(state.contains_key(&"Se21111111111111111111".parse().expect("id")));
     }
 
     #[test]

@@ -68,7 +68,7 @@ impl ThingsStore {
     fn short_id_domain(&self, raw_state: &RawState) -> Vec<ThingsId> {
         let mut ids = Vec::new();
         for (uuid, obj) in raw_state {
-            if let Some(EntityType::Tombstone | EntityType::Tombstone2) = obj.entity_type.as_ref() {
+            if let Some(EntityType::Tombstone2) = obj.entity_type.as_ref() {
                 continue;
             }
 
@@ -131,7 +131,7 @@ impl ThingsStore {
                     let task = self.parse_task(uuid, props, entity, obj.degraded);
                     self.tasks_by_uuid.insert(uuid.clone(), task);
                 }
-                Some(EntityType::Area2 | EntityType::Area3) => {
+                Some(EntityType::Area3) => {
                     let StateProperties::Area(props) = &obj.properties else {
                         continue;
                     };

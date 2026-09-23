@@ -161,20 +161,20 @@ impl WireObject {
         let payload = match operation_type {
             OperationType::Delete => Delete,
             OperationType::Create => match entity_type {
-                Some(Task3 | Task4 | Task6 | Task7) => TaskCreate(Box::new(parse(p)?)),
+                Some(Task6 | Task7) => TaskCreate(Box::new(parse(p)?)),
                 Some(ChecklistItem | ChecklistItem2 | ChecklistItem3) => ChecklistCreate(parse(p)?),
                 Some(Tag3 | Tag4) => TagCreate(parse(p)?),
-                Some(Area2 | Area3) => AreaCreate(parse(p)?),
-                Some(Tombstone | Tombstone2) => TombstoneCreate(parse(p)?),
+                Some(Area3) => AreaCreate(parse(p)?),
+                Some(Tombstone2) => TombstoneCreate(parse(p)?),
                 Some(Command) => CommandCreate(parse(p)?),
                 Some(Settings3 | Settings4 | Settings5) => Ignored(p),
                 _ => Properties::Unknown(p),
             },
             OperationType::Update => match entity_type {
-                Some(Task3 | Task4 | Task6 | Task7) => TaskUpdate(Box::new(parse(p)?)),
+                Some(Task6 | Task7) => TaskUpdate(Box::new(parse(p)?)),
                 Some(ChecklistItem | ChecklistItem2 | ChecklistItem3) => ChecklistUpdate(parse(p)?),
                 Some(Tag3 | Tag4) => TagUpdate(parse(p)?),
-                Some(Area2 | Area3) => AreaUpdate(parse(p)?),
+                Some(Area3) => AreaUpdate(parse(p)?),
                 Some(Settings3 | Settings4 | Settings5) => Ignored(p),
                 _ => Properties::Unknown(p),
             },
@@ -300,14 +300,13 @@ impl Default for OperationType {
 /// Entity type for wire field `e`.
 ///
 /// Values are versioned by Things (for example `Task6`, `Area3`).
+///
+/// the kinds of histories from before base58 ids, `Task3`, `Task4`, `Area2`
+/// and the first `Tombstone`, are not read and parse as unknown
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Display, EnumString)]
 #[serde(from = "String", into = "String")]
 pub enum EntityType {
-    /// Task entity (legacy version).
-    Task3,
-    /// Task entity (legacy version).
-    Task4,
-    /// Task/project/heading entity (legacy version).
+    /// Task/project/heading entity (previous version).
     Task6,
     /// Task/project/heading entity (current version).
     Task7,
@@ -324,8 +323,6 @@ pub enum EntityType {
     /// Tag entity (current observed version).
     Tag4,
 
-    /// Area entity (legacy version).
-    Area2,
     /// Area entity (current observed version).
     Area3,
 
@@ -334,8 +331,6 @@ pub enum EntityType {
     Settings4,
     Settings5,
 
-    /// Tombstone marker for deleted objects (legacy version).
-    Tombstone,
     /// Tombstone marker for deleted objects.
     Tombstone2,
 
@@ -348,23 +343,20 @@ pub enum EntityType {
 
 impl EntityType {
     pub fn is_task(&self) -> bool {
-        matches!(self, Self::Task3 | Self::Task4 | Self::Task6 | Self::Task7)
+        matches!(self, Self::Task6 | Self::Task7)
     }
 
     /// the kinds the store keeps as typed objects, whose payloads must parse for the object to be whole
     pub fn is_stored(&self) -> bool {
         matches!(
             self,
-            Self::Task3
-                | Self::Task4
-                | Self::Task6
+            Self::Task6
                 | Self::Task7
                 | Self::ChecklistItem
                 | Self::ChecklistItem2
                 | Self::ChecklistItem3
                 | Self::Tag3
                 | Self::Tag4
-                | Self::Area2
                 | Self::Area3
         )
     }
