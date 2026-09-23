@@ -495,6 +495,8 @@ pub fn due_instances(
                 && !template.degraded
                 // a repeater is left to the Apple clients, as the commands leave it
                 && !template.has_repeater()
+                // a template in a closed or trashed project or heading makes nothing, as its to-dos show nowhere
+                && !store.in_closed_container(template)
                 // a template with a deadline is left to the Apple clients, the app keeps an instance's deadline as an offset no capture has shown written
                 && template.deadline.is_none()
                 && template.due_date_offset == 0
@@ -1143,6 +1145,33 @@ mod tests {
         let made = due_on(&store, "2026-03-25");
         assert_eq!(made.len(), 1);
         assert_eq!(made[0].day, day("2026-03-25"));
+    }
+
+    #[test]
+    fn a_template_in_a_closed_project_makes_nothing() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        const PROJECT: &str = "Pj11111111111111111111";
+        let with_project = |status: TaskStatus| {
+            let (uuid, mut object) = template_object(daily, "2026-03-25", 1);
+            if let crate::wire::wire_object::Properties::TaskCreate(props) = &mut object.payload {
+                props.parent_project_ids = vec![PROJECT.parse().expect("project id")];
+            }
+            let project = WireObject::create(
+                EntityType::Task7,
+                TaskProps {
+                    title: "Garden season".to_string(),
+                    item_type: TaskType::Project,
+                    status,
+                    ..Default::default()
+                },
+            );
+            store_of(vec![(uuid, object), (PROJECT.to_string(), project)])
+        };
+        assert_eq!(
+            due_on(&with_project(TaskStatus::Incomplete), "2026-03-25").len(),
+            1
+        );
+        assert!(due_on(&with_project(TaskStatus::Completed), "2026-03-25").is_empty());
     }
 
     #[test]

@@ -383,7 +383,7 @@ fn matches(
     prepared: &Prepared,
     today: &DateTime<Utc>,
 ) -> MatchResult {
-    if task.is_heading() || task.trashed {
+    if task.is_heading() || task.trashed || store.in_trashed_container(task) {
         return MatchResult::no();
     }
 

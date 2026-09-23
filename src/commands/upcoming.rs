@@ -33,7 +33,7 @@ impl Command for UpcomingArgs {
 
         let mut tasks = Vec::new();
         for t in store.tasks(Some(TaskStatus::Incomplete), Some(false), None) {
-            if t.in_someday() {
+            if t.in_someday() || store.in_closed_container(&t) {
                 continue;
             }
             let Some(start_date) = t.start_date else {

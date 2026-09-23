@@ -304,6 +304,7 @@ impl ThingsStore {
                     && !template.trashed
                     && template.status == TaskStatus::Incomplete
                     && !template.instance_creation_paused
+                    && !self.in_closed_container(template)
             })
             .filter_map(|template| {
                 let rule = template.recurrence_rule.as_ref()?;
@@ -348,15 +349,15 @@ impl ThingsStore {
 
     pub fn anytime(&self, today: &DateTime<Utc>) -> Vec<Task> {
         let project_visible = |task: &Task, store: &ThingsStore| {
+            if store.in_closed_container(task) {
+                return false;
+            }
             let Some(project_uuid) = store.effective_project_uuid(task) else {
                 return true;
             };
             let Some(project) = store.tasks_by_uuid.get(&project_uuid) else {
                 return true;
             };
-            if project.trashed || project.status != TaskStatus::Incomplete {
-                return false;
-            }
             if project.start == TaskStart::Someday {
                 return false;
             }
@@ -419,7 +420,7 @@ impl ThingsStore {
                 {
                     return false;
                 }
-                if task.is_heading() {
+                if task.is_heading() || self.in_trashed_container(task) {
                     return false;
                 }
                 let Some(stop_date) = task.stop_date else {
@@ -448,6 +449,28 @@ impl ThingsStore {
             (Reverse(stop_key), Reverse(t.index), t.uuid.clone())
         });
         out
+    }
+
+    /// under a trashed heading or in a trashed project, which puts a to-do in the Trash along with them
+    pub fn in_trashed_container(&self, task: &Task) -> bool {
+        let heading = task
+            .action_group
+            .as_ref()
+            .and_then(|id| self.tasks_by_uuid.get(id));
+        let project = self
+            .effective_project_uuid(task)
+            .and_then(|id| self.tasks_by_uuid.get(&id));
+        heading.is_some_and(|heading| heading.trashed)
+            || project.is_some_and(|project| project.trashed)
+    }
+
+    /// in a trashed container or a project that is no longer open, which keeps a to-do out of the lists and a template out of the repeat pass
+    pub fn in_closed_container(&self, task: &Task) -> bool {
+        self.in_trashed_container(task)
+            || self
+                .effective_project_uuid(task)
+                .and_then(|id| self.tasks_by_uuid.get(&id))
+                .is_some_and(|project| project.status != TaskStatus::Incomplete)
     }
 
     pub fn effective_project_uuid(&self, task: &Task) -> Option<ThingsId> {
