@@ -223,6 +223,37 @@ fn build_mark_status_plan(
             (TaskStatus::Canceled, Some(now))
         };
 
+        // a project closes with its open to-dos, which take its status as in the app once it asks
+        if task.is_project() && action != "incomplete" {
+            let mut open = store
+                .tasks_by_uuid
+                .values()
+                .filter(|child| {
+                    child.is_todo()
+                        && !child.trashed
+                        && child.status == TaskStatus::Incomplete
+                        && !child.is_recurrence_template()
+                        && !seen.contains(&child.uuid)
+                        && store.effective_project_uuid(child).as_ref() == Some(&task.uuid)
+                })
+                .cloned()
+                .collect::<Vec<_>>();
+            open.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
+            for child in open {
+                let validation_error = validate_mark_target(&child, action, store);
+                if !validation_error.is_empty() {
+                    errors.push(format!(
+                        "{} ({}, in {})",
+                        validation_error, child.title, task.title
+                    ));
+                    continue;
+                }
+                seen.insert(child.uuid.clone());
+                updates.push((child.uuid.clone(), task_status, stop_date));
+                successes.push(child);
+            }
+        }
+
         updates.push((task.uuid.clone(), task_status, stop_date));
         successes.push(task);
     }
@@ -597,6 +628,109 @@ mod tests {
                 CHECK_B: {"t":1,"e":"ChecklistItem3","p":{"ss":3,"md":NOW}}
             })
         );
+    }
+
+    #[test]
+    fn a_closed_project_takes_its_open_to_dos_along() {
+        const PROJECT: &str = "Pj11111111111111111111";
+        const HEADING: &str = "Hd11111111111111111111";
+        const OPEN: &str = "Ae11111111111111111111";
+        const UNDER: &str = "Un11111111111111111111";
+        const DONE: &str = "Dn11111111111111111111";
+        let object = |title: &str,
+                      item_type: TaskType,
+                      status: TaskStatus,
+                      project: Option<&str>,
+                      heading: Option<&str>| {
+            WireObject::create(
+                EntityType::Task7,
+                TaskProps {
+                    title: title.to_string(),
+                    item_type,
+                    status,
+                    parent_project_ids: project
+                        .map(|id| id.parse().expect("id"))
+                        .into_iter()
+                        .collect(),
+                    action_group_ids: heading
+                        .map(|id| id.parse().expect("id"))
+                        .into_iter()
+                        .collect(),
+                    ..Default::default()
+                },
+            )
+        };
+        let store = |project: TaskStatus| {
+            build_store(vec![
+                (
+                    PROJECT.to_string(),
+                    object("Remodel", TaskType::Project, project, None, None),
+                ),
+                (
+                    HEADING.to_string(),
+                    object(
+                        "Plumbing",
+                        TaskType::Heading,
+                        TaskStatus::Incomplete,
+                        Some(PROJECT),
+                        None,
+                    ),
+                ),
+                (
+                    OPEN.to_string(),
+                    object(
+                        "Buy tiles",
+                        TaskType::Todo,
+                        TaskStatus::Incomplete,
+                        Some(PROJECT),
+                        None,
+                    ),
+                ),
+                (
+                    UNDER.to_string(),
+                    object(
+                        "Order sink",
+                        TaskType::Todo,
+                        TaskStatus::Incomplete,
+                        None,
+                        Some(HEADING),
+                    ),
+                ),
+                (
+                    DONE.to_string(),
+                    object(
+                        "Measure",
+                        TaskType::Todo,
+                        TaskStatus::Completed,
+                        Some(PROJECT),
+                        None,
+                    ),
+                ),
+            ])
+        };
+        let status = |done: bool, incomplete: bool| MarkArgs {
+            task_ids: vec![IdentifierToken::from(PROJECT)],
+            done,
+            incomplete,
+            canceled: !done && !incomplete,
+            check_ids: None,
+            uncheck_ids: None,
+            check_cancel_ids: None,
+        };
+        let (plan, _, errors) =
+            build_mark_status_plan(&status(false, false), &store(TaskStatus::Incomplete), NOW);
+        assert!(errors.is_empty(), "{errors:?}");
+        let mut keys = plan.changes.keys().cloned().collect::<Vec<_>>();
+        keys.sort();
+        let mut expected = vec![OPEN.to_string(), PROJECT.to_string(), UNDER.to_string()];
+        expected.sort();
+        assert_eq!(keys, expected);
+        assert_eq!(plan.changes[UNDER].properties_map()["ss"], json!(2));
+        // reopening a project leaves its to-dos as they are, as the app does
+        let (plan, _, errors) =
+            build_mark_status_plan(&status(false, true), &store(TaskStatus::Completed), NOW);
+        assert!(errors.is_empty(), "{errors:?}");
+        assert_eq!(plan.changes.keys().collect::<Vec<_>>(), vec![PROJECT]);
     }
 
     #[test]
