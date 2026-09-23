@@ -131,7 +131,7 @@ impl Cli {
             return Ok(fold_items(items));
         }
 
-        let cache_dir = append_log_dir();
+        let cache_dir = append_log_dir()?;
         if self.no_cloud {
             return fold_state_from_append_log(&cache_dir);
         }

@@ -80,7 +80,7 @@ fn validate_auth(email: &str, password: &str) -> Result<(String, String)> {
 }
 
 pub fn load_auth() -> Result<(String, String)> {
-    let path = auth_file_path();
+    let path = auth_file_path()?;
 
     let cfg = load_auth_config(&path, |name| std::env::var(name).ok())?;
 
@@ -102,7 +102,7 @@ pub fn load_auth() -> Result<(String, String)> {
 }
 
 pub fn write_auth(email: &str, password: &str) -> Result<std::path::PathBuf> {
-    let path = auth_file_path();
+    let path = auth_file_path()?;
     write_auth_at(&path, email, password)?;
     Ok(path)
 }

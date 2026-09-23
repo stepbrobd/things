@@ -3,31 +3,35 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::{Result, anyhow};
+
 const APP_NAME: &str = "things";
 
 /// The XDG base directory named by `var`, or `default` under the home
 /// directory when the variable is unset or empty, on every platform.
-fn xdg_home(var: &str, default: &[&str]) -> PathBuf {
+fn xdg_home(var: &str, default: &[&str]) -> Result<PathBuf> {
     match std::env::var(var) {
-        Ok(custom) if !custom.is_empty() => PathBuf::from(custom),
+        Ok(custom) if !custom.is_empty() => Ok(PathBuf::from(custom)),
         _ => {
-            let mut path = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
+            // without a home the files would land in whatever directory the command runs in
+            let mut path =
+                dirs::home_dir().ok_or_else(|| anyhow!("No home directory, set {var}."))?;
             path.extend(default);
-            path
+            Ok(path)
         }
     }
 }
 
-pub fn append_log_dir() -> PathBuf {
-    xdg_home("XDG_STATE_HOME", &[".local", "state"])
+pub fn append_log_dir() -> Result<PathBuf> {
+    Ok(xdg_home("XDG_STATE_HOME", &[".local", "state"])?
         .join(APP_NAME)
-        .join("append-log")
+        .join("append-log"))
 }
 
-pub fn auth_file_path() -> PathBuf {
-    xdg_home("XDG_CONFIG_HOME", &[".config"])
+pub fn auth_file_path() -> Result<PathBuf> {
+    Ok(xdg_home("XDG_CONFIG_HOME", &[".config"])?
         .join(APP_NAME)
-        .join("auth.json")
+        .join("auth.json"))
 }
 
 /// Create `dir` and narrow it to owner-only. The config directory holds the
