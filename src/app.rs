@@ -3,6 +3,7 @@ use std::{
     collections::{BTreeMap, HashSet},
     io::{ErrorKind, IsTerminal, Read, Write},
     path::PathBuf,
+    process::ExitCode,
     rc::Rc,
 };
 
@@ -31,7 +32,7 @@ use crate::{
 #[command(disable_help_subcommand = true)]
 #[command(about = "Command-line interface for Things 3 via Cloud API")]
 #[command(
-    after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync log live"
+    after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync log live\n\nExit status:\n  0  Success\n  1  The command failed\n  2  The arguments were invalid\n  3  The sync failed and the output comes from the cached state"
 )]
 pub struct Cli {
     /// Output JSON when supported by the selected command
@@ -158,7 +159,10 @@ impl Cli {
     }
 }
 
-pub fn run() -> Result<()> {
+/// the status of a run whose command answered from the cached state because the sync failed
+pub const EXIT_SYNC_FAILED: u8 = 3;
+
+pub fn run() -> Result<ExitCode> {
     let mut cli = Cli::parse();
     logging::init();
     // the test hooks fix ids and days, a seed used twice would overwrite what the first run created
@@ -193,7 +197,13 @@ pub fn run() -> Result<()> {
     {
         return Err(error.into());
     }
-    result
+    result?;
+    // output from the cache succeeds as a command, a caller that needs the account as it stands reads the status
+    Ok(if cli.offline.get() {
+        ExitCode::from(EXIT_SYNC_FAILED)
+    } else {
+        ExitCode::SUCCESS
+    })
 }
 
 /// create the instances repeating templates are due for, the way the Apple clients do on their day

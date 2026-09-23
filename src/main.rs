@@ -1,6 +1,11 @@
-fn main() {
-    if let Err(err) = things::app::run() {
-        eprintln!("{}", things::common::printable(&format!("{err:#}")));
-        std::process::exit(1);
+use std::process::ExitCode;
+
+fn main() -> ExitCode {
+    match things::app::run() {
+        Ok(status) => status,
+        Err(err) => {
+            eprintln!("{}", things::common::printable(&format!("{err:#}")));
+            ExitCode::FAILURE
+        }
     }
 }

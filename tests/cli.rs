@@ -103,3 +103,34 @@ fn upcoming() {
 fn show() {
     cases("tests/cli/show/**/*.trycmd");
 }
+
+/// the proxy refuses the connection, the sync fails without a request leaving the machine
+#[test]
+fn failed_sync() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let config = home.path().join("config");
+    std::fs::create_dir_all(config.join("things")).expect("config dir");
+    std::fs::write(
+        config.join("things").join("auth.json"),
+        r#"{"email":"user@example.com","password":"hunter2"}"#,
+    )
+    .expect("auth file");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_things"))
+        .args(["--json", "inbox"])
+        .env("XDG_CONFIG_HOME", &config)
+        .env("XDG_STATE_HOME", home.path().join("state"))
+        .env("HTTPS_PROXY", "http://127.0.0.1:1")
+        .env_remove("NO_PROXY")
+        .env_remove("no_proxy")
+        .env_remove("THINGS_EMAIL")
+        .env_remove("THINGS_PASSWORD")
+        .output()
+        .expect("things runs");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(3), "{stderr}");
+    assert!(
+        stderr.contains("Sync failed, showing the cached state"),
+        "{stderr}"
+    );
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "[]");
+}
