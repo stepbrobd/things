@@ -192,7 +192,7 @@ pub struct FindArgs {
         long = "completed-on",
         short = 'o',
         value_name = "EXPR",
-        help = "Completion date filter, implies --completed (repeatable)"
+        help = "Completion date filter, implies --completed when no status is given (repeatable)"
     )]
     pub completed_on: Vec<String>,
 }
@@ -495,10 +495,6 @@ fn matches(
                 return MatchResult::no();
             }
         }
-    }
-
-    if !args.any_status && !args.completed_on.is_empty() && task.status != TaskStatus::Completed {
-        return MatchResult::no();
     }
 
     MatchResult::yes(checklist_only)

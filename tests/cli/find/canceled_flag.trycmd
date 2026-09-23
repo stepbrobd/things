@@ -5,3 +5,11 @@ $ run.sh things find --canceled
   C ☒ Canceled task
 
 ```
+
+```trycmd
+$ run.sh things find --canceled --completed-on '>=2025-02-28'
+⌕ Find  (1 task)
+
+  C ☒ Canceled task
+
+```
