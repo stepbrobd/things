@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use anyhow::Result;
 use serde_json::json;
-use tracing::{debug, error};
+use tracing::debug;
 
 use crate::{client::ThingsCloudClient, wire::wire_object::WireObject};
 
@@ -67,8 +67,9 @@ impl CloudWriter for LoggingCloudWriter {
                 );
                 Ok(head_index)
             }
+            // the command returns the error, the event is for a debug log
             Err(err) => {
-                error!(
+                debug!(
                     target: "things_cli::cloud_commit::error",
                     event = "cloud.commit.error",
                     ancestor_index,

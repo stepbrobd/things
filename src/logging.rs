@@ -43,9 +43,10 @@ pub fn init() {
                 .boxed(),
         };
 
+        // warnings name the objects and repairs behind a notice already printed, they wait for THINGS_LOG
         let directive = std::env::var("THINGS_LOG").unwrap_or_default();
         let filter = EnvFilter::builder()
-            .with_default_directive(LevelFilter::INFO.into())
+            .with_default_directive(LevelFilter::ERROR.into())
             .parse_lossy(directive);
 
         tracing_subscriber::registry()
