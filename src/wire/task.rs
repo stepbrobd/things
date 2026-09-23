@@ -265,6 +265,15 @@ pub struct TaskPatch {
     )]
     pub deadline: Option<Option<f64>>,
 
+    /// `dds`: the day the due deadline was taken out of Today, null when it was not
+    #[serde(
+        rename = "dds",
+        default,
+        deserialize_with = "deserialize_optional_field",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub deadline_suppressed_date: Option<Option<Value>>,
+
     /// `ix`: sort index.
     #[serde(rename = "ix", skip_serializing_if = "Option::is_none")]
     pub sort_index: Option<i32>,
@@ -365,6 +374,7 @@ impl TaskPatch {
             && self.status.is_none()
             && self.stop_date.is_none()
             && self.deadline.is_none()
+            && self.deadline_suppressed_date.is_none()
             && self.sort_index.is_none()
             && self.today_sort_index.is_none()
             && self.recurrence_rule.is_none()

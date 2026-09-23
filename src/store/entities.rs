@@ -43,6 +43,9 @@ pub struct TaskStateProps {
     pub scheduled_date: Option<f64>,
     pub today_index_reference: Option<i64>,
     pub deadline: Option<f64>,
+    /// `dds` is set, the due deadline was taken out of Today
+    #[serde(default)]
+    pub deadline_suppressed: bool,
     pub parent_project_ids: Vec<ThingsId>,
     pub area_ids: Vec<ThingsId>,
     pub action_group_ids: Vec<ThingsId>,
@@ -151,6 +154,7 @@ pub struct Task {
     pub tags: Vec<ThingsId>,
     pub trashed: bool,
     pub deadline: Option<DateTime<Utc>>,
+    pub deadline_suppressed: bool,
     pub start_date: Option<DateTime<Utc>>,
     pub stop_date: Option<DateTime<Utc>>,
     pub creation_date: Option<DateTime<Utc>>,
@@ -213,14 +217,21 @@ impl Task {
         self.start == TaskStart::Someday && self.start_date.is_none()
     }
 
+    /// in the Today list: started on or before today, or without a day and past a deadline nobody took out of Today, templates excluded
     pub fn is_today(&self, today: &DateTime<Utc>) -> bool {
-        let Some(start_date) = self.start_date else {
-            return false;
-        };
-        if self.start != TaskStart::Anytime && self.start != TaskStart::Someday {
+        if self.is_recurrence_template() {
             return false;
         }
-        start_date <= *today
+        match self.start_date {
+            Some(start_date) => {
+                matches!(self.start, TaskStart::Anytime | TaskStart::Someday)
+                    && start_date <= *today
+            }
+            None => {
+                !self.deadline_suppressed
+                    && self.deadline.is_some_and(|deadline| deadline <= *today)
+            }
+        }
     }
 
     pub fn is_staged_for_today(&self, today: &DateTime<Utc>) -> bool {
@@ -263,6 +274,7 @@ impl From<TaskProps> for TaskStateProps {
             scheduled_date: i64_to_f64_opt(props.scheduled_date),
             today_index_reference: props.today_index_reference,
             deadline: i64_to_f64_opt(props.deadline),
+            deadline_suppressed: props.deadline_suppressed_date.is_some(),
             parent_project_ids: props.parent_project_ids,
             area_ids: props.area_ids,
             action_group_ids: props.action_group_ids,

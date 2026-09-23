@@ -85,9 +85,8 @@ fn build_reorder_plan(
         return Err("Cannot reorder an item relative to itself.".to_string());
     }
 
-    let is_today_orderable = |task: &crate::store::Task| {
-        task.start == TaskStart::Anytime && (task.is_today(&today) || task.evening)
-    };
+    let is_today_orderable =
+        |task: &crate::store::Task| task.start == TaskStart::Anytime && task.is_today(&today);
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
 
     if is_today_reorder {

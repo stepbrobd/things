@@ -81,6 +81,9 @@ fn apply_task_patch(
     if let Some(deadline) = patch.deadline {
         task.deadline = deadline;
     }
+    if let Some(suppressed) = patch.deadline_suppressed_date {
+        task.deadline_suppressed = suppressed.is_some_and(|day| !day.is_null());
+    }
     if let Some(sort_index) = patch.sort_index {
         task.sort_index = sort_index;
     }
@@ -358,6 +361,28 @@ mod tests {
 
     fn wire_item(json: &str) -> WireItem {
         serde_json::from_str(json).expect("test wire item should deserialize")
+    }
+
+    #[test]
+    fn a_due_deadline_brings_an_undated_to_do_into_today_until_suppressed() {
+        // 2026-03-25 at UTC midnight, the deadline that day and the evening bit on a template
+        let today = chrono::DateTime::from_timestamp(1_774_396_800, 0).expect("today");
+        let due = format!(
+            r#"{{"{TASK_ID}":{{"t":0,"e":"Task7","p":{{"tt":"Rent","st":1,"dd":1774396800}}}},"Te11111111111111111111":{{"t":0,"e":"Task7","p":{{"tt":"Template","st":2,"sb":1,"rr":{{"fu":16,"fa":1,"of":[{{"dy":0}}],"tp":0}}}}}}}}"#
+        );
+        let suppressed =
+            format!(r#"{{"{TASK_ID}":{{"t":1,"e":"Task7","p":{{"dds":1774396800}}}}}}"#);
+        let store = ThingsStore::from_raw_state(&fold_items([wire_item(&due)]));
+        assert!(store.get_task(TASK_ID).expect("to-do").is_today(&today));
+        assert!(
+            !store
+                .get_task("Te11111111111111111111")
+                .expect("template")
+                .is_today(&today)
+        );
+        let store =
+            ThingsStore::from_raw_state(&fold_items([wire_item(&due), wire_item(&suppressed)]));
+        assert!(!store.get_task(TASK_ID).expect("to-do").is_today(&today));
     }
 
     fn task6_create() -> WireItem {

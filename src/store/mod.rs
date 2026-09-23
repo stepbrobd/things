@@ -201,6 +201,7 @@ impl ThingsStore {
             tags: p.tag_ids.clone(),
             trashed: p.trashed,
             deadline: ts_to_dt(p.deadline),
+            deadline_suppressed: p.deadline_suppressed,
             start_date: ts_to_dt(p.scheduled_date),
             stop_date: ts_to_dt(p.stop_date),
             creation_date: ts_to_dt(p.creation_date),
@@ -316,39 +317,6 @@ impl ThingsStore {
                 Some(projected)
             })
             .collect()
-    }
-
-    pub fn today(&self, today: &DateTime<Utc>) -> Vec<Task> {
-        let mut out: Vec<Task> = self
-            .tasks_by_uuid
-            .values()
-            .filter(|t| {
-                !t.trashed
-                    && t.status == TaskStatus::Incomplete
-                    && !t.is_heading()
-                    && !t.is_project()
-                    && !t.is_blank()
-                    && t.is_today(today)
-            })
-            .cloned()
-            .collect();
-
-        // equal keys keep a fixed order, the id breaks the tie
-        fn key(task: &Task) -> (i32, Reverse<i64>, Reverse<i32>, &ThingsId) {
-            if task.today_index == 0 {
-                let sr_ts = task.start_date.map(|d| d.timestamp()).unwrap_or(0);
-                (0, Reverse(sr_ts), Reverse(task.index), &task.uuid)
-            } else {
-                (
-                    1,
-                    Reverse(task.today_index as i64),
-                    Reverse(task.index),
-                    &task.uuid,
-                )
-            }
-        }
-        out.sort_by(|a, b| key(a).cmp(&key(b)));
-        out
     }
 
     pub fn inbox(&self) -> Vec<Task> {

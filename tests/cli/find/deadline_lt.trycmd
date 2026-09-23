@@ -2,6 +2,6 @@
 $ run.sh things find --deadline '<2026-01-01'
 ⌕ Find  (1 task)
 
-  A ▢ Past due  ⚑ due by 2025-01-01
+  A ▢ ⭑ Past due  ⚑ due by 2025-01-01
 
 ```
