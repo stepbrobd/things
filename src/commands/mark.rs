@@ -298,12 +298,18 @@ fn build_mark_checklist_plan(
 
     let mut changes = BTreeMap::new();
     for item in &items {
+        if item.status == status {
+            return Err(format!("Checklist item is already {label}: {}", item.title));
+        }
+        // a closed item carries the moment it closed, as a to-do does
+        let stop_date = (status != TaskStatus::Incomplete).then_some(now);
         changes.insert(
             item.uuid.to_string(),
             WireObject::update(
                 EntityType::ChecklistItem3,
                 ChecklistItemPatch {
                     status: Some(status),
+                    stop_date: Some(stop_date),
                     modification_date: Some(now),
                     ..Default::default()
                 },
@@ -624,8 +630,8 @@ mod tests {
         assert_eq!(
             serde_json::to_value(checked_plan.changes).expect("to value"),
             json!({
-                CHECK_A: {"t":1,"e":"ChecklistItem3","p":{"ss":3,"md":NOW}},
-                CHECK_B: {"t":1,"e":"ChecklistItem3","p":{"ss":3,"md":NOW}}
+                CHECK_A: {"t":1,"e":"ChecklistItem3","p":{"ss":3,"sp":NOW,"md":NOW}},
+                CHECK_B: {"t":1,"e":"ChecklistItem3","p":{"ss":3,"sp":NOW,"md":NOW}}
             })
         );
     }
