@@ -64,6 +64,8 @@ impl TaskNotes {
     pub fn apply_to(&self, current: Option<&str>) -> Result<Option<String>, TaskNotesApplyError> {
         match self {
             Self::Structured(structured) => match structured.format_type {
+                // the app writes an empty note as format 0, with a diag field and no text
+                0 => Ok(None),
                 1 => Ok(structured.v.clone().and_then(non_empty)),
                 2 => apply_patches(current, &structured.ps),
                 format_type => Err(TaskNotesApplyError::UnsupportedFormat(format_type)),
@@ -165,6 +167,13 @@ mod tests {
         let notes = delta(605, 62, &replacement, &expected);
 
         assert_eq!(notes.apply_to(Some(&current)), Ok(Some(expected)));
+    }
+
+    #[test]
+    fn format_zero_is_an_empty_note() {
+        let notes: TaskNotes =
+            serde_json::from_str(r#"{"_t":"tx","t":0,"diag":"createSet"}"#).expect("notes");
+        assert_eq!(notes.apply_to(Some("old")), Ok(None));
     }
 
     #[test]
