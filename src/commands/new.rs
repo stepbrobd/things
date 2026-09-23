@@ -325,6 +325,8 @@ fn build_new_plan(
             let first_ts = day_timestamp(first);
             props.scheduled_date = Some(first_ts);
             props.today_index_reference = Some(first_ts);
+            // this evening is today's, a later first day has none
+            props.evening_bit = 0;
             props.start_location = if first_ts <= today_ts {
                 TaskStart::Anytime
             } else {
@@ -364,10 +366,13 @@ fn build_new_plan(
         .as_ref()
         .map(|a| a.start == TaskStart::Anytime && a.is_today(&today))
         .unwrap_or(false);
+    let new_is_today = props.start_location == TaskStart::Anytime
+        && props.scheduled_date.is_some_and(|sr| sr <= today_ts);
     let target_bucket = props_bucket(&props);
 
+    // Today is one list across containers, the anchor's container matters when either is outside it
     if let Some(anchor) = &anchor
-        && !anchor_is_today
+        && !(anchor_is_today && new_is_today)
         && task_bucket(anchor, store) != target_bucket
     {
         return Err(
@@ -409,8 +414,6 @@ fn build_new_plan(
     props.sort_index = structural_ix;
     index_updates.extend(structural_updates);
 
-    let new_is_today = props.start_location == TaskStart::Anytime
-        && props.scheduled_date.is_some_and(|sr| sr <= today_ts);
     if new_is_today && anchor_is_today {
         let mut section_evening = if props.evening_bit != 0 { 1 } else { 0 };
 
@@ -974,5 +977,38 @@ mod tests {
         )
         .expect_err("unknown container");
         assert_eq!(unknown_container, "Container not found: nope");
+
+        // an anchor in Today places only a to-do that lands in Today too
+        const ANCHOR: &str = "Ta11111111111111111111";
+        let outside = build_new_plan(
+            &NewArgs {
+                title: "Follow up".to_string(),
+                in_target: "inbox".to_string(),
+                when: None,
+                before_id: None,
+                after_id: Some(ANCHOR.to_string()),
+                notes: String::new(),
+                tags: None,
+                deadline_date: None,
+                reminder: None,
+                repeat: None,
+                times: None,
+                until: None,
+            },
+            &build_store(vec![task(
+                ANCHOR,
+                "Call",
+                1,
+                10,
+                Some(TODAY),
+                Some(TODAY),
+                0,
+            )]),
+            NOW,
+            TODAY,
+            &mut id_gen,
+        )
+        .expect_err("an inbox to-do after a Today anchor");
+        assert!(outside.contains("different container"), "{outside}");
     }
 }
