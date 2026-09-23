@@ -89,25 +89,11 @@ fn resolve_checklist_items(
     (resolved, String::new())
 }
 
-fn validate_recurring_done(
+/// a status change of a repeat's instance, which the app follows with template bookkeeping for after completion rules
+fn validate_recurring_instance(
     task: &crate::store::Task,
     store: &crate::store::ThingsStore,
 ) -> (bool, String) {
-    if task.is_recurrence_template() {
-        return (
-            false,
-            "Recurring template tasks are blocked for done (template progression bookkeeping is not implemented).".to_string(),
-        );
-    }
-
-    if !task.is_recurrence_instance() {
-        return (
-            false,
-            "Recurring task shape is unsupported (expected an instance with rt set and rr unset)."
-                .to_string(),
-        );
-    }
-
     if task.recurrence_templates.len() != 1 {
         return (
             false,
@@ -162,6 +148,9 @@ fn validate_mark_target(
     if task.is_heading() {
         return "Headings cannot be marked.".to_string();
     }
+    if task.is_recurrence_template() {
+        return "A repeat template takes no status, mark one of its instances instead.".to_string();
+    }
     if task.trashed {
         return "Task is in Trash and cannot be completed.".to_string();
     }
@@ -174,8 +163,8 @@ fn validate_mark_target(
     if action == "canceled" && task.status == TaskStatus::Canceled {
         return "Task is already canceled.".to_string();
     }
-    if action == "done" && (task.is_recurrence_instance() || task.is_recurrence_template()) {
-        let (ok, reason) = validate_recurring_done(task, store);
+    if task.is_recurrence_instance() {
+        let (ok, reason) = validate_recurring_instance(task, store);
         if !ok {
             return reason;
         }
@@ -621,26 +610,26 @@ mod tests {
             }),
             vec![],
         )]);
-        let (plan, _, errs) = build_mark_status_plan(
-            &MarkArgs {
-                task_ids: vec![IdentifierToken::from(TASK_A)],
-                done: true,
-                incomplete: false,
-                canceled: false,
-                check_ids: None,
-                uncheck_ids: None,
-                check_cancel_ids: None,
-            },
-            &store,
-            NOW,
-        );
-        assert!(plan.changes.is_empty());
-        assert_eq!(
-            errs,
-            vec![
-                "Recurring template tasks are blocked for done (template progression bookkeeping is not implemented). (Recurring template)"
-            ]
-        );
+        let status = |done: bool| MarkArgs {
+            task_ids: vec![IdentifierToken::from(TASK_A)],
+            done,
+            incomplete: false,
+            canceled: !done,
+            check_ids: None,
+            uncheck_ids: None,
+            check_cancel_ids: None,
+        };
+        // a template takes no status, canceled no more than done
+        for done in [true, false] {
+            let (plan, _, errs) = build_mark_status_plan(&status(done), &store, NOW);
+            assert!(plan.changes.is_empty());
+            assert_eq!(
+                errs,
+                vec![
+                    "A repeat template takes no status, mark one of its instances instead. (Recurring template)"
+                ]
+            );
+        }
 
         let store = build_store(vec![task_with_props(
             TASK_A,
@@ -648,24 +637,14 @@ mod tests {
             None,
             vec![TPL_A, TPL_B],
         )]);
-        let (_, _, errs) = build_mark_status_plan(
-            &MarkArgs {
-                task_ids: vec![IdentifierToken::from(TASK_A)],
-                done: true,
-                incomplete: false,
-                canceled: false,
-                check_ids: None,
-                uncheck_ids: None,
-                check_cancel_ids: None,
-            },
-            &store,
-            NOW,
-        );
-        assert_eq!(
-            errs,
-            vec![
-                "Recurring instance has 2 template references; expected exactly 1. (Recurring instance)"
-            ]
-        );
+        for done in [true, false] {
+            let (_, _, errs) = build_mark_status_plan(&status(done), &store, NOW);
+            assert_eq!(
+                errs,
+                vec![
+                    "Recurring instance has 2 template references; expected exactly 1. (Recurring instance)"
+                ]
+            );
+        }
     }
 }
