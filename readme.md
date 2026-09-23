@@ -84,6 +84,8 @@ Repeat rules have these limits:
   its shape exactly. Its instances are left to Apple clients.
 - A template is also left to Apple clients when its recorded next day differs
   from the day computed from its rule.
+- A template inside a completed or trashed project or heading creates no
+  instances.
 
 ## Sync and local state
 
@@ -93,19 +95,26 @@ including a view command. There is no background scheduler.
 
 The sync cache is in `$XDG_STATE_HOME/things`, which defaults to
 `~/.local/state/things`. It is bound to the authenticated account. Changing
-accounts fetches that account's history from the beginning, and concurrent runs
-serialize access to the cache.
+accounts fetches that account's history from the beginning. Concurrent runs
+serialize access to the cache, and a run holds it until its repeat pass has
+committed.
 
 When sync fails, the command warns and reads cached state. Writes are refused
 for that run. If an object's history does not replay completely, the CLI reports
 it, refuses writes to that object, and sets `flags.degraded` in JSON output.
 
+Histories from before Things Cloud moved to base58 ids are not supported.
+Objects keyed by UUIDs are skipped, and an object that the `Task3`, `Task4`,
+`Area2` or first `Tombstone` kinds reach, or that holds a note stored as a plain
+XML string, is reported as not replayed.
+
 The selected command exits with status 1 on failure. Batch mutations validate
 every target before their own write. The repeat pass runs first and may create
 due instances even when the selected command later fails.
 
-`THINGS_LOG` controls the log filter. `THINGS_LOG_FORMAT` selects `pretty`,
-`simplified`, or `json`. `NO_COLOR` disables color.
+`THINGS_LOG` sets the log filter, which shows errors alone by default.
+`THINGS_LOG=warn` lists the objects behind a replay notice. `THINGS_LOG_FORMAT`
+selects `pretty`, `simplified`, or `json`. `NO_COLOR` disables color.
 
 ## License
 
