@@ -1,9 +1,10 @@
 ```trycmd
 $ run.sh things tags
-⌗ Tags  (3)
+⌗ Tags  (4)
 
   ⌗ Work
   ⌗ Meetings
   ⌗ Home
+  ⌗ Errands
 
 ```
