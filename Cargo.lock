@@ -2009,7 +2009,7 @@ dependencies = [
 
 [[package]]
 name = "things"
-version = "2026.924.0"
+version = "2026.924.1"
 dependencies = [
  "anyhow",
  "chrono",
