@@ -287,7 +287,8 @@ fn apply_schedule(
             Some(day) => day.is_some(),
             None => task.start_date.is_some(),
         };
-        if !dated {
+        // a template's reminder goes to its instances, which carry the day
+        if !dated && !task.is_recurrence_template() {
             return Err(
                 "--reminder requires a scheduled day, set --when today or YYYY-MM-DD".to_string(),
             );
@@ -588,6 +589,19 @@ fn build_edit_plan(
 
     for task in &tasks {
         let mut update = shared_update.clone();
+
+        // the instances carry the schedule, the template keeps the rule's bookkeeping
+        if task.is_recurrence_template()
+            && (args.when.is_some()
+                || args.deadline_date.is_some()
+                || args.clear_deadline
+                || move_l == "inbox")
+        {
+            return Err(format!(
+                "{} is the template of a repeating to-do and takes no --when, --deadline or --move inbox. Edit an instance instead.",
+                task.uuid
+            ));
+        }
 
         if let Some(title) = &args.title {
             let title = title.trim();
@@ -1326,6 +1340,78 @@ mod tests {
         )
         .expect_err("inbox and a day");
         assert!(err.starts_with("--move inbox cannot be combined"));
+    }
+
+    #[test]
+    fn a_template_keeps_its_schedule_and_takes_a_reminder() {
+        let template = (
+            TASK_UUID.to_string(),
+            WireObject::create(
+                EntityType::Task7,
+                TaskProps {
+                    title: "Water plants".to_string(),
+                    start_location: TaskStart::Someday,
+                    recurrence_rule: Some(
+                        serde_json::from_value(json!({"ed":64092211200_i64,"fa":1,"fu":16,"ia":TODAY,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":TODAY,"tp":0,"ts":0}))
+                            .expect("rule"),
+                    ),
+                    instance_creation_start_date: Some(TODAY + 86_400),
+                    today_index_reference: Some(TODAY + 86_400),
+                    instance_creation_count: 1,
+                    creation_date: Some(1.0),
+                    modification_date: Some(1.0),
+                    ..Default::default()
+                },
+            ),
+        );
+        let store = build_store(vec![template]);
+        let args =
+            |move_target: Option<&str>, when: Option<&str>, reminder: Option<&str>| EditArgs {
+                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                title: None,
+                notes: None,
+                move_target: move_target.map(str::to_string),
+                tag_delta: TagDeltaArgs {
+                    add_tags: None,
+                    remove_tags: None,
+                },
+                add_checklist: vec![],
+                remove_checklist: None,
+                rename_checklist: vec![],
+                completed_on: None,
+                created_on: None,
+                when: when.map(str::to_string),
+                deadline_date: None,
+                clear_deadline: false,
+                reminder: reminder.map(str::to_string),
+                clear_reminder: false,
+                repeat: None,
+                times: None,
+                until: None,
+            };
+        let mut id_gen = || "X".to_string();
+        for (move_target, when) in [(None, Some("2023-11-20")), (Some("inbox"), None)] {
+            let err = build_edit_plan(
+                &args(move_target, when, None),
+                &store,
+                NOW,
+                TODAY,
+                &mut id_gen,
+            )
+            .expect_err("a template has no day");
+            assert!(err.contains("template of a repeating to-do"), "{err}");
+        }
+        let plan = build_edit_plan(
+            &args(None, None, Some("08:00")),
+            &store,
+            NOW,
+            TODAY,
+            &mut id_gen,
+        )
+        .expect("reminder");
+        let p = assert_task_update(&plan, TASK_UUID);
+        assert_eq!(p.get("ato"), Some(&json!(28800)));
+        assert!(!p.contains_key("sr") && !p.contains_key("st"));
     }
 
     #[test]
