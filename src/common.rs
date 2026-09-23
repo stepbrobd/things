@@ -192,7 +192,7 @@ pub fn parse_reminder(time: &str) -> Result<i64, String> {
         .map_err(|_| format!("Invalid --reminder time: {time} (expected HH:MM)"))
 }
 
-/// text for the terminal, the CLI's own SGR colors pass and every other control character shows in caret notation
+/// text for the terminal, the CLI's own SGR colors pass, the other C0 controls and DEL show in caret notation, C1 and the bidi controls as U+FFFD
 ///
 /// titles and notes come from the cloud, where anyone who can mail a to-do into the inbox writes them
 pub fn printable(text: &str) -> String {
@@ -220,8 +220,8 @@ fn sanitized(text: &str, json: bool) -> String {
                 }
                 None => out.push_str("^["),
             },
-            // serde_json escapes c0 alone, del and c1 stand raw in its strings
-            '\u{7f}' | '\u{80}'..='\u{9f}' if json => {
+            // serde_json escapes c0 alone, del, c1 and the bidi controls stand raw in its strings
+            c if json && (c == '\u{7f}' || replaced(c)) => {
                 let _ = write!(out, "\\u{:04x}", u32::from(c));
             }
             '\u{7f}' => out.push_str("^?"),
@@ -229,11 +229,16 @@ fn sanitized(text: &str, json: bool) -> String {
                 out.push('^');
                 out.push(char::from(c as u8 + 0x40));
             }
-            '\u{80}'..='\u{9f}' => out.push('\u{fffd}'),
+            c if replaced(c) => out.push('\u{fffd}'),
             c => out.push(c),
         }
     }
     out
+}
+
+/// C1, and the embedding, override and isolate controls that reorder the text around them on a terminal that applies bidi
+fn replaced(c: char) -> bool {
+    matches!(c, '\u{80}'..='\u{9f}' | '\u{202a}'..='\u{202e}' | '\u{2066}'..='\u{2069}')
 }
 
 /// the select graphic rendition sequence at the start of `text`
@@ -353,14 +358,21 @@ mod tests {
             printable("Pay rent\u{1b}]52;c;aGk=\u{7}\u{1b}[2J\rX\u{7f}\u{9b}"),
             "Pay rent^[]52;c;aGk=^G^[[2J^MX^?\u{fffd}"
         );
+        assert_eq!(
+            printable("Invoice \u{202e}fdp.exe\u{202c} \u{2067}x\u{2069}"),
+            "Invoice \u{fffd}fdp.exe\u{fffd} \u{fffd}x\u{fffd}"
+        );
     }
 
     #[test]
     fn printable_json_keeps_every_string_as_it_decodes() {
-        let title = "Rent\u{7f} due\u{85}\u{9b}2J \u{1b}]52;c;aGk=\u{7}";
+        let title = "Rent\u{7f} due\u{85}\u{9b}2J \u{1b}]52;c;aGk=\u{7} \u{202e}fdp.exe";
         let json = serde_json::to_string(&serde_json::json!({ "title": title })).unwrap();
         let shown = printable_json(&json);
-        assert!(!shown.chars().any(char::is_control), "{shown}");
+        assert!(
+            !shown.chars().any(|c| c.is_control() || c == '\u{202e}'),
+            "{shown}"
+        );
         let read: serde_json::Value = serde_json::from_str(&shown).unwrap();
         assert_eq!(read["title"], title);
     }
