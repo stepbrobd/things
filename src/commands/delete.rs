@@ -107,8 +107,8 @@ fn build_delete_plan(
         }
     }
 
-    // a project takes along everything whose effective project it is, the headings and the to-dos under them included, and an area everything whose effective area it is, projects and their contents included, as in the app
-    let contents = |parent: &ThingsId, in_area: bool| -> Vec<Task> {
+    // a project takes along everything whose effective project it is, the headings and the to-dos under them included, an area everything whose effective area it is, projects and their contents included, and a heading the to-dos under it, as in the app
+    let contents = |parent: &ThingsId, in_area: bool, heading: bool| -> Vec<Task> {
         store
             .tasks_by_uuid
             .values()
@@ -117,6 +117,8 @@ fn build_delete_plan(
                     && task.uuid != *parent
                     && if in_area {
                         store.effective_area_uuid(task).as_ref() == Some(parent)
+                    } else if heading {
+                        task.action_group.as_ref() == Some(parent)
                     } else {
                         store.effective_project_uuid(task).as_ref() == Some(parent)
                     }
@@ -135,13 +137,10 @@ fn build_delete_plan(
         } else {
             changes.insert(uuid.clone(), trash(now));
         }
-        if in_area
-            || store
-                .tasks_by_uuid
-                .get(&parent)
-                .is_some_and(Task::is_project)
-        {
-            for child in contents(&parent, in_area) {
+        let target = store.tasks_by_uuid.get(&parent);
+        let heading = target.is_some_and(Task::is_heading);
+        if in_area || heading || target.is_some_and(Task::is_project) {
+            for child in contents(&parent, in_area, heading) {
                 if child.has_repeater() {
                     return Err(format!(
                         "Task7 repeater tasks are blocked from deletion until repeater bookkeeping is supported: {}",
@@ -401,6 +400,44 @@ mod tests {
         assert_eq!(
             cascade.changes.keys().cloned().collect::<Vec<_>>(),
             vec![via_heading, project_id, heading]
+        );
+        // the heading alone takes the to-dos under it
+        let heading_only = build_delete_plan(
+            &DeleteArgs {
+                item_ids: vec![IdentifierToken::from(heading)],
+            },
+            &build_store(vec![
+                (
+                    heading.to_string(),
+                    WireObject::create(
+                        EntityType::Task7,
+                        TaskProps {
+                            title: "Plumbing".to_string(),
+                            item_type: TaskType::Heading,
+                            creation_date: Some(1.0),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+                (
+                    via_heading.to_string(),
+                    WireObject::create(
+                        EntityType::Task7,
+                        TaskProps {
+                            title: "Order sink".to_string(),
+                            action_group_ids: vec![heading.parse().expect("id")],
+                            creation_date: Some(1.0),
+                            ..Default::default()
+                        },
+                    ),
+                ),
+            ]),
+            1.0,
+        )
+        .expect("plan");
+        assert_eq!(
+            heading_only.changes.keys().cloned().collect::<Vec<_>>(),
+            vec![via_heading, heading]
         );
 
         // one bad target fails the batch before anything is trashed
