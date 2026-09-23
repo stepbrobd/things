@@ -51,7 +51,9 @@
 
         devShells.default = crane.devShell {
           packages = with pkgs; [
+            cargo-audit
             cargo-nextest
+            cargo-outdated
             deno
             jq
             nixpkgs-fmt
