@@ -40,8 +40,9 @@ pub struct ThingsStore {
     pub task_ids_sorted: Vec<ThingsId>,
 }
 
+/// an instant from the wire, None outside the years 1 to 9999, where a local offset would leave chrono's range
 fn ts_to_dt(ts: Option<f64>) -> Option<DateTime<Utc>> {
-    let ts = ts?;
+    let ts = ts.filter(|ts| (-62_135_596_800.0..=253_402_300_799.0).contains(ts))?;
     let mut secs = ts.floor() as i64;
     let mut nanos = ((ts - secs as f64) * 1_000_000_000_f64).round() as u32;
     if nanos >= 1_000_000_000 {
