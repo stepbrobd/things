@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Pay rent' --when 2023-12-15 --repeat monthly:15 --times 3
-✓ Created Pay rent  11111116AjePwYNteRv  (Repeat every month on the 15th day; starts 2023-11-14; ends after 3 repetitions)
+✓ Created Pay rent  11111116AjePwYNteRv  (Repeat every month on the 15th day, from 2023-11-14 for 3 repetitions)
 {
   "ancestor_index": 0,
   "changes": {

@@ -5,46 +5,46 @@ use serde_json::Value;
 
 use crate::{ids::ThingsId, wire::deserialize_optional_field};
 
-/// Tag wire properties.
+/// tag wire properties
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TagProps {
-    /// `tt`: tag title.
+    /// `tt`, tag title
     #[serde(rename = "tt", default)]
     pub title: String,
 
-    /// `sh`: keyboard shortcut.
+    /// `sh`, keyboard shortcut
     #[serde(rename = "sh", default)]
     pub shortcut: Option<String>,
 
-    /// `ix`: sort index.
+    /// `ix`, sort index
     #[serde(rename = "ix", default)]
     pub sort_index: i32,
 
-    /// `pn`: parent tag IDs (supports nesting).
+    /// `pn`, parent tag IDs (supports nesting)
     #[serde(rename = "pn", default)]
     pub parent_ids: Vec<ThingsId>,
 
-    /// `xx`: conflict override metadata.
+    /// `xx`, conflict override metadata
     #[serde(rename = "xx", default)]
     pub conflict_overrides: Option<Value>,
 }
 
-/// Sparse patch fields for Tag `t=1` updates.
+/// sparse patch fields for Tag `t=1` updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TagPatch {
-    /// `tt`: title.
+    /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
-    /// `pn`: parent tag IDs.
+    /// `pn`, parent tag IDs
     #[serde(rename = "pn", skip_serializing_if = "Option::is_none")]
     pub parent_ids: Option<Vec<ThingsId>>,
 
-    /// `md`: modification timestamp.
+    /// `md`, modification timestamp
     #[serde(rename = "md", skip_serializing_if = "Option::is_none")]
     pub modification_date: Option<f64>,
 
-    /// `sh`: shortcut.
+    /// `sh`, shortcut
     #[serde(
         rename = "sh",
         default,
@@ -53,7 +53,7 @@ pub struct TagPatch {
     )]
     pub shortcut: Option<Option<String>>,
 
-    /// `ix`: sort index.
+    /// `ix`, sort index
     #[serde(rename = "ix", skip_serializing_if = "Option::is_none")]
     pub sort_index: Option<i32>,
 }

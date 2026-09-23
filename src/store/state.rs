@@ -250,7 +250,7 @@ fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
     );
 }
 
-/// an update the object cannot take leaves it marked: a note delta that does not apply, a patch for a known entity that did not parse, or a payload of another kind than the object holds
+/// an update the object cannot take leaves it marked, a note delta that does not apply, a patch for a known entity that did not parse, or a payload of another kind than the object holds
 fn apply_update_payload(
     uuid: &ThingsId,
     existing: &mut StateObject,

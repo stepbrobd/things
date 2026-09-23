@@ -36,7 +36,7 @@ pub enum ProjectsSubcommand {
 #[derive(Debug, Args)]
 #[command(about = "Show, create, or edit projects")]
 pub struct ProjectsArgs {
-    /// Show notes for each project.
+    /// Show notes for each project
     #[arg(long, short = 'd')]
     pub detailed: bool,
     #[command(subcommand)]
@@ -226,10 +226,8 @@ impl Command for ProjectsArgs {
         out: &mut dyn std::io::Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        // Match Python argparse behavior:
-        // - `projects --detailed` (no subcommand) => detailed output
-        // - `projects list --detailed` => detailed output
-        // - `projects --detailed list` => not detailed (subcommand parser default wins)
+        // `projects --detailed` and `projects list --detailed` show details, `projects --detailed list` does not
+        // the subcommand's own flag wins over the one before it
         let effective_detailed = match self.command.as_ref() {
             None => self.detailed,
             Some(ProjectsSubcommand::List(la)) => la.detailed,
@@ -263,7 +261,7 @@ impl Command for ProjectsArgs {
 
                 let no_area = by_area.remove(&None).unwrap_or_default();
 
-                // Sort areas by their index field so output order matches Python
+                // areas in their own order, the one the app shows
                 let mut area_entries: Vec<(ThingsId, Vec<_>)> = by_area
                     .into_iter()
                     .filter_map(|(k, v)| k.map(|uuid| (uuid, v)))

@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Weekly review' --when today --repeat weekly:mon
-✓ Created Weekly review  11111116AjePwYNteRv  (Repeat every week on Monday; starts 2023-11-14)
+✓ Created Weekly review  11111116AjePwYNteRv  (Repeat every week on Monday, from 2023-11-14)
 {
   "ancestor_index": 0,
   "changes": {

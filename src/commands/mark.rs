@@ -98,7 +98,7 @@ fn validate_recurring_instance(
         return (
             false,
             format!(
-                "Recurring instance has {} template references; expected exactly 1.",
+                "Recurring instance has {} template references where exactly 1 is expected.",
                 task.recurrence_templates.len()
             ),
         );
@@ -782,7 +782,7 @@ mod tests {
             assert_eq!(
                 errs,
                 vec![
-                    "Recurring instance has 2 template references; expected exactly 1. (Recurring instance)"
+                    "Recurring instance has 2 template references where exactly 1 is expected. (Recurring instance)"
                 ]
             );
         }

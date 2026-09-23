@@ -5,30 +5,30 @@ use serde_json::Value;
 
 use crate::ids::ThingsId;
 
-/// Tombstone properties that mark a deleted object.
+/// tombstone properties that mark a deleted object
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TombstoneProps {
-    /// `dloid`: deleted object UUID.
+    /// `dloid`, deleted object UUID
     #[serde(rename = "dloid")]
     pub deleted_object_id: ThingsId,
 
-    /// `dld`: deletion timestamp.
+    /// `dld`, deletion timestamp
     #[serde(rename = "dld", default)]
     pub delete_date: Option<f64>,
 }
 
-/// One-shot command properties.
+/// one-shot command properties
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct CommandProps {
-    /// `tp`: command type.
+    /// `tp`, command type
     #[serde(rename = "tp", default)]
     pub command_type: i32,
 
-    /// `cd`: creation timestamp.
+    /// `cd`, creation timestamp
     #[serde(rename = "cd", default)]
     pub creation_date: Option<i64>,
 
-    /// `if`: initial field payload for command execution.
+    /// `if`, initial field payload for command execution
     #[serde(rename = "if", default)]
     pub initial_fields: Option<BTreeMap<String, Value>>,
 }

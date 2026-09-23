@@ -9,7 +9,7 @@ use crate::{
     wire::notes::{StructuredTaskNotes, TaskNotes},
 };
 
-/// Return today as a UTC midnight `DateTime<Utc>`.
+/// today, the local calendar day at UTC midnight
 pub fn today_utc() -> DateTime<Utc> {
     local_date_as_utc_midnight(Local::now())
 }
@@ -19,7 +19,7 @@ fn local_date_as_utc_midnight<Tz: TimeZone>(now: DateTime<Tz>) -> DateTime<Utc> 
     Utc.from_utc_datetime(&today)
 }
 
-/// Return current wall-clock unix timestamp in seconds (fractional).
+/// the current wall-clock time in fractional unix seconds
 pub fn now_ts_f64() -> f64 {
     Utc::now().timestamp_millis() as f64 / 1000.0
 }
@@ -36,14 +36,14 @@ pub const RED: &str = "\x1b[31m";
 
 #[derive(Debug, Clone, Copy)]
 pub struct Icons {
-    // Sidebar/view icons
+    // sidebar and view icons
     pub inbox: &'static str,
     pub today: &'static str,
     pub upcoming: &'static str,
     pub anytime: &'static str,
     pub find: &'static str,
 
-    // Task and grouping icons
+    // task and grouping icons
     pub task_open: &'static str,
     pub task_done: &'static str,
     pub task_someday: &'static str,
@@ -56,26 +56,26 @@ pub struct Icons {
     pub evening: &'static str,
     pub repeat: &'static str,
 
-    // Project progress icons
+    // project progress icons
     pub progress_empty: &'static str,
     pub progress_quarter: &'static str,
     pub progress_half: &'static str,
     pub progress_three_quarter: &'static str,
     pub progress_full: &'static str,
 
-    // Status/event icons
+    // status and event icons
     pub deadline: &'static str,
     pub done: &'static str,
     pub incomplete: &'static str,
     pub canceled: &'static str,
     pub deleted: &'static str,
 
-    // Checklist icons
+    // checklist icons
     pub checklist_open: &'static str,
     pub checklist_done: &'static str,
     pub checklist_canceled: &'static str,
 
-    // Misc UI glyphs
+    // other glyphs
     pub separator: &'static str,
     pub divider: &'static str,
 }
@@ -159,9 +159,8 @@ pub fn day_of(timestamp: i64) -> Option<NaiveDate> {
 
 /// a YYYY-MM-DD flag as the calendar day it names
 ///
-/// no time zone takes part: the day goes on the wire at UTC midnight through
-/// `day_timestamp`, and neither today's local offset nor the offset on that
-/// day can move it to the day before
+/// no time zone takes part, the day goes on the wire at UTC midnight through `day_timestamp`
+/// the local offset of today or of that day cannot move it to the day before
 pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<NaiveDate>, String> {
     let Some(day) = day else {
         return Ok(None);
@@ -173,8 +172,7 @@ pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<NaiveDate>, St
 
 /// an RFC 3339 instant, or a YYYY-MM-DD day taken at local midnight, the instant that day began where the command runs, as a wire timestamp
 ///
-/// an instant, unlike a day stamp, is shown under its local day, so a day
-/// given for one has to fall inside that local day
+/// an instant, unlike a day stamp, is shown under its local day, where a day given for one has to fall
 pub fn parse_instant(text: &str, label: &str) -> Result<f64, String> {
     if let Ok(instant) = DateTime::parse_from_rfc3339(text) {
         return Ok(instant.timestamp_millis() as f64 / 1000.0);
@@ -196,8 +194,7 @@ pub fn parse_reminder(time: &str) -> Result<i64, String> {
 
 /// text for the terminal, the CLI's own SGR colors pass and every other control character shows in caret notation
 ///
-/// titles and notes come from the cloud, where anyone who can mail a to-do
-/// into the inbox writes them
+/// titles and notes come from the cloud, where anyone who can mail a to-do into the inbox writes them
 pub fn printable(text: &str) -> String {
     let mut out = String::with_capacity(text.len());
     let mut skip_to = 0;
@@ -357,8 +354,7 @@ mod tests {
 
     #[test]
     fn a_day_flag_goes_on_the_wire_at_utc_midnight_in_winter_and_summer() {
-        // the values the app writes for these days, whatever offset the
-        // process runs under today and whatever offset holds on the day itself
+        // the values the app writes for these days, whatever offset the process runs under today and whatever offset holds on the day itself
         let wire = |text: &str| parse_day(Some(text), "--when").map(|day| day.map(day_timestamp));
         assert_eq!(wire("2027-01-15"), Ok(Some(1_799_971_200)));
         assert_eq!(wire("2027-01-20"), Ok(Some(1_800_403_200)));

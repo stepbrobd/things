@@ -155,8 +155,7 @@ mod tests {
 
     #[test]
     fn applies_historical_suffix_delta_at_its_utf8_byte_offset() {
-        // Mirrors an observed append-log delta with one three-byte character
-        // before a suffix replacement at byte 605.
+        // a delta seen in the journal, one three-byte character before a suffix replaced at byte 605
         let prefix = format!("{}’{}", "a".repeat(551), "b".repeat(51));
         assert_eq!(prefix.len(), 605);
         assert_eq!(prefix.chars().count(), 603);

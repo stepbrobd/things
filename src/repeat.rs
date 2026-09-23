@@ -20,9 +20,7 @@ use crate::{
     },
 };
 
-/// A repeat rule as typed on the command line: `daily`, `weekly:mon,thu`,
-/// `monthly:15`, `monthly:last`, `yearly:12-31`, `after:2w`, with `/N` on the
-/// fixed cadences for every N units.
+/// a repeat rule as typed on the command line, such as `daily`, `weekly:mon,thu`, `monthly:15`, `monthly:last`, `yearly:12-31` or `after:2w`, with `/N` on the fixed cadences for every N units
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RepeatSpec {
     pub cadence: Cadence,
@@ -140,7 +138,7 @@ fn parse_month_and_day(date: &str) -> Result<(u32, u32), String> {
     let (month, day) = date.split_once('-').ok_or_else(invalid)?;
     let month = month.parse::<u32>().map_err(|_| invalid())?;
     let day = day.parse::<u32>().map_err(|_| invalid())?;
-    // 2024 is a leap year so february 29 passes
+    // 2024 is a leap year, which lets february 29 pass
     NaiveDate::from_ymd_opt(2024, month, day).ok_or_else(invalid)?;
     Ok((month, day))
 }
@@ -294,10 +292,8 @@ impl RepeatSpec {
 
     /// the spec and anchor behind a fixed schedule rule from the wire
     ///
-    /// None for after completion and for every offset shape other than the
-    /// ones the app was seen to write: a rule the CLI cannot evaluate exactly
-    /// is shown but never projected or materialized, since a guess would put
-    /// instances on the wrong days
+    /// None for after completion and for every offset shape other than the ones the app was seen to write
+    /// a rule the CLI cannot evaluate exactly is shown and never projected or materialized, since a guess would put instances on the wrong days
     pub fn from_rule(rule: &RecurrenceRule) -> Option<(Self, NaiveDate)> {
         if rule.recurrence_type != RecurrenceType::FixedSchedule
             || !(1..=MAX_EVERY).contains(&rule.frequency_amount)
@@ -471,12 +467,10 @@ pub struct Materialized {
 
 /// the instances whose day has come, for every fixed schedule template not yet served for that day
 ///
-/// `icsd` on a template is the day the search for the next instance starts
-/// from, not the day the next instance is due: the app sets it to the next
-/// occurrence when it makes the template and to the day after each instance it
-/// creates. the due day is therefore the first occurrence on or after it,
-/// bounded by the rule's end day and count, and a template past its end is
-/// never due
+/// `icsd` on a template is the day the search for the next instance starts from, not the day the next instance is due
+/// the app sets it to the next occurrence when it makes the template and to the day after each instance it creates
+/// the due day is therefore the first occurrence on or after it, bounded by the rule's end day and count
+/// a template past its end is never due
 pub fn due_instances(
     store: &ThingsStore,
     today: NaiveDate,
@@ -646,9 +640,8 @@ pub fn checklist_items(
 
 /// the hidden template behind a repeating to-do whose first instance is on `first`
 ///
-/// `icsd` points at the occurrence after the first, as the app writes it, or
-/// at the day after the first when the count or the end day allows only the
-/// one instance, and `tir` is that occurrence or nothing
+/// `icsd` points at the occurrence after the first, as the app writes it, or at the day after the first when the count or the end day allows only the one instance
+/// `tir` is that occurrence or nothing
 pub fn template(
     spec: &RepeatSpec,
     rule: RecurrenceRule,

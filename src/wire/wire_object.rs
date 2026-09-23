@@ -17,7 +17,7 @@ use crate::wire::{
 
 pub type WireItem = BTreeMap<String, WireObject>;
 
-/// A single wire object entry keyed by UUID.
+/// one wire object of a history item, keyed by its id there
 #[derive(Debug, Clone, PartialEq)]
 pub struct WireObject {
     pub operation_type: OperationType,
@@ -38,9 +38,9 @@ pub enum Properties {
     TombstoneCreate(TombstoneProps),
     CommandCreate(CommandProps),
     Delete,
-    /// Known entity families we intentionally skip materializing in store state.
+    /// known entity families we intentionally skip materializing in store state
     Ignored(BTreeMap<String, Value>),
-    /// Unknown/unsupported entity payload preserved for forward compatibility.
+    /// unknown/unsupported entity payload preserved for forward compatibility
     Unknown(BTreeMap<String, Value>),
 }
 
@@ -289,7 +289,7 @@ fn to_map<T: Serialize>(value: &T) -> BTreeMap<String, Value> {
     }
 }
 
-/// Operation type for wire field `t`.
+/// operation type for wire field `t`
 #[derive(
     Debug,
     Clone,
@@ -306,14 +306,14 @@ fn to_map<T: Serialize>(value: &T) -> BTreeMap<String, Value> {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum OperationType {
-    /// Full snapshot/create (replace current object state for UUID).
+    /// full snapshot/create (replace current object state for UUID)
     Create = 0,
-    /// Partial update (merge `p` into existing properties).
+    /// partial update (merge `p` into existing properties)
     Update = 1,
-    /// Deletion event.
+    /// deletion event
     Delete = 2,
 
-    /// Unknown operation value preserved for forward compatibility.
+    /// unknown operation value preserved for forward compatibility
     #[num_enum(catch_all)]
     #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
@@ -326,46 +326,43 @@ impl Default for OperationType {
     }
 }
 
-/// Entity type for wire field `e`.
+/// entity type for wire field `e`, versioned by Things, `Task6` or `Area3` for instance
 ///
-/// Values are versioned by Things (for example `Task6`, `Area3`).
-///
-/// the kinds of histories from before base58 ids, `Task3`, `Task4`, `Area2`
-/// and the first `Tombstone`, are not read and parse as unknown
+/// the kinds of histories from before base58 ids, `Task3`, `Task4`, `Area2` and the first `Tombstone`, are not read and parse as unknown
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Display, EnumString)]
 #[serde(from = "String", into = "String")]
 pub enum EntityType {
-    /// Task/project/heading entity (previous version).
+    /// task/project/heading entity (previous version)
     Task6,
-    /// Task/project/heading entity (current version).
+    /// task/project/heading entity (current version)
     Task7,
 
-    /// Checklist item entity (legacy version).
+    /// checklist item entity (first version)
     ChecklistItem,
-    /// Checklist item entity (legacy version).
+    /// checklist item entity (earlier version)
     ChecklistItem2,
-    /// Checklist item entity (current observed version).
+    /// checklist item entity (current observed version)
     ChecklistItem3,
 
-    /// Tag entity (legacy version).
+    /// tag entity (earlier version)
     Tag3,
-    /// Tag entity (current observed version).
+    /// tag entity (current observed version)
     Tag4,
 
-    /// Area entity (current observed version).
+    /// area entity (current observed version)
     Area3,
 
-    /// Settings entity.
+    /// settings entity
     Settings3,
     Settings4,
     Settings5,
 
-    /// Tombstone marker for deleted objects.
+    /// tombstone marker for deleted objects
     Tombstone2,
 
-    /// One-shot command entity.
+    /// one-shot command entity
     Command,
-    /// Unknown entity name preserved for forward compatibility.
+    /// unknown entity name preserved for forward compatibility
     #[strum(default, to_string = "{0}")]
     Unknown(String),
 }

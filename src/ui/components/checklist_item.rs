@@ -2,17 +2,17 @@ use iocraft::prelude::*;
 
 use crate::{common::ICONS, store::ChecklistItem, ui::components::id::Id};
 
-/// A single checklist-item row.
+/// one checklist item row
 ///
-/// When `id` is `Some`, it is rendered in a fixed-width left column so
-/// connectors follow the ID prefix.
+/// with an `id` the id takes a fixed-width left column and the connector follows it
 ///
 /// ```text
 /// M ├╴○ Confirm changelog
 /// J └╴● Tag release commit   (is_last)
 /// ```
 ///
-/// When `id` is `None` (no IDs), the connector starts at column 0:
+/// without one the connector starts at the first column
+///
 /// ```text
 /// ├╴○ title
 /// └╴● title

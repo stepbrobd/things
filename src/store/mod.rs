@@ -297,7 +297,7 @@ impl ThingsStore {
         out
     }
 
-    /// one row per repeating template for the next instance after today, the one the pass or an Apple client makes next, so a rule stays visible between instances
+    /// one row per repeating template for the next instance after today, the one the pass or an Apple client makes next, which keeps a rule visible between instances
     pub fn projected_repeats(&self, today: NaiveDate) -> Vec<Task> {
         self.tasks_by_uuid
             .values()

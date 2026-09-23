@@ -31,7 +31,7 @@ pub struct ReorderArgs {
     pub after_id: Option<String>,
 }
 
-/// every patch of a reorder in one commit: a rebalance lands whole or not at all
+/// every patch of a reorder in one commit, a rebalance lands whole or not at all
 #[derive(Debug, Clone)]
 struct ReorderPlan {
     item: crate::store::Task,

@@ -6,14 +6,10 @@ pub fn lcp_len(a: &str, b: &str) -> usize {
     lcp_len_bytes(a.as_bytes(), b.as_bytes())
 }
 
-/// Compute the shortest unique prefix for every ID.
+/// the shortest unique prefix of every id
 ///
-/// Encodes each ID exactly once into a stack-allocated `[u8; 22]` buffer.
-/// The sort and LCP scan operate on byte slices with no heap allocation;
-/// only the final `result.insert` allocates a `String` per entry.
-///
-/// Note: the returned map is keyed by `ThingsId`, so duplicate IDs in the
-/// input are naturally coalesced to a single entry.
+/// each id is encoded once into a stack buffer, the sort and the common prefix scan run on byte slices, and only the result allocates a string per entry
+/// the map is keyed by id, duplicate ids in the input collapse into one entry
 pub fn shortest_unique_prefixes(ids: &[ThingsId]) -> HashMap<ThingsId, String> {
     if ids.is_empty() {
         return HashMap::new();
@@ -42,9 +38,8 @@ pub fn shortest_unique_prefixes(ids: &[ThingsId]) -> HashMap<ThingsId, String> {
         } else {
             0
         };
-        // +1 to go one character beyond the shared prefix.
-        // Clamp to the full encoded length — if an ID's encoding is a
-        // prefix of another, the full string is the shortest unique prefix.
+        // one character past the shared prefix, clamped to the full encoding
+        // when one encoding is a prefix of another, the whole string is the shortest unique prefix
         let need = (left.max(right) + 1).min(pairs[i].2);
         let prefix = std::str::from_utf8(&enc[..need])
             .expect("base58 output must be ASCII")
@@ -55,10 +50,7 @@ pub fn shortest_unique_prefixes(ids: &[ThingsId]) -> HashMap<ThingsId, String> {
     result
 }
 
-/// Return the shared width needed to display group-local unique IDs.
-///
-/// This is the maximum length among all shortest unique prefixes for the
-/// given group. Callers can then render `id[..width]` for every row.
+/// the width that shows every id of a group unique, the longest of their shortest unique prefixes
 pub fn longest_shortest_unique_prefix_len(ids: &[ThingsId]) -> usize {
     if ids.is_empty() {
         return 0;
@@ -84,9 +76,8 @@ fn lcp_len_bytes(a: &[u8], b: &[u8]) -> usize {
 
 /// every id whose base58 form starts with `prefix`, in the order given
 ///
-/// the ids are sorted by their bytes, and ids sharing a textual prefix are not
-/// contiguous in that order once their encoded lengths differ. the whole list
-/// is therefore scanned rather than stopped at the first miss after a match
+/// ids sorted by their bytes stop being contiguous by textual prefix once their encoded lengths differ
+/// the whole list is therefore scanned rather than stopped at the first miss after a match
 pub fn prefix_matches<'a>(sorted_ids: &'a [ThingsId], prefix: &str) -> Vec<&'a ThingsId> {
     let prefix = prefix.as_bytes();
     if prefix.is_empty() {
@@ -108,8 +99,7 @@ mod tests {
 
     #[test]
     fn shortest_unique_prefixes_are_actually_unique() {
-        // Generate a set of random IDs and verify that each prefix matches
-        // exactly one ID from the input set.
+        // every prefix of a random set matches exactly one of its ids
         let ids: Vec<ThingsId> = (0..200).map(|_| ThingsId::random()).collect();
         let prefixes = shortest_unique_prefixes(&ids);
 
@@ -135,8 +125,7 @@ mod tests {
 
     #[test]
     fn shortest_unique_prefixes_are_minimal() {
-        // Each prefix should be the shortest possible: removing the last
-        // character should make it match more than one ID.
+        // every prefix is minimal, one character less matches more than one id
         let ids: Vec<ThingsId> = (0..200).map(|_| ThingsId::random()).collect();
         let prefixes = shortest_unique_prefixes(&ids);
 

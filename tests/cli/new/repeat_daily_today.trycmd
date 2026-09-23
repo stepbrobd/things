@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Water plants' --when today --repeat daily --reminder 09:00
-✓ Created Water plants  11111116AjePwYNteRv  (Repeat daily; starts 2023-11-14)
+✓ Created Water plants  11111116AjePwYNteRv  (Repeat daily, from 2023-11-14)
 {
   "ancestor_index": 0,
   "changes": {

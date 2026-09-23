@@ -1,12 +1,9 @@
-//! the sync cache: the server's history appended to a journal one item per
-//! line, a cursor naming the history the journal holds and how much of it the
-//! two agree on, and the state folded from the journal so far
+//! the sync cache, the server's history appended to a journal one item per line, a cursor naming the history the journal holds and how much of it the two agree on, and the state folded from the journal so far
 //!
-//! every reader and writer holds the directory's lock, the journal is synced
-//! to disk before the cursor claims its bytes, and a sync repairs or fetches
-//! again a journal the cursor cannot vouch for before appending to it. the
-//! offline fold, `--no-cloud` or a sync that failed, shows the journal as it
-//! lies, repaired or not
+//! every reader and writer holds the directory's lock
+//! the journal is synced to disk before the cursor claims its bytes
+//! a sync repairs or fetches again a journal the cursor cannot vouch for before appending to it
+//! the offline fold, `--no-cloud` or a sync that failed, shows the journal as it lies, repaired or not
 
 use std::{
     collections::HashSet,
@@ -87,7 +84,7 @@ fn line_hash(line: &str) -> u64 {
     hasher.finish()
 }
 
-/// held by every reader and writer of the cache directory: two processes never interleave appends, cursor moves and state cache writes
+/// held by every reader and writer of the cache directory, which keeps two processes from interleaving appends, cursor moves and state cache writes
 #[derive(Debug)]
 pub struct CacheLock {
     _file: File,
@@ -127,7 +124,7 @@ fn read_cursor(cache_dir: &Path) -> CursorData {
     }
 }
 
-/// write through a staging file synced to disk and renamed into place: a crash leaves the old file or the whole new one
+/// write through a staging file synced to disk and renamed into place, a crash leaves the old file or the whole new one
 fn write_durable(path: &Path, payload: &[u8]) -> Result<()> {
     let tmp = path.with_extension("tmp");
     // a stale staging file, or a link planted under its name, goes first and create_new refuses to follow anything
@@ -225,7 +222,7 @@ fn reset_cache(cache_dir: &Path) -> Result<()> {
     Ok(())
 }
 
-/// the cursor for `history_key`: the stored one when it names that history, otherwise the cache holds another account's history or one nobody vouches for, and it starts over
+/// the cursor for `history_key`, the stored one when it names that history, otherwise the cache holds another account's history or one nobody vouches for, and it starts over
 fn cursor_for_history(cache_dir: &Path, history_key: &str) -> Result<CursorData> {
     let cursor = read_cursor(cache_dir);
     if cursor.history_key == history_key {
@@ -274,15 +271,12 @@ fn truncate_log(log_path: &Path, len: u64) -> Result<()> {
 
 /// make the journal and the cursor agree before appending
 ///
-/// bytes past the acknowledged length are an interrupted run's, complete or
-/// not, and get fetched again. a journal shorter than the cursor claims, or
-/// missing, is not trusted and gets fetched from the start. a cursor from
-/// before the acknowledged length existed adopts the complete lines and keeps
-/// its item index, which the server handed out: the journal was seen to hold
-/// repeated lines, which means its line count says nothing exact about that
-/// index, and a page fetched twice is folded once. fewer lines than the index
-/// mean a tail was lost and the journal is fetched from the start. a folded
-/// state past the acknowledged bytes is dropped with them
+/// bytes past the acknowledged length are an interrupted run's, complete or not, and get fetched again
+/// a journal shorter than the cursor claims, or missing, is not trusted and gets fetched from the start
+/// a cursor from before the acknowledged length existed adopts the complete lines and keeps its item index, which the server handed out
+/// the journal was seen to hold repeated lines, which means its line count says nothing exact about that index, and a page fetched twice is folded once
+/// fewer lines than the index mean a tail was lost and the journal is fetched from the start
+/// a folded state past the acknowledged bytes is dropped with them
 fn repair_log(cache_dir: &Path, cursor: &mut CursorData) -> Result<()> {
     let log_path = cache_dir.join(LOG_FILE);
     let length = match fs::metadata(&log_path) {
@@ -392,15 +386,12 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
 
 /// fold the journal past the cached state
 ///
-/// a cached state is used only when the journal still starts with the bytes
-/// it was folded from, checked by length and checksum. a journal that was
-/// replaced or cut is therefore folded again from its first line, and an
-/// incomplete last line waits for the run that completes it. a line whose
-/// bytes were folded before, anywhere in the journal, is skipped: the server
-/// repeats items in adjacent pairs and a run from before the acknowledged
-/// length existed could append a page twice, while a later line that repeats
-/// an earlier one with another meaning would take a repeated delete of a
-/// reused id, which no client writes
+/// a cached state is used only when the journal still starts with the bytes it was folded from, checked by length and checksum
+/// a journal that was replaced or cut is therefore folded again from its first line
+/// an incomplete last line waits for the run that completes it
+/// a line whose bytes were folded before, anywhere in the journal, is skipped
+/// repeated lines were seen in the journal, and a run from before the acknowledged length existed could append a page twice
+/// a later line that repeats an earlier one with another meaning would take a repeated delete of a reused id, which no client writes
 fn fold_locked(cache_dir: &Path) -> Result<RawState> {
     let log_path = cache_dir.join(LOG_FILE);
     let length = match fs::metadata(&log_path) {

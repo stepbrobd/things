@@ -1,11 +1,9 @@
-//! sort index allocation shared by new and reorder, for the structural index
-//! within a container and the today index within a day's group: a slot
-//! between two neighbors when the gap allows one, otherwise the run is
-//! respaced and the members that move come back as patches
+//! sort index allocation shared by new and reorder, for the structural index within a container and the today index within a day's group
+//! a slot between two neighbors when the gap allows one, otherwise the run is respaced and the members that move come back as patches
 
 use crate::{ids::ThingsId, store::Task};
 
-/// the day group a today index counts in: `tir` when a client set it, otherwise the scheduled day, otherwise today
+/// the day group a today index counts in, `tir` when a client set it, otherwise the scheduled day, otherwise today
 pub fn today_group(task: &Task, today_ts: i64) -> i64 {
     task.today_index_reference
         .or_else(|| task.start_date.map(|day| day.timestamp()))

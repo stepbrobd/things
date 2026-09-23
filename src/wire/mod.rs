@@ -1,8 +1,6 @@
-//! Things Cloud sync protocol wire-format types.
+//! the wire types of the Things Cloud sync protocol
 //!
-//! Observed item shape in history pages:
-//! `{ uuid: { "t": operation, "e": entity, "p": properties } }`.
-//! Replaying items in order by UUID yields current state.
+//! a history page holds items shaped `{ uuid: { "t": operation, "e": entity, "p": properties } }`, and replaying them in order yields the current state
 
 use serde::{Deserialize, Deserializer};
 

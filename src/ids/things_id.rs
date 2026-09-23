@@ -115,7 +115,7 @@ impl<'de> Deserialize<'de> for ThingsId {
     }
 }
 
-/// Error returned when a string cannot be parsed as a [`ThingsId`].
+/// a string that is no [`ThingsId`]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseThingsIdError(String);
 
@@ -129,8 +129,7 @@ impl std::error::Error for ParseThingsIdError {}
 
 const BASE58_ALPHABET: &[u8; 58] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
-/// Encode 16 bytes into base58 ASCII, writing into a stack-allocated
-/// `[u8; 22]` buffer. Returns the buffer and the number of valid bytes.
+/// 16 bytes as base58 in a stack buffer, with the number of bytes the encoding takes
 pub(crate) fn base58_encode_fixed(raw: &[u8; 16]) -> ([u8; 22], usize) {
     let mut digits = [0u8; 22];
     let mut len = 0usize;

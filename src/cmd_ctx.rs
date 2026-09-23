@@ -44,7 +44,7 @@ pub struct DefaultCmdCtx {
     now_ts_override: Option<f64>,
     id_seed: Option<u64>,
     ids_issued: u64,
-    /// the client that synchronized this run's state, taken by the first write: commits go to the history and head the state came from
+    /// the client that synchronized this run's state, taken by the first write, which commits against the history and head the state came from
     cloud: Rc<RefCell<Option<ThingsCloudClient>>>,
     /// the objects whose replay did not complete, never written through
     degraded: Rc<RefCell<HashSet<ThingsId>>>,

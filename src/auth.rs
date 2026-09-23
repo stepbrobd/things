@@ -16,8 +16,7 @@ struct AuthPayload {
     password: String,
 }
 
-/// the auth file as written, each field taken as it is, which keeps a
-/// password made of digits a password
+/// the auth file as written, each field taken as it is, which keeps a password made of digits a password
 #[derive(Deserialize, Default)]
 struct AuthFile {
     #[serde(default)]
@@ -118,9 +117,8 @@ fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
     let serialized = serde_json::to_string(&payload)?;
     let tmp_path = path.with_extension("tmp");
 
-    // Create the staging file already private: chmod'ing after the fact leaves
-    // the plaintext password world-readable in between, and create_new won't
-    // follow a symlink planted at tmp_path. The rename carries the mode over.
+    // the staging file is private from the start, a chmod afterwards leaves the password readable in between
+    // create_new follows no link planted at the staging path, and the rename keeps the mode
     let mut opts = fs::OpenOptions::new();
     opts.write(true).create_new(true);
     #[cfg(unix)]
@@ -128,14 +126,13 @@ fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
         use std::os::unix::fs::OpenOptionsExt;
         opts.mode(0o600);
     }
-    // Clear a stale staging file from an interrupted run; create_new refuses it.
+    // a staging file an interrupted run left behind goes first, create_new refuses it
     let _ = fs::remove_file(&tmp_path);
     let mut file = opts
         .open(&tmp_path)
         .with_context(|| format!("Failed writing {}", tmp_path.display()))?;
-    // open() filters the requested mode through the umask, which can clear
-    // owner bits too, so restate it before the password goes in. The file is
-    // already no wider than 0600, so this opens no window.
+    // open filters the mode through the umask, which can clear owner bits too
+    // the mode is restated before the password goes in, the file is no wider than 0600 meanwhile
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

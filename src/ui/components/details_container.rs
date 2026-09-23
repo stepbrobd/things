@@ -1,6 +1,6 @@
 use iocraft::prelude::*;
 
-/// Renders a left border rail with element content to its right.
+/// a left border rail with the content to its right
 ///
 /// ```text
 /// │ line 0

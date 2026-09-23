@@ -15,38 +15,38 @@ fn is_false(v: &bool) -> bool {
     !*v
 }
 
-/// Checklist item wire properties.
+/// checklist item wire properties
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ChecklistItemProps {
-    /// `tt`: checklist item title.
+    /// `tt`, checklist item title
     #[serde(rename = "tt", default)]
     pub title: String,
 
-    /// `ss`: checklist item status.
+    /// `ss`, checklist item status
     #[serde(rename = "ss", default)]
     pub status: TaskStatus,
 
-    /// `sp`: completion/cancellation timestamp.
+    /// `sp`, completion/cancellation timestamp
     #[serde(rename = "sp", default, skip_serializing_if = "Option::is_none")]
     pub stop_date: Option<f64>,
 
-    /// `ts`: parent task IDs (normally a single task UUID).
+    /// `ts`, parent task IDs (normally a single task UUID)
     #[serde(rename = "ts", default, deserialize_with = "deserialize_vec_or_single")]
     pub task_ids: Vec<ThingsId>,
 
-    /// `ix`: sort index within checklist.
+    /// `ix`, sort index within checklist
     #[serde(rename = "ix", default)]
     pub sort_index: i32,
 
-    /// `cd`: creation timestamp.
+    /// `cd`, creation timestamp
     #[serde(rename = "cd", default, skip_serializing_if = "Option::is_none")]
     pub creation_date: Option<f64>,
 
-    /// `md`: modification timestamp.
+    /// `md`, modification timestamp
     #[serde(rename = "md", default, skip_serializing_if = "Option::is_none")]
     pub modification_date: Option<f64>,
 
-    /// `lt`: leaves tombstone on delete.
+    /// `lt`, leaves tombstone on delete
     #[serde(
         rename = "lt",
         default,
@@ -55,23 +55,23 @@ pub struct ChecklistItemProps {
     )]
     pub leaves_tombstone: bool,
 
-    /// `xx`: conflict override metadata.
+    /// `xx`, conflict override metadata
     #[serde(rename = "xx", default, skip_serializing_if = "Option::is_none")]
     pub conflict_overrides: Option<Value>,
 }
 
-/// Sparse patch fields for ChecklistItem `t=1` updates.
+/// sparse patch fields for ChecklistItem `t=1` updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ChecklistItemPatch {
-    /// `tt`: title.
+    /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
-    /// `ss`: status.
+    /// `ss`, status
     #[serde(rename = "ss", skip_serializing_if = "Option::is_none")]
     pub status: Option<TaskStatus>,
 
-    /// `sp`: completion/cancellation timestamp.
+    /// `sp`, completion/cancellation timestamp
     #[serde(
         rename = "sp",
         default,
@@ -80,7 +80,7 @@ pub struct ChecklistItemPatch {
     )]
     pub stop_date: Option<Option<f64>>,
 
-    /// `ts`: parent task IDs, one or many as in a create.
+    /// `ts`, parent task IDs, one or many as in a create
     #[serde(
         rename = "ts",
         default,
@@ -89,15 +89,15 @@ pub struct ChecklistItemPatch {
     )]
     pub task_ids: Option<Vec<ThingsId>>,
 
-    /// `ix`: sort index.
+    /// `ix`, sort index
     #[serde(rename = "ix", skip_serializing_if = "Option::is_none")]
     pub sort_index: Option<i32>,
 
-    /// `cd`: creation timestamp.
+    /// `cd`, creation timestamp
     #[serde(rename = "cd", skip_serializing_if = "Option::is_none")]
     pub creation_date: Option<f64>,
 
-    /// `md`: modification timestamp.
+    /// `md`, modification timestamp
     #[serde(rename = "md", skip_serializing_if = "Option::is_none")]
     pub modification_date: Option<f64>,
 }

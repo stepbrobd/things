@@ -6,12 +6,8 @@ export NO_COLOR=1
 export THINGS_LOG="off,things_cli::cloud_commit::request=debug"
 export THINGS_LOG_FORMAT=json
 
-# Wrapper for trycmd cases.
-#
-# Default behavior: if ./journal.json exists and --load-journal is not
-# explicitly provided, append --load-journal journal.json for things.
-# For all commands, enforce deterministic flags and if cloud commit request
-# logs are present on stderr, pretty-print just their request payload JSON.
+# the runner behind every trycmd case
+# things gets --no-cloud and a fixed --today-ts unless the case sets them, and --load-journal journal.json when the case directory holds one
 
 argv=("$@")
 

@@ -13,70 +13,70 @@ use crate::{
     },
 };
 
-/// Task wire properties (`p` fields for task entities through `Task7`).
+/// task wire properties (`p` fields for task entities through `Task7`)
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TaskProps {
-    /// `tt`: title.
+    /// `tt`, title
     #[serde(rename = "tt", default)]
     pub title: String,
 
-    /// `nt`: notes payload as a structured text object, the plain XML string of older histories is not read
+    /// `nt`, notes payload as a structured text object, the plain XML string of older histories is not read
     #[serde(rename = "nt", default)]
     pub notes: Option<TaskNotes>,
 
-    /// `tp`: task type (`Todo`, `Project`, `Heading`).
+    /// `tp`, task type (`Todo`, `Project`, `Heading`)
     #[serde(rename = "tp", default)]
     pub item_type: TaskType,
 
-    /// `ss`: task status (`Incomplete`, `Canceled`, `Completed`).
+    /// `ss`, task status (`Incomplete`, `Canceled`, `Completed`)
     #[serde(rename = "ss", default)]
     pub status: TaskStatus,
 
-    /// `sp`: completion/cancellation timestamp.
+    /// `sp`, completion/cancellation timestamp
     #[serde(rename = "sp", default)]
     pub stop_date: Option<f64>,
 
-    /// `st`: list location (`Inbox`, `Anytime`, `Someday`).
+    /// `st`, list location (`Inbox`, `Anytime`, `Someday`)
     #[serde(rename = "st", default)]
     pub start_location: TaskStart,
 
-    /// `sr`: scheduled/start day timestamp.
+    /// `sr`, scheduled/start day timestamp
     #[serde(rename = "sr", default)]
     pub scheduled_date: Option<i64>,
 
-    /// `tir`: today index reference day timestamp.
+    /// `tir`, today index reference day timestamp
     #[serde(rename = "tir", default)]
     pub today_index_reference: Option<i64>,
 
-    /// `dd`: deadline day timestamp.
+    /// `dd`, deadline day timestamp
     #[serde(rename = "dd", default)]
     pub deadline: Option<i64>,
 
-    /// `dds`: deadline suppressed day timestamp (rare/usually null in observed data).
+    /// `dds`, the day the due deadline was taken out of Today, usually null
     #[serde(rename = "dds", default)]
     pub deadline_suppressed_date: Option<Value>,
 
-    /// `pr`: parent project IDs (typically 0 or 1).
+    /// `pr`, parent project IDs (typically 0 or 1)
     #[serde(rename = "pr", default)]
     pub parent_project_ids: Vec<ThingsId>,
 
-    /// `ar`: area IDs (typically 0 or 1).
+    /// `ar`, area IDs (typically 0 or 1)
     #[serde(rename = "ar", default)]
     pub area_ids: Vec<ThingsId>,
 
-    /// `agr`: heading/action-group IDs (typically 0 or 1).
+    /// `agr`, heading/action-group IDs (typically 0 or 1)
     #[serde(rename = "agr", default)]
     pub action_group_ids: Vec<ThingsId>,
 
-    /// `tg`: applied tag IDs.
+    /// `tg`, applied tag IDs
     #[serde(rename = "tg", default)]
     pub tag_ids: Vec<ThingsId>,
 
-    /// `ix`: structural sort index in its container.
+    /// `ix`, structural sort index in its container
     #[serde(rename = "ix", default)]
     pub sort_index: i32,
 
-    /// `ti`: Today-view sort index.
+    /// `ti`, Today-view sort index
     #[serde(
         rename = "ti",
         default,
@@ -84,7 +84,7 @@ pub struct TaskProps {
     )]
     pub today_sort_index: i32,
 
-    /// `do`: due date offset (observed as `0` in typical payloads).
+    /// `do`, due date offset (observed as `0` in typical payloads)
     #[serde(
         rename = "do",
         default,
@@ -92,31 +92,31 @@ pub struct TaskProps {
     )]
     pub due_date_offset: i32,
 
-    /// `rr`: legacy V1 recurrence rule object (`null` for non-recurring).
+    /// `rr`, the repeat rule of a template, null on every other task
     #[serde(rename = "rr", default)]
     pub recurrence_rule: Option<RecurrenceRule>,
 
-    /// `rmd`: reminder metadata (observed as null for normal task/project creates).
+    /// `rmd`, reminder metadata (observed as null for normal task/project creates)
     #[serde(rename = "rmd", default)]
     pub reminder_metadata: Option<Value>,
 
-    /// `rp`: Task7 repeater payload.
+    /// `rp`, Task7 repeater payload
     #[serde(rename = "rp", default)]
     pub repeater: Option<Value>,
 
-    /// `rt`: recurrence template IDs (instance -> template link).
+    /// `rt`, the template an instance belongs to
     #[serde(rename = "rt", default)]
     pub recurrence_template_ids: Vec<ThingsId>,
 
-    /// `icsd`: legacy V1 instance-creation start day timestamp.
+    /// `icsd`, the day the search for a template's next instance starts
     #[serde(rename = "icsd", default)]
     pub instance_creation_start_date: Option<i64>,
 
-    /// `acrd`: after-completion reference date timestamp for recurrence scheduling.
+    /// `acrd`, after-completion reference date timestamp for recurrence scheduling
     #[serde(rename = "acrd", default)]
     pub after_completion_reference_date: Option<i64>,
 
-    /// `icc`: legacy V1 instance-creation count.
+    /// `icc`, the number of instances a template has made
     #[serde(
         rename = "icc",
         default,
@@ -124,19 +124,19 @@ pub struct TaskProps {
     )]
     pub instance_creation_count: i32,
 
-    /// `icp`: instance creation paused flag.
+    /// `icp`, instance creation paused flag
     #[serde(rename = "icp", default)]
     pub instance_creation_paused: bool,
 
-    /// `ato`: alarm time offset in seconds from day start.
+    /// `ato`, alarm time offset in seconds from day start
     #[serde(rename = "ato", default)]
     pub alarm_time_offset: Option<i64>,
 
-    /// `lai`: last alarm interaction timestamp.
+    /// `lai`, last alarm interaction timestamp
     #[serde(rename = "lai", default)]
     pub last_alarm_interaction: Option<f64>,
 
-    /// `sb`: evening section bit (`1` evening, `0` normal).
+    /// `sb`, evening section bit (`1` evening, `0` normal)
     #[serde(
         rename = "sb",
         default,
@@ -144,7 +144,7 @@ pub struct TaskProps {
     )]
     pub evening_bit: i32,
 
-    /// `lt`: leaves tombstone when deleted.
+    /// `lt`, leaves tombstone when deleted
     #[serde(
         rename = "lt",
         default,
@@ -152,43 +152,43 @@ pub struct TaskProps {
     )]
     pub leaves_tombstone: bool,
 
-    /// `tr`: trashed state.
+    /// `tr`, trashed state
     #[serde(rename = "tr", default)]
     pub trashed: bool,
 
-    /// `dl`: deadline list metadata (rarely used, often empty).
+    /// `dl`, deadline list metadata (rarely used, often empty)
     #[serde(rename = "dl", default)]
     pub deadline_list: Vec<Value>,
 
-    /// `xx`: conflict override metadata (CRDT internals).
+    /// `xx`, conflict override metadata (CRDT internals)
     #[serde(rename = "xx", default)]
     pub conflict_overrides: Option<Value>,
 
-    /// `cd`: creation timestamp.
+    /// `cd`, creation timestamp
     #[serde(rename = "cd", default)]
     pub creation_date: Option<f64>,
 
-    /// `md`: last user-modification timestamp.
+    /// `md`, last user-modification timestamp
     #[serde(rename = "md", default)]
     pub modification_date: Option<f64>,
 }
 
-/// Sparse patch fields for Task `t=1` updates.
+/// sparse patch fields for Task `t=1` updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TaskPatch {
-    /// `tt`: title.
+    /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
-    /// `nt`: notes payload.
+    /// `nt`, notes payload
     #[serde(rename = "nt", skip_serializing_if = "Option::is_none")]
     pub notes: Option<TaskNotes>,
 
-    /// `st`: start location.
+    /// `st`, start location
     #[serde(rename = "st", skip_serializing_if = "Option::is_none")]
     pub start_location: Option<TaskStart>,
 
-    /// `sr`: scheduled day timestamp (`null` clears date).
+    /// `sr`, scheduled day timestamp (`null` clears date)
     #[serde(
         rename = "sr",
         default,
@@ -197,7 +197,7 @@ pub struct TaskPatch {
     )]
     pub scheduled_date: Option<Option<i64>>,
 
-    /// `tir`: today reference day timestamp (`null` clears today placement).
+    /// `tir`, today reference day timestamp (`null` clears today placement)
     #[serde(
         rename = "tir",
         default,
@@ -206,27 +206,27 @@ pub struct TaskPatch {
     )]
     pub today_index_reference: Option<Option<i64>>,
 
-    /// `pr`: parent project IDs.
+    /// `pr`, parent project IDs
     #[serde(rename = "pr", skip_serializing_if = "Option::is_none")]
     pub parent_project_ids: Option<Vec<ThingsId>>,
 
-    /// `ar`: area IDs.
+    /// `ar`, area IDs
     #[serde(rename = "ar", skip_serializing_if = "Option::is_none")]
     pub area_ids: Option<Vec<ThingsId>>,
 
-    /// `agr`: heading/action-group IDs.
+    /// `agr`, heading/action-group IDs
     #[serde(rename = "agr", skip_serializing_if = "Option::is_none")]
     pub action_group_ids: Option<Vec<ThingsId>>,
 
-    /// `tg`: tag IDs.
+    /// `tg`, tag IDs
     #[serde(rename = "tg", skip_serializing_if = "Option::is_none")]
     pub tag_ids: Option<Vec<ThingsId>>,
 
-    /// `sb`: evening section bit (`1` evening, `0` normal).
+    /// `sb`, evening section bit (`1` evening, `0` normal)
     #[serde(rename = "sb", skip_serializing_if = "Option::is_none")]
     pub evening_bit: Option<i32>,
 
-    /// `ato`: alarm time offset in seconds from day start (`null` clears the reminder).
+    /// `ato`, alarm time offset in seconds from day start (`null` clears the reminder)
     #[serde(
         rename = "ato",
         default,
@@ -235,19 +235,19 @@ pub struct TaskPatch {
     )]
     pub alarm_time_offset: Option<Option<i64>>,
 
-    /// `do`: due date offset in days, the deadline of a repeat's instances counted from their day.
+    /// `do`, due date offset in days, the deadline of a repeat's instances counted from their day
     #[serde(rename = "do", skip_serializing_if = "Option::is_none")]
     pub due_date_offset: Option<i32>,
 
-    /// `tp`: task type.
+    /// `tp`, task type
     #[serde(rename = "tp", skip_serializing_if = "Option::is_none")]
     pub item_type: Option<TaskType>,
 
-    /// `ss`: task status.
+    /// `ss`, task status
     #[serde(rename = "ss", skip_serializing_if = "Option::is_none")]
     pub status: Option<TaskStatus>,
 
-    /// `sp`: completion/cancellation timestamp.
+    /// `sp`, completion/cancellation timestamp
     #[serde(
         rename = "sp",
         default,
@@ -256,7 +256,7 @@ pub struct TaskPatch {
     )]
     pub stop_date: Option<Option<f64>>,
 
-    /// `dd`: deadline timestamp.
+    /// `dd`, deadline timestamp
     #[serde(
         rename = "dd",
         default,
@@ -265,7 +265,7 @@ pub struct TaskPatch {
     )]
     pub deadline: Option<Option<f64>>,
 
-    /// `dds`: the day the due deadline was taken out of Today, null when it was not
+    /// `dds`, the day the due deadline was taken out of Today, null when it was not
     #[serde(
         rename = "dds",
         default,
@@ -274,15 +274,15 @@ pub struct TaskPatch {
     )]
     pub deadline_suppressed_date: Option<Option<Value>>,
 
-    /// `ix`: sort index.
+    /// `ix`, sort index
     #[serde(rename = "ix", skip_serializing_if = "Option::is_none")]
     pub sort_index: Option<i32>,
 
-    /// `ti`: today sort index.
+    /// `ti`, today sort index
     #[serde(rename = "ti", skip_serializing_if = "Option::is_none")]
     pub today_sort_index: Option<i32>,
 
-    /// `rr`: recurrence rule.
+    /// `rr`, recurrence rule
     #[serde(
         rename = "rr",
         default,
@@ -291,7 +291,7 @@ pub struct TaskPatch {
     )]
     pub recurrence_rule: Option<Option<RecurrenceRule>>,
 
-    /// `rp`: Task7 repeater payload (`null` clears the repeater).
+    /// `rp`, Task7 repeater payload (`null` clears the repeater)
     #[serde(
         rename = "rp",
         default,
@@ -300,11 +300,11 @@ pub struct TaskPatch {
     )]
     pub repeater: Option<Option<Value>>,
 
-    /// `rt`: recurrence template IDs.
+    /// `rt`, recurrence template IDs
     #[serde(rename = "rt", skip_serializing_if = "Option::is_none")]
     pub recurrence_template_ids: Option<Vec<ThingsId>>,
 
-    /// `icsd`: legacy V1 instance-creation start day timestamp.
+    /// `icsd`, the day the search for the next instance starts
     #[serde(
         rename = "icsd",
         default,
@@ -313,7 +313,7 @@ pub struct TaskPatch {
     )]
     pub instance_creation_start_date: Option<Option<i64>>,
 
-    /// `acrd`: after-completion reference date timestamp.
+    /// `acrd`, after-completion reference date timestamp
     #[serde(
         rename = "acrd",
         default,
@@ -322,23 +322,23 @@ pub struct TaskPatch {
     )]
     pub after_completion_reference_date: Option<Option<i64>>,
 
-    /// `icc`: legacy V1 instance-creation count.
+    /// `icc`, the number of instances made so far
     #[serde(rename = "icc", skip_serializing_if = "Option::is_none")]
     pub instance_creation_count: Option<i32>,
 
-    /// `icp`: instance creation paused.
+    /// `icp`, instance creation paused
     #[serde(rename = "icp", skip_serializing_if = "Option::is_none")]
     pub instance_creation_paused: Option<bool>,
 
-    /// `lt`: leaves tombstone.
+    /// `lt`, leaves tombstone
     #[serde(rename = "lt", skip_serializing_if = "Option::is_none")]
     pub leaves_tombstone: Option<bool>,
 
-    /// `tr`: trashed.
+    /// `tr`, trashed
     #[serde(rename = "tr", skip_serializing_if = "Option::is_none")]
     pub trashed: Option<bool>,
 
-    /// `cd`: creation timestamp.
+    /// `cd`, creation timestamp
     #[serde(
         rename = "cd",
         default,
@@ -347,7 +347,7 @@ pub struct TaskPatch {
     )]
     pub creation_date: Option<Option<f64>>,
 
-    /// `md`: modification timestamp.
+    /// `md`, modification timestamp
     #[serde(
         rename = "md",
         default,
@@ -399,7 +399,7 @@ impl TaskPatch {
     }
 }
 
-/// Task kind used in `tp`.
+/// task kind used in `tp`
 #[derive(
     Debug,
     Clone,
@@ -416,14 +416,14 @@ impl TaskPatch {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum TaskType {
-    /// Regular leaf task.
+    /// regular leaf task
     Todo = 0,
-    /// Project container.
+    /// project container
     Project = 1,
-    /// Heading/section under a project.
+    /// heading/section under a project
     Heading = 2,
 
-    /// Unknown value preserved for forward compatibility.
+    /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
     #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
@@ -436,7 +436,7 @@ impl Default for TaskType {
     }
 }
 
-/// Task status used in `ss`.
+/// task status used in `ss`
 #[derive(
     Debug,
     Clone,
@@ -453,14 +453,14 @@ impl Default for TaskType {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum TaskStatus {
-    /// Open/incomplete.
+    /// open/incomplete
     Incomplete = 0,
-    /// Canceled.
+    /// canceled
     Canceled = 2,
-    /// Completed.
+    /// completed
     Completed = 3,
 
-    /// Unknown value preserved for forward compatibility.
+    /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
     #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
@@ -473,7 +473,7 @@ impl Default for TaskStatus {
     }
 }
 
-/// Start location used in `st`.
+/// start location used in `st`
 #[derive(
     Debug,
     Clone,
@@ -490,14 +490,14 @@ impl Default for TaskStatus {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum TaskStart {
-    /// Inbox list.
+    /// Inbox list
     Inbox = 0,
-    /// Anytime list.
+    /// Anytime list
     Anytime = 1,
-    /// Someday list.
+    /// Someday list
     Someday = 2,
 
-    /// Unknown value preserved for forward compatibility.
+    /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
     #[strum(disabled, to_string = "{0}")]
     Unknown(i32),

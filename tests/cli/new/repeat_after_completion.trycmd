@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1699920000 --now-ts 1700000000.0 new 'Water the fern' --when today --repeat after:2w
-✓ Created Water the fern  11111116AjePwYNteRv  (Repeat 2 weeks after the previous to-do has been completed; starts 2023-11-14)
+✓ Created Water the fern  11111116AjePwYNteRv  (Repeat 2 weeks after the previous to-do has been completed, from 2023-11-14)
 {
   "ancestor_index": 0,
   "changes": {

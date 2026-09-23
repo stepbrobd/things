@@ -119,7 +119,7 @@ pub struct FindArgs {
     #[arg(
         long,
         short = 'k',
-        help = "Also search query against checklist item titles; implies --detailed for checklist-only matches"
+        help = "Also search query against checklist item titles, which implies --detailed for checklist-only matches"
     )]
     pub checklists: bool,
     #[arg(long, short = 'c', help = "Only completed tasks")]
@@ -136,21 +136,21 @@ pub struct FindArgs {
         long = "tag",
         short = 't',
         value_name = "TAG",
-        help = "Has this tag (title or UUID prefix); repeatable, OR logic"
+        help = "Has this tag (title or UUID prefix), repeatable with OR logic"
     )]
     tag_filters: Vec<IdentifierToken>,
     #[arg(
         long = "project",
         short = 'p',
         value_name = "PROJECT",
-        help = "In this project (title substring or UUID prefix); repeatable, OR logic"
+        help = "In this project (title substring or UUID prefix), repeatable with OR logic"
     )]
     project_filters: Vec<IdentifierToken>,
     #[arg(
         long = "area",
         short = 'a',
         value_name = "AREA",
-        help = "In this area (title substring or UUID prefix); repeatable, OR logic"
+        help = "In this area (title substring or UUID prefix), repeatable with OR logic"
     )]
     area_filters: Vec<IdentifierToken>,
     #[arg(long, short = 'I', help = "In Inbox view")]
@@ -322,7 +322,7 @@ fn parse_date_expr(
     Ok((op, date))
 }
 
-/// compare a field to a day: a day stamp by the day it names, an instant by its local day, as the logbook files it
+/// compare a field to a day, a day stamp by the day it names and an instant by its local day, as the logbook files it
 fn date_matches(
     field: Option<DateTime<Utc>>,
     instant: bool,

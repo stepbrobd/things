@@ -9,34 +9,34 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{Display, EnumString};
 
-/// Recurrence rule payload (`rr`) for recurring templates.
+/// recurrence rule payload (`rr`) for recurring templates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RecurrenceRule {
-    /// `tp`: recurrence rule type.
+    /// `tp`, recurrence rule type
     #[serde(rename = "tp", default)]
     pub recurrence_type: RecurrenceType,
 
-    /// `fu`: frequency unit bitmask.
+    /// `fu`, frequency unit bitmask
     #[serde(rename = "fu", default = "default_frequency_unit")]
     pub frequency_unit: FrequencyUnit,
 
-    /// `fa`: frequency amount (every N units).
+    /// `fa`, frequency amount (every N units)
     #[serde(rename = "fa", default = "default_frequency_amount")]
     pub frequency_amount: i32,
 
-    /// `of`: offsets (weekday/day/ordinal selectors).
+    /// `of`, offsets (weekday/day/ordinal selectors)
     #[serde(rename = "of", default)]
     pub offsets: Vec<BTreeMap<String, Value>>,
 
-    /// `sr`: recurrence start day timestamp.
+    /// `sr`, recurrence start day timestamp
     #[serde(rename = "sr", default)]
     pub start_date: Option<i64>,
 
-    /// `ia`: interval anchor day timestamp for recurrence calculations.
+    /// `ia`, interval anchor day timestamp for recurrence calculations
     #[serde(rename = "ia", default)]
     pub interval_anchor: Option<i64>,
 
-    /// `ed`: recurrence end day timestamp (`64092211200` ~= effectively never), absent when a repeat count bounds the rule.
+    /// `ed`, recurrence end day timestamp, `64092211200` for never, absent when a repeat count bounds the rule
     #[serde(
         rename = "ed",
         default = "default_recurrence_end_date",
@@ -44,15 +44,15 @@ pub struct RecurrenceRule {
     )]
     pub end_date: Option<i64>,
 
-    /// `rc`: repeat count.
+    /// `rc`, repeat count
     #[serde(rename = "rc", default)]
     pub repeat_count: i32,
 
-    /// `ts`: recurrence time span in days (`-1` is an observed sentinel).
+    /// `ts`, recurrence time span in days (`-1` is an observed sentinel)
     #[serde(rename = "ts", default)]
     pub time_span_in_days: i32,
 
-    /// `rrv`: recurrence rule version.
+    /// `rrv`, recurrence rule version
     #[serde(rename = "rrv", default = "default_version")]
     pub version: i32,
 }
@@ -118,7 +118,7 @@ impl fmt::Display for RecurrenceDescriptionError {
 impl std::error::Error for RecurrenceDescriptionError {}
 
 impl RecurrenceRule {
-    /// Formats a legacy recurrence rule using the observed English Things phrasing.
+    /// the rule in the English phrasing Things uses
     pub fn human_readable(&self) -> Result<String, RecurrenceDescriptionError> {
         if self.frequency_amount < 1 {
             return Err(RecurrenceDescriptionError::InvalidFrequencyAmount(
@@ -272,24 +272,19 @@ impl RecurrenceRule {
             return Err(RecurrenceDescriptionError::ConflictingEndConditions);
         }
 
-        let mut bounds = Vec::new();
+        let mut description = cadence;
         if let Some(start) = start {
-            bounds.push(format!("starts {start}"));
+            description.push_str(&format!(", from {start}"));
         }
         if let Some(end) = end {
-            bounds.push(format!("ends {end}"));
+            description.push_str(&format!(" until {end}"));
         } else if self.repeat_count > 0 {
-            bounds.push(format!(
-                "ends after {}",
+            description.push_str(&format!(
+                " for {}",
                 pluralized(self.repeat_count, "repetition", "repetitions")
             ));
         }
-
-        if bounds.is_empty() {
-            return Ok(cadence);
-        }
-
-        Ok(format!("{cadence}; {}", bounds.join("; ")))
+        Ok(description)
     }
 }
 
@@ -304,7 +299,7 @@ fn monthly_offset(
             .filter(|day| (-1..=30).contains(day))
             .ok_or(RecurrenceDescriptionError::InvalidOffset(index))?;
 
-        // -1 is the last day of the month, as the app writes monthly:last
+        // -1 is the last day of the month, which the CLI writes for `monthly:last`
         if day < 0 {
             return Ok("last day".to_string());
         }
@@ -459,7 +454,7 @@ fn join_list(values: &[impl AsRef<str>]) -> String {
     }
 }
 
-/// Recurrence rule type (`rr.tp`).
+/// recurrence rule type, `rr.tp`
 #[derive(
     Debug,
     Clone,
@@ -476,12 +471,12 @@ fn join_list(values: &[impl AsRef<str>]) -> String {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum RecurrenceType {
-    /// Fixed schedule cadence.
+    /// fixed schedule cadence
     FixedSchedule = 0,
-    /// Interval anchored after completion date.
+    /// interval anchored after completion date
     AfterCompletion = 1,
 
-    /// Unknown value preserved for forward compatibility.
+    /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
     #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
@@ -494,7 +489,7 @@ impl Default for RecurrenceType {
     }
 }
 
-/// Recurrence frequency unit (`rr.fu`).
+/// recurrence frequency unit, `rr.fu`
 #[derive(
     Debug,
     Clone,
@@ -511,16 +506,16 @@ impl Default for RecurrenceType {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum FrequencyUnit {
-    /// Yearly bitmask value `4`.
+    /// yearly bitmask value `4`
     Yearly = 4,
-    /// Monthly bitmask value `8`.
+    /// monthly bitmask value `8`
     Monthly = 8,
-    /// Daily bitmask value `16`.
+    /// daily bitmask value `16`
     Daily = 16,
-    /// Weekly bitmask value `256`.
+    /// weekly bitmask value `256`
     Weekly = 256,
 
-    /// Unknown value preserved for forward compatibility.
+    /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
     #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
@@ -533,27 +528,27 @@ impl Default for FrequencyUnit {
     }
 }
 
-/// Default recurrence frequency unit (`rr.fu`) is weekly.
+/// the default frequency unit, `rr.fu`, is weekly
 fn default_frequency_unit() -> FrequencyUnit {
     FrequencyUnit::Weekly
 }
 
-/// Default recurrence frequency amount (`rr.fa`) is every 1 unit.
+/// the default frequency amount, `rr.fa`, is every unit
 const fn default_frequency_amount() -> i32 {
     1
 }
 
-/// Default recurrence end date (`rr.ed`) far in the future (~year 4001).
+/// the end day `rr.ed` that means never, a day in the year 4001
 pub const RECURRENCE_END_NEVER: i64 = 64_092_211_200;
 
 const fn default_recurrence_end_date() -> Option<i64> {
     Some(RECURRENCE_END_NEVER)
 }
 
-/// Sentinel used when a recurrence has no explicit start date.
+/// sentinel used when a recurrence has no explicit start date
 const RECURRENCE_START_DATE_SENTINEL: i64 = -62_135_769_600;
 
-/// Current observed recurrence rule version (`rrv`).
+/// current observed recurrence rule version (`rrv`)
 const fn default_version() -> i32 {
     4
 }
@@ -716,11 +711,11 @@ mod tests {
 
         assert_eq!(
             dated_rule.human_readable().as_deref(),
-            Ok("Repeat daily; starts 2026-08-23; ends 2026-12-31")
+            Ok("Repeat daily, from 2026-08-23 until 2026-12-31")
         );
         assert_eq!(
             counted_rule.human_readable().as_deref(),
-            Ok("Repeat every week; ends after 5 repetitions")
+            Ok("Repeat every week for 5 repetitions")
         );
     }
 

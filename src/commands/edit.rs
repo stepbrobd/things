@@ -39,7 +39,7 @@ pub struct EditArgs {
     #[arg(
         long,
         short = 'n',
-        help = "Replace notes (single task only; use empty string to clear)"
+        help = "Replace notes (single task only, an empty string clears them)"
     )]
     pub notes: Option<String>,
     #[arg(
@@ -189,8 +189,7 @@ fn unschedule(update: &mut TaskPatch, task: &Task) {
 
 /// when, deadline, reminder and repeat, the fields the app's popovers edit
 ///
-/// `checklist` is the to-do's checklist as this edit leaves it, which a new
-/// template copies
+/// `checklist` is the to-do's checklist as this edit leaves it, which a new template copies
 #[allow(clippy::too_many_arguments)]
 fn apply_schedule(
     args: &EditArgs,

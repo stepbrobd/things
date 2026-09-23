@@ -49,20 +49,18 @@ pub struct Cli {
     /// For testing: derive new ids from a seed instead of random bytes
     #[arg(long, global = true, hide = true, value_name = "SEED")]
     pub id_seed: Option<u64>,
-    /// For testing: load state from a JSON journal file instead of syncing.
-    /// The file must contain a JSON array of WireItem objects (each is a
-    /// map of uuid -> WireObject).
+    /// For testing: load the state from a JSON array of history items instead of syncing
     #[arg(long, value_name = "FILE", hide = true)]
     pub load_journal: Option<PathBuf>,
     #[command(subcommand)]
     pub command: Option<Commands>,
-    /// the state loaded by this run, so a command after the materialization pass does not sync twice
+    /// the state loaded by this run, which spares the command after the materialization pass a second sync
     #[arg(skip)]
     pub state_cache: RefCell<Option<RawState>>,
     /// set when the sync failed and the cached state is in use
     #[arg(skip)]
     pub offline: Cell<bool>,
-    /// the client that synchronized this run's state: writes commit against its history and head
+    /// the client that synchronized this run's state, writes commit against its history and head
     #[arg(skip)]
     pub cloud: Rc<RefCell<Option<ThingsCloudClient>>>,
     /// the objects whose replay did not complete, which the writer refuses to touch

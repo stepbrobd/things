@@ -546,7 +546,7 @@ mod tests {
         .expect_err("self parent");
         assert_eq!(self_parent, "A tag cannot be its own parent.");
 
-        // Meetings is below Work, so Work cannot go under Meetings
+        // Meetings is below Work, which keeps Work from going under Meetings
         let cycle = build_tags_edit_plan(
             &TagsEditArgs {
                 tag_id: TAG_UUID.to_string(),

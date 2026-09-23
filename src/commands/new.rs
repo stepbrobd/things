@@ -925,7 +925,7 @@ mod tests {
         assert_eq!(changes[NEW_UUID]["p"]["tir"], json!(day));
         assert_eq!(changes[INBOX_ANCHOR_UUID]["p"]["ti"], json!(1024));
         assert_eq!(changes[INBOX_OTHER_UUID]["p"]["ti"], json!(3072));
-        // the structural run had room, so no sort index moved
+        // the structural run had room and no sort index moved
         assert!(changes[INBOX_ANCHOR_UUID]["p"].get("ix").is_none());
     }
 

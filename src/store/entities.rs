@@ -184,7 +184,7 @@ impl Task {
             .map(|secs| format!("{:02}:{:02}", secs / 3600, secs % 3600 / 60))
     }
 
-    /// Neither a title nor notes: a blank row, not a notes-only capture.
+    /// a blank row without title or notes, where a capture of notes alone still counts
     pub fn is_blank(&self) -> bool {
         self.title.trim().is_empty() && self.notes.as_deref().unwrap_or("").trim().is_empty()
     }
@@ -217,7 +217,7 @@ impl Task {
         self.start == TaskStart::Someday && self.start_date.is_none()
     }
 
-    /// in the Today list: started on or before today, or without a day and past a deadline nobody took out of Today, templates excluded
+    /// in the Today list, started on or before today or without a day and past a deadline nobody took out of Today, templates excluded
     pub fn is_today(&self, today: &DateTime<Utc>) -> bool {
         if self.is_recurrence_template() {
             return false;

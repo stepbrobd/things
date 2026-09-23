@@ -7,8 +7,7 @@ use anyhow::{Result, anyhow};
 
 const APP_NAME: &str = "things";
 
-/// The XDG base directory named by `var`, or `default` under the home
-/// directory when the variable is unset or empty, on every platform.
+/// the XDG base directory named by `var`, or `default` under the home directory when the variable is unset or empty, on every platform
 fn xdg_home(var: &str, default: &[&str]) -> Result<PathBuf> {
     match std::env::var(var) {
         Ok(custom) if !custom.is_empty() => Ok(PathBuf::from(custom)),
@@ -34,10 +33,9 @@ pub fn auth_file_path() -> Result<PathBuf> {
         .join("auth.json"))
 }
 
-/// Create `dir` and narrow it to owner-only. The config directory holds the
-/// Things Cloud password and the state directory an append log carrying every
-/// task title and note, so the default 0755 leaves that readable by any other
-/// local user.
+/// create `dir` and narrow it to its owner
+///
+/// the config directory holds the Things Cloud password and the state directory a journal with every title and note, which the default 0755 leaves readable to every local user
 pub fn create_private_dir(dir: &Path) -> std::io::Result<()> {
     fs::create_dir_all(dir)?;
     #[cfg(unix)]
