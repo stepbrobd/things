@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Write as _};
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 use crc32fast::Hasher;
@@ -196,6 +196,15 @@ pub fn parse_reminder(time: &str) -> Result<i64, String> {
 ///
 /// titles and notes come from the cloud, where anyone who can mail a to-do into the inbox writes them
 pub fn printable(text: &str) -> String {
+    sanitized(text, false)
+}
+
+/// JSON for the terminal, where the controls `serde_json` writes raw leave as `\u` escapes that decode to the same text
+pub fn printable_json(text: &str) -> String {
+    sanitized(text, true)
+}
+
+fn sanitized(text: &str, json: bool) -> String {
     let mut out = String::with_capacity(text.len());
     let mut skip_to = 0;
     for (at, c) in text.char_indices() {
@@ -211,6 +220,10 @@ pub fn printable(text: &str) -> String {
                 }
                 None => out.push_str("^["),
             },
+            // serde_json escapes c0 alone, del and c1 stand raw in its strings
+            '\u{7f}' | '\u{80}'..='\u{9f}' if json => {
+                let _ = write!(out, "\\u{:04x}", u32::from(c));
+            }
             '\u{7f}' => out.push_str("^?"),
             c if c.is_ascii_control() => {
                 out.push('^');
@@ -327,6 +340,7 @@ mod tests {
 
     use super::{
         day_of, day_timestamp, local_date_as_utc_midnight, parse_day, parse_instant, printable,
+        printable_json,
     };
 
     #[test]
@@ -339,6 +353,16 @@ mod tests {
             printable("Pay rent\u{1b}]52;c;aGk=\u{7}\u{1b}[2J\rX\u{7f}\u{9b}"),
             "Pay rent^[]52;c;aGk=^G^[[2J^MX^?\u{fffd}"
         );
+    }
+
+    #[test]
+    fn printable_json_keeps_every_string_as_it_decodes() {
+        let title = "Rent\u{7f} due\u{85}\u{9b}2J \u{1b}]52;c;aGk=\u{7}";
+        let json = serde_json::to_string(&serde_json::json!({ "title": title })).unwrap();
+        let shown = printable_json(&json);
+        assert!(!shown.chars().any(char::is_control), "{shown}");
+        let read: serde_json::Value = serde_json::from_str(&shown).unwrap();
+        assert_eq!(read["title"], title);
     }
 
     #[test]

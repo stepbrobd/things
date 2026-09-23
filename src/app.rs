@@ -15,7 +15,7 @@ use crate::{
     client::ThingsCloudClient,
     cmd_ctx::{CmdCtx, DefaultCmdCtx},
     commands::{Command, Commands},
-    common::{ICONS, printable},
+    common::{ICONS, printable, printable_json},
     dirs::append_log_dir,
     ids::ThingsId,
     log_cache::{CacheLock, fold_state_from_append_log, get_state_with_append_log},
@@ -181,9 +181,14 @@ pub fn run() -> Result<()> {
     }
     let mut out = Vec::new();
     let result = command.run_with_ctx(&cli, &mut out, &mut ctx);
+    let out = String::from_utf8_lossy(&out);
+    let out = if cli.json {
+        printable_json(&out)
+    } else {
+        printable(&out)
+    };
     // a reader that stops early, `head` for instance, ends the output and not the run
-    if let Err(error) =
-        std::io::stdout().write_all(printable(&String::from_utf8_lossy(&out)).as_bytes())
+    if let Err(error) = std::io::stdout().write_all(out.as_bytes())
         && error.kind() != ErrorKind::BrokenPipe
     {
         return Err(error.into());

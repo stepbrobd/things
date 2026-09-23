@@ -1,0 +1,49 @@
+```trycmd
+$ run.sh things --json inbox
+[
+  {
+    "id": "Rc11111111111111111111",
+    "short_id": "R",
+    "title": "Pay rent/u007f by/u0085/u009b2J the 1st /u001b]52;c;aGk=/u0007",
+    "status": "incomplete",
+    "type": "todo",
+    "start": {
+      "bucket": "inbox",
+      "scheduled_at": null,
+      "reminder": null,
+      "today_index_reference": null,
+      "evening": false
+    },
+    "project": null,
+    "area": null,
+    "heading": null,
+    "tags": [],
+    "dates": {
+      "deadline_at": null,
+      "created_at": "2024-03-09T16:00:00+00:00",
+      "modified_at": "2024-03-09T16:00:00+00:00",
+      "completed_at": null
+    },
+    "notes": null,
+    "checklist": [],
+    "recurrence": {
+      "is_template": false,
+      "is_instance": false,
+      "rule": null,
+      "template_ids": []
+    },
+    "flags": {
+      "trashed": false,
+      "is_new": false,
+      "instance_creation_paused": false,
+      "leaves_tombstone": false,
+      "degraded": false
+    },
+    "indexes": {
+      "sort_index": 10,
+      "today_sort_index": 0
+    }
+  }
+]
+
+```
