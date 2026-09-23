@@ -163,6 +163,10 @@ impl Cli {
 pub fn run() -> Result<()> {
     let mut cli = Cli::parse();
     logging::init();
+    // the test hooks fix ids and days, a seed used twice would overwrite what the first run created
+    if !cli.no_cloud && (cli.today_ts.is_some() || cli.now_ts.is_some() || cli.id_seed.is_some()) {
+        anyhow::bail!("--today-ts, --now-ts and --id-seed are test hooks and need --no-cloud.");
+    }
     let command = cli
         .command
         .take()
