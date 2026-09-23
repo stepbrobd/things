@@ -54,7 +54,7 @@ impl ContainerFilter {
     fn new(filter: &IdentifierToken) -> Self {
         Self {
             token: filter.as_str().to_string(),
-            lowered: filter.as_str().to_ascii_lowercase(),
+            lowered: filter.as_str().to_lowercase(),
         }
     }
 
@@ -84,7 +84,7 @@ impl Prepared {
                 .collect::<Result<Vec<_>, _>>()
         };
         Ok(Self {
-            query: args.query.as_ref().map(|query| query.to_ascii_lowercase()),
+            query: args.query.as_ref().map(|query| query.to_lowercase()),
             statuses: build_status_set(args),
             project_filters: args
                 .project_filters
@@ -395,18 +395,18 @@ fn matches(
 
     let mut checklist_only = false;
     if let Some(q) = &prepared.query {
-        let title_match = task.title.to_ascii_lowercase().contains(q);
+        let title_match = task.title.to_lowercase().contains(q);
         let notes_match = args.notes
             && task
                 .notes
                 .as_ref()
-                .map(|n| n.to_ascii_lowercase().contains(q))
+                .map(|n| n.to_lowercase().contains(q))
                 .unwrap_or(false);
         let checklist_match = args.checklists
             && task
                 .checklist_items
                 .iter()
-                .any(|item| item.title.to_ascii_lowercase().contains(q));
+                .any(|item| item.title.to_lowercase().contains(q));
 
         if !title_match && !notes_match && !checklist_match {
             return MatchResult::no();
@@ -430,7 +430,7 @@ fn matches(
             return MatchResult::no();
         };
 
-        let project_title = project.title.to_ascii_lowercase();
+        let project_title = project.title.to_lowercase();
         let project_uuid = project_uuid.to_string();
         let matched = prepared
             .project_filters
@@ -449,7 +449,7 @@ fn matches(
             return MatchResult::no();
         };
 
-        let area_title = area.title.to_ascii_lowercase();
+        let area_title = area.title.to_lowercase();
         let area_uuid = area_uuid.to_string();
         let matched = prepared
             .area_filters
