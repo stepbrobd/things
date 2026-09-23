@@ -503,8 +503,13 @@ fn build_edit_plan(
         } else if move_l == "clear" {
             labels.push("move=clear".to_string());
         } else {
-            let (project_opt, _, _) = store.resolve_mark_identifier(&move_raw);
-            let (area_opt, _, _) = store.resolve_area_identifier(&move_raw);
+            let (project_opt, _, project_candidates) = store.resolve_mark_identifier(&move_raw);
+            let (area_opt, _, area_candidates) = store.resolve_area_identifier(&move_raw);
+            if !project_candidates.is_empty() || !area_candidates.is_empty() {
+                return Err(format!(
+                    "Ambiguous --move target '{move_raw}' (matches several items)."
+                ));
+            }
 
             let project_uuid = project_opt.as_ref().and_then(|p| {
                 if p.is_project() {

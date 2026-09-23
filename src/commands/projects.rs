@@ -146,8 +146,13 @@ fn build_projects_edit_plan(
             update.area_ids = Some(vec![]);
             labels.push("move=clear".to_string());
         } else {
-            let (resolved_project, _, _) = store.resolve_mark_identifier(move_raw);
-            let (area, _, _) = store.resolve_area_identifier(move_raw);
+            let (resolved_project, _, project_candidates) = store.resolve_mark_identifier(move_raw);
+            let (area, _, area_candidates) = store.resolve_area_identifier(move_raw);
+            if !project_candidates.is_empty() || !area_candidates.is_empty() {
+                return Err(format!(
+                    "Ambiguous --move target '{move_raw}' (matches several items)."
+                ));
+            }
             let project_uuid = resolved_project.as_ref().and_then(|p| {
                 if p.is_project() {
                     Some(p.uuid.clone())

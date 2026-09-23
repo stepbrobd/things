@@ -55,31 +55,25 @@ fn build_delete_plan(
         let (task, task_err, task_ambiguous) = store.resolve_task_identifier(identifier.as_str());
         let (area, area_err, area_ambiguous) = store.resolve_area_identifier(identifier.as_str());
 
-        let task_match = task.is_some();
-        let area_match = area.is_some();
+        // several candidates of one kind count as a match, the other kind cannot take the identifier
+        let task_match = task.is_some() || !task_ambiguous.is_empty();
+        let area_match = area.is_some() || !area_ambiguous.is_empty();
 
         if task_match && area_match {
             return Err(format!(
-                "Ambiguous identifier '{}' (matches task and area).",
+                "Ambiguous identifier '{}' (matches tasks and areas).",
                 identifier.as_str()
             ));
         }
 
-        if !task_match && !area_match {
-            return Err(
-                if !task_ambiguous.is_empty() && !area_ambiguous.is_empty() {
-                    format!(
-                        "Ambiguous identifier '{}' (matches multiple tasks and areas).",
-                        identifier.as_str()
-                    )
-                } else if !task_ambiguous.is_empty() {
-                    task_err
-                } else if !area_ambiguous.is_empty() {
-                    area_err
-                } else {
-                    format!("Item not found: {}", identifier.as_str())
-                },
-            );
+        if task.is_none() && area.is_none() {
+            return Err(if !task_ambiguous.is_empty() {
+                task_err
+            } else if !area_ambiguous.is_empty() {
+                area_err
+            } else {
+                format!("Item not found: {}", identifier.as_str())
+            });
         }
 
         if let Some(task) = task {
@@ -416,5 +410,23 @@ mod tests {
         )
         .expect_err("a trashed target");
         assert_eq!(trashed_target, "Item already deleted: Trashed");
+
+        // a prefix of two to-dos and one area names no single item
+        let ambiguous = build_delete_plan(
+            &DeleteArgs {
+                item_ids: vec![IdentifierToken::from("Ab")],
+            },
+            &build_store(vec![
+                task("Ab11111111111111111111", "Groceries", false),
+                task("Ab21111111111111111111", "Laundry", false),
+                area("Ab31111111111111111111", "Finance"),
+            ]),
+            1.0,
+        )
+        .expect_err("an ambiguous prefix");
+        assert!(
+            ambiguous.starts_with("Ambiguous identifier 'Ab'"),
+            "{ambiguous}"
+        );
     }
 }
