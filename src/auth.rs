@@ -100,10 +100,26 @@ pub fn load_auth() -> Result<(String, String)> {
     validate_auth(&email, &password)
 }
 
-pub fn write_auth(email: &str, password: &str) -> Result<std::path::PathBuf> {
+/// the credentials go to the auth file once `sign_in` accepts them, a refused pair leaves the file as it was
+pub fn write_verified_auth(
+    email: &str,
+    password: &str,
+    sign_in: impl FnOnce(&str, &str) -> Result<()>,
+) -> Result<std::path::PathBuf> {
     let path = auth_file_path()?;
-    write_auth_at(&path, email, password)?;
+    write_verified_auth_at(&path, email, password, sign_in)?;
     Ok(path)
+}
+
+fn write_verified_auth_at(
+    path: &Path,
+    email: &str,
+    password: &str,
+    sign_in: impl FnOnce(&str, &str) -> Result<()>,
+) -> Result<()> {
+    let (email, password) = validate_auth(email, password)?;
+    sign_in(&email, &password).context("Signing in to Things Cloud failed, nothing was saved")?;
+    write_auth_at(path, &email, &password)
 }
 
 fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
@@ -160,6 +176,57 @@ mod tests {
 
         let mode = fs::metadata(&path).expect("metadata").permissions().mode();
         assert_eq!(mode & 0o777, 0o600);
+    }
+
+    #[test]
+    fn a_refused_sign_in_saves_nothing() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        write_auth_at(&path, "user@example.com", "hunter2").expect("seed");
+        let Err(error) = write_verified_auth_at(&path, "other@example.com", "wrong", |_, _| {
+            Err(anyhow!("HTTP 401 for the account"))
+        }) else {
+            panic!("a refused sign-in saves nothing");
+        };
+        assert!(format!("{error:#}").contains("HTTP 401"), "{error:#}");
+        let config = load_auth_config(&path, |_| None).expect("config");
+        assert_eq!(config.email.as_deref(), Some("user@example.com"));
+        assert_eq!(config.password.as_deref(), Some("hunter2"));
+    }
+
+    #[test]
+    fn the_sign_in_tries_the_credentials_that_are_saved() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        let mut tried = None;
+        write_verified_auth_at(
+            &path,
+            " user@example.com ",
+            "pass word ",
+            |email, password| {
+                tried = Some((email.to_string(), password.to_string()));
+                Ok(())
+            },
+        )
+        .expect("saved");
+        assert_eq!(
+            tried,
+            Some(("user@example.com".to_string(), "pass word ".to_string()))
+        );
+        let config = load_auth_config(&path, |_| None).expect("config");
+        assert_eq!(config.email.as_deref(), Some("user@example.com"));
+        assert_eq!(config.password.as_deref(), Some("pass word "));
+    }
+
+    #[test]
+    fn an_empty_field_is_refused_before_the_sign_in() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        let result = write_verified_auth_at(&path, "user@example.com", "", |_, _| {
+            panic!("no sign-in without a password")
+        });
+        assert!(result.is_err());
+        assert!(!path.exists());
     }
 
     #[test]
