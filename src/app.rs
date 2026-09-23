@@ -1,7 +1,7 @@
 use std::{
     cell::{Cell, RefCell},
     collections::{BTreeMap, HashSet},
-    io::{IsTerminal, Read, Write},
+    io::{ErrorKind, IsTerminal, Read, Write},
     path::PathBuf,
     rc::Rc,
 };
@@ -174,7 +174,13 @@ pub fn run() -> Result<()> {
     }
     let mut out = Vec::new();
     let result = command.run_with_ctx(&cli, &mut out, &mut ctx);
-    std::io::stdout().write_all(printable(&String::from_utf8_lossy(&out)).as_bytes())?;
+    // a reader that stops early, `head` for instance, ends the output and not the run
+    if let Err(error) =
+        std::io::stdout().write_all(printable(&String::from_utf8_lossy(&out)).as_bytes())
+        && error.kind() != ErrorKind::BrokenPipe
+    {
+        return Err(error.into());
+    }
     result
 }
 
