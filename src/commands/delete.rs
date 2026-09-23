@@ -142,6 +142,12 @@ fn build_delete_plan(
                 .is_some_and(Task::is_project)
         {
             for child in contents(&parent, in_area) {
+                if child.has_repeater() {
+                    return Err(format!(
+                        "Task7 repeater tasks are blocked from deletion until repeater bookkeeping is supported: {}",
+                        child.title
+                    ));
+                }
                 if changes.insert(child.uuid.to_string(), trash(now)).is_none() {
                     taken += 1;
                 }

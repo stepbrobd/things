@@ -207,17 +207,23 @@ fn wire_object_properties(obj: &WireObject) -> StateProperties {
     }
 }
 
-/// an object of a stored kind whose payload did not parse is kept opaque and marked, as is one an update reaches before any create, while a future kind is opaque by design
+/// an object of a stored kind whose payload did not parse is kept opaque and marked, as is one an update reaches before any create and a task of a kind this CLI does not read
 fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
     let properties = wire_object_properties(&obj);
     let stored = obj.entity_type.as_ref().is_some_and(EntityType::is_stored);
     let unparsed = stored && matches!(obj.payload, Properties::Unknown(_));
     let create_less = stored && obj.operation_type == OperationType::Update;
-    let degraded = unparsed || create_less;
+    let future = obj
+        .entity_type
+        .as_ref()
+        .is_some_and(|entity| entity.is_task_family() && !stored);
+    let degraded = unparsed || create_less || future;
     if unparsed {
         warn!(target: "things::replay", uuid = %uuid, "the object's payload did not parse, it is kept opaque");
     } else if create_less {
         warn!(target: "things::replay", uuid = %uuid, "an update reached the object before any create, it is kept partial");
+    } else if future {
+        warn!(target: "things::replay", uuid = %uuid, "a task of a kind this CLI does not read, it is kept opaque");
     }
     state.insert(
         uuid.clone(),
@@ -255,9 +261,17 @@ fn apply_update_payload(
             None
         }
         (_, Properties::Ignored(_)) => None,
-        (_, Properties::Unknown(_)) => entity_type
+        (StateProperties::Other, Properties::Unknown(_)) => entity_type
             .is_some_and(EntityType::is_stored)
             .then(|| "the patch did not parse".to_string()),
+        (_, Properties::Unknown(_)) => Some(
+            if entity_type.is_some_and(EntityType::is_stored) {
+                "the patch did not parse"
+            } else {
+                "an update of a kind this CLI does not read"
+            }
+            .to_string(),
+        ),
         (_, payload) => {
             existing.properties = payload.into();
             Some("the payload is of another kind than the object".to_string())
@@ -300,7 +314,12 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
             OperationType::Delete => {
                 state.remove(&uuid);
             }
-            OperationType::Unknown(_) => {}
+            OperationType::Unknown(operation) => {
+                if let Some(existing) = state.get_mut(&uuid) {
+                    warn!(target: "things::replay", uuid = %uuid, operation, "an operation this CLI does not know reached the object");
+                    existing.degraded = true;
+                }
+            }
         }
     }
 }
@@ -373,7 +392,7 @@ mod tests {
     }
 
     #[test]
-    fn unknown_future_task_update_does_not_destroy_known_state() {
+    fn unknown_future_task_update_keeps_known_state_and_marks_it() {
         let update = wire_item(&format!(
             r#"{{"{TASK_ID}":{{"t":1,"e":"Task8","p":{{"future":true}}}}}}"#
         ));
@@ -391,9 +410,9 @@ mod tests {
                 .get_task(TASK_ID)
                 .is_some()
         );
-        // a future entity is opaque by design, not a failure
-        assert!(!object.degraded);
-        assert!(degraded_ids(&state).is_empty());
+        // what the update changed is unknown, writes on top of it could clobber it
+        assert!(object.degraded);
+        assert_eq!(degraded_ids(&state), vec![task_id]);
     }
 
     #[test]

@@ -493,6 +493,8 @@ pub fn due_instances(
                 && !template.instance_creation_paused
                 // a template whose replay failed is never written through
                 && !template.degraded
+                // a repeater is left to the Apple clients, as the commands leave it
+                && !template.has_repeater()
                 // a template with a deadline is left to the Apple clients, the app keeps an instance's deadline as an offset no capture has shown written
                 && template.deadline.is_none()
                 && template.due_date_offset == 0
@@ -1161,6 +1163,32 @@ mod tests {
         let store = ThingsStore::from_raw_state(&fold_items(items));
         assert!(store.get_task(TEMPLATE).expect("template").degraded);
         assert!(due_on(&store, "2026-03-25").is_empty());
+
+        // an update of a kind or an operation this CLI does not read marks it too
+        for update in [
+            format!(r#"{{"{TEMPLATE}":{{"t":1,"e":"Task8","p":{{"tr":true}}}}}}"#),
+            format!(r#"{{"{TEMPLATE}":{{"t":3,"e":"Task7","p":{{}}}}}}"#),
+        ] {
+            let items: Vec<WireItem> = vec![
+                [template_object(daily, "2026-03-25", 1)]
+                    .into_iter()
+                    .collect(),
+                serde_json::from_str(&update).expect("item"),
+            ];
+            let store = ThingsStore::from_raw_state(&fold_items(items));
+            assert!(
+                store.get_task(TEMPLATE).expect("template").degraded,
+                "{update}"
+            );
+            assert!(due_on(&store, "2026-03-25").is_empty(), "{update}");
+        }
+
+        // a repeater carries bookkeeping this CLI does not read
+        let (uuid, mut object) = template_object(daily, "2026-03-25", 1);
+        if let crate::wire::wire_object::Properties::TaskCreate(props) = &mut object.payload {
+            props.repeater = Some(json!({"fu": 16}));
+        }
+        assert!(due_on(&store_of(vec![(uuid, object)]), "2026-03-25").is_empty());
 
         // a deadline, absolute or as an offset, the CLI cannot carry onto an instance yet
         for (deadline, offset) in [(Some(day_timestamp(day("2026-03-27"))), 0), (None, 2)] {
