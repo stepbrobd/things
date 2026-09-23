@@ -301,9 +301,13 @@ fn monthly_offset(
         let day = offset
             .get("dy")
             .and_then(Value::as_i64)
-            .filter(|day| (0..=30).contains(day))
+            .filter(|day| (-1..=30).contains(day))
             .ok_or(RecurrenceDescriptionError::InvalidOffset(index))?;
 
+        // -1 is the last day of the month, as the app writes monthly:last
+        if day < 0 {
+            return Ok("last day".to_string());
+        }
         return Ok(format!("{} day", ordinal(day + 1)));
     }
 
@@ -625,6 +629,14 @@ mod tests {
         assert_eq!(
             weekday_rule.human_readable().as_deref(),
             Ok("Repeat every month on the last Friday")
+        );
+        let last_day_rule = RecurrenceRule {
+            offsets: vec![offset(&[("dy", -1)])],
+            ..day_rule
+        };
+        assert_eq!(
+            last_day_rule.human_readable().as_deref(),
+            Ok("Repeat every month on the last day")
         );
     }
 
