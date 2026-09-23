@@ -1,7 +1,7 @@
 ```trycmd
 $ run.sh things --now-ts 1700000111.0 --today-ts 1699920000 show A7h5eCi24RvAWKC3Hv3muf
 Behind the history  A7h5eCi24RvAWKC3Hv3muf
-Kind: to-do, open
+Kind: to-do, open, did not replay completely
 When: anytime
 Dates: created 1970-01-01, modified 1970-01-01
 1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids

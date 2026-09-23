@@ -24,8 +24,9 @@ pub struct TaskListProps<'a> {
 
 #[component]
 pub fn TaskList<'a>(props: &TaskListProps<'a>) -> impl Into<AnyElement<'a>> {
+    // a kind this CLI does not know draws as a to-do, the count above the list includes it
     let items = props.items.iter().map(|item| match item.item_type {
-        TaskType::Todo => element! {
+        TaskType::Todo | TaskType::Unknown(_) => element! {
             TaskItem(
                 task: *item,
                 options: props.options,

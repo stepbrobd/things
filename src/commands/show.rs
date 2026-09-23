@@ -8,7 +8,7 @@ use crate::{
     commands::{Command, write_json},
     common::{DIM, ICONS, colored, fmt_date, fmt_date_local},
     ui::views::json::common::build_tasks_json,
-    wire::task::TaskStart,
+    wire::task::{TaskStart, TaskStatus, TaskType},
 };
 
 #[derive(Debug, Args)]
@@ -46,20 +46,24 @@ impl Command for ShowArgs {
             task.title,
             colored(&task.uuid, &[DIM], no_color)
         )?;
-        let kind = if task.is_project() {
-            "project"
-        } else if task.is_heading() {
-            "heading"
-        } else {
-            "to-do"
+        let kind = match task.item_type {
+            TaskType::Todo => "to-do".to_string(),
+            TaskType::Project => "project".to_string(),
+            TaskType::Heading => "heading".to_string(),
+            TaskType::Unknown(raw) => format!("unknown kind {raw}"),
         };
-        let status = if task.is_completed() {
-            "done"
-        } else if task.is_canceled() {
-            "canceled"
-        } else {
-            "open"
+        let mut status = match task.status {
+            TaskStatus::Incomplete => "open".to_string(),
+            TaskStatus::Completed => "done".to_string(),
+            TaskStatus::Canceled => "canceled".to_string(),
+            TaskStatus::Unknown(raw) => format!("unknown status {raw}"),
         };
+        if task.trashed {
+            status.push_str(", in the Trash");
+        }
+        if task.degraded {
+            status.push_str(", did not replay completely");
+        }
         writeln!(out, "{} {kind}, {status}", field("Kind"))?;
 
         let mut when = match (task.start, task.start_date) {
