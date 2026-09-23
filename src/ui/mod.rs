@@ -42,9 +42,10 @@ pub fn render_element_to_string<E: ElementExt>(element: &mut E, no_color: bool) 
 
     let s = String::from_utf8(bytes).expect("iocraft output should be UTF-8");
     let s = s.replace("\u{1b}[K", "");
+    // the ANSI writer ends a row with \r\n as for a terminal in raw mode, a \r left over shows as ^M
     let mut lines = s
         .split('\n')
-        .map(|line| line.trim_end_matches(' ').to_string())
+        .map(|line| line.trim_end_matches(['\r', ' ']).to_string())
         .collect::<Vec<_>>();
 
     while lines.last().map(|line| line.is_empty()).unwrap_or(false) {
@@ -52,4 +53,26 @@ pub fn render_element_to_string<E: ElementExt>(element: &mut E, no_color: bool) 
     }
 
     lines.join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn colored_rows_end_without_a_carriage_return() {
+        let mut element = element! {
+            View(flex_direction: FlexDirection::Column) {
+                Text(content: "Today", color: Color::Yellow)
+                Text(content: "Weekly review")
+            }
+        };
+        let colored = render_element_to_string(&mut element, false);
+        assert!(!colored.contains('\r'), "{colored:?}");
+        assert_eq!(colored.lines().count(), 2, "{colored:?}");
+        assert_eq!(
+            render_element_to_string(&mut element, true),
+            "Today\nWeekly review"
+        );
+    }
 }
