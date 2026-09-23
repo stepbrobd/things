@@ -96,7 +96,8 @@ impl ThingsStore {
         let mut dones: HashMap<ThingsId, i32> = HashMap::new();
 
         for task in self.tasks_by_uuid.values() {
-            if task.trashed || !task.is_todo() {
+            // a template stands for instances still to come, it is no to-do of the project yet
+            if task.trashed || !task.is_todo() || task.is_recurrence_template() {
                 continue;
             }
 
@@ -513,7 +514,10 @@ impl ThingsStore {
             .tasks_by_uuid
             .values()
             .filter(|t| {
-                !t.trashed && t.is_project() && status.map(|s| t.status == s).unwrap_or(true)
+                !t.trashed
+                    && t.is_project()
+                    && !t.is_recurrence_template()
+                    && status.map(|s| t.status == s).unwrap_or(true)
             })
             .cloned()
             .collect();
