@@ -159,6 +159,14 @@ fn build_tags_edit_plan(
         if name.is_empty() {
             return Err("Tag name cannot be empty.".to_string());
         }
+        // a title is how a tag is named on the command line, two that differ in case alone name neither
+        if store
+            .tags_by_uuid
+            .values()
+            .any(|other| other.uuid != tag.uuid && other.title.eq_ignore_ascii_case(name))
+        {
+            return Err(format!("A tag named {name} exists already."));
+        }
         update.title = Some(name.to_string());
         labels.push("name".to_string());
     }
@@ -255,6 +263,13 @@ impl Command for TagsArgs {
                 }
 
                 let store = cli.load_store()?;
+                if store
+                    .tags_by_uuid
+                    .values()
+                    .any(|tag| tag.title.eq_ignore_ascii_case(name))
+                {
+                    bail!("A tag named {name} exists already.");
+                }
                 let mut props = TagProps {
                     title: name.to_string(),
                     sort_index: 0,
@@ -465,6 +480,19 @@ mod tests {
         let p = rename.update.into_properties();
         assert_eq!(p.get("tt"), Some(&json!("Work Stuff")));
         assert_eq!(p.get("md"), Some(&json!(NOW)));
+
+        // another tag's title in other case would leave both unnamed on the command line
+        let clash = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: CHILD_UUID.to_string(),
+                name: Some("work".to_string()),
+                move_target: None,
+            },
+            &store,
+            NOW,
+        )
+        .expect_err("a clash");
+        assert!(clash.contains("exists already"), "{clash}");
 
         let reparent = build_tags_edit_plan(
             &TagsEditArgs {
