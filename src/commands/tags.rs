@@ -9,12 +9,15 @@ use crate::{
     app::Cli,
     commands::{Command, write_json},
     common::{DIM, GREEN, ICONS, colored, resolve_single_tag},
+    store::Tag,
     ui::{
         render_element_to_string,
         views::{json::common::build_tags_json, tags::TagsView},
     },
     wire::{
+        area::AreaPatch,
         tags::{TagPatch, TagProps},
+        task::TaskPatch,
         wire_object::{EntityType, WireObject},
     },
 };
@@ -70,6 +73,72 @@ struct TagsEditPlan {
     tag: crate::store::Tag,
     update: TagPatch,
     labels: Vec<String>,
+}
+
+/// the tag's delete and, in the same commit as the app writes it, the tag taken off every to-do and area that carries it
+fn build_tags_delete_plan(
+    identifier: &str,
+    store: &crate::store::ThingsStore,
+    now: f64,
+) -> std::result::Result<(Tag, BTreeMap<String, WireObject>), String> {
+    let (tag, err) = resolve_single_tag(store, identifier);
+    let Some(tag) = tag else {
+        return Err(err);
+    };
+    // the app's handling of child tags is not captured, they are left to the user
+    if store
+        .tags_by_uuid
+        .values()
+        .any(|child| child.parent_uuid.as_ref() == Some(&tag.uuid))
+    {
+        return Err(format!(
+            "{} has child tags, move or delete them first.",
+            tag.title
+        ));
+    }
+    let without = |tags: &[crate::ids::ThingsId]| {
+        tags.iter()
+            .filter(|id| **id != tag.uuid)
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    let mut changes = BTreeMap::new();
+    changes.insert(tag.uuid.to_string(), WireObject::delete(EntityType::Tag4));
+    for task in store
+        .tasks_by_uuid
+        .values()
+        .filter(|task| task.tags.contains(&tag.uuid))
+    {
+        changes.insert(
+            task.uuid.to_string(),
+            WireObject::update(
+                EntityType::Task7,
+                TaskPatch {
+                    tag_ids: Some(without(&task.tags)),
+                    modification_date: Some(Some(now)),
+                    ..Default::default()
+                },
+            ),
+        );
+    }
+    for area in store
+        .areas_by_uuid
+        .values()
+        .filter(|area| area.tags.contains(&tag.uuid))
+    {
+        changes.insert(
+            area.uuid.to_string(),
+            WireObject::update(
+                EntityType::Area3,
+                AreaPatch {
+                    tag_ids: Some(without(&area.tags)),
+                    modification_date: Some(now),
+                    ..Default::default()
+                },
+            ),
+        );
+    }
+    Ok((tag, changes))
 }
 
 fn build_tags_edit_plan(
@@ -244,26 +313,29 @@ impl Command for TagsArgs {
             }
             TagsSubcommand::Delete(args) => {
                 let store = cli.load_store()?;
-                let (tag, err) = resolve_single_tag(&store, &args.tag_id);
-                let Some(tag) = tag else {
-                    bail!("{err}");
-                };
-
-                let mut changes = BTreeMap::new();
-                changes.insert(tag.uuid.to_string(), WireObject::delete(EntityType::Tag4));
+                let (tag, changes) =
+                    build_tags_delete_plan(&args.tag_id, &store, ctx.now_timestamp())
+                        .map_err(anyhow::Error::msg)?;
+                let carriers = changes.len() - 1;
                 ctx.commit_changes(changes, None)
                     .map_err(|e| anyhow!("Failed to delete tag: {e}"))?;
 
+                let from = if carriers > 0 {
+                    colored(format!("  (from {carriers} items)"), &[DIM], cli.no_color())
+                } else {
+                    String::new()
+                };
                 writeln!(
                     out,
-                    "{} {}  {}",
+                    "{} {}  {}{}",
                     colored(
                         format!("{} Deleted", ICONS.deleted),
                         &[GREEN],
                         cli.no_color()
                     ),
                     tag.title,
-                    colored(&tag.uuid, &[DIM], cli.no_color())
+                    colored(&tag.uuid, &[DIM], cli.no_color()),
+                    from
                 )?;
             }
         }
@@ -317,6 +389,60 @@ mod tests {
                 },
             ),
         )
+    }
+
+    #[test]
+    fn a_deleted_tag_comes_off_everything_that_carries_it() {
+        const TASK: &str = "A7h5eCi24RvAWKC3Hv3muf";
+        const AREA: &str = "MpkEei6ybkFS2n6SXvwfLf";
+        const OTHER: &str = "Bt11111111111111111111";
+        let tagged = |ids: &[&str]| {
+            ids.iter()
+                .map(|id| id.parse::<ThingsId>().expect("id"))
+                .collect::<Vec<_>>()
+        };
+        let store = build_store(vec![
+            tag(TAG_UUID, "Errand", None),
+            tag(OTHER, "Home", None),
+            (
+                TASK.to_string(),
+                WireObject::create(
+                    EntityType::Task7,
+                    crate::wire::task::TaskProps {
+                        title: "Buy milk".to_string(),
+                        tag_ids: tagged(&[TAG_UUID, OTHER]),
+                        ..Default::default()
+                    },
+                ),
+            ),
+            (
+                AREA.to_string(),
+                WireObject::create(
+                    EntityType::Area3,
+                    crate::wire::area::AreaProps {
+                        title: "Chores".to_string(),
+                        tag_ids: tagged(&[TAG_UUID]),
+                        ..Default::default()
+                    },
+                ),
+            ),
+        ]);
+        let (_, changes) = build_tags_delete_plan("Errand", &store, NOW).expect("plan");
+        assert_eq!(
+            serde_json::to_value(&changes).expect("json"),
+            json!({
+                TAG_UUID: {"t": 2, "e": "Tag4", "p": {}},
+                TASK: {"t": 1, "e": "Task7", "p": {"tg": [OTHER], "md": NOW}},
+                AREA: {"t": 1, "e": "Area3", "p": {"tg": [], "md": NOW}}
+            })
+        );
+
+        let parent = build_store(vec![
+            tag(TAG_UUID, "Work", None),
+            tag(CHILD_UUID, "Meetings", Some(TAG_UUID)),
+        ]);
+        let err = build_tags_delete_plan("Work", &parent, NOW).expect_err("a child tag");
+        assert!(err.contains("has child tags"), "{err}");
     }
 
     #[test]
