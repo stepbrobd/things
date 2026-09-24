@@ -354,6 +354,13 @@ pub fn resolve_container(
                 "Ambiguous {flag} target '{target}' (matches an item and an area)."
             ));
         }
+        // an area that did not replay completely may not be what it shows
+        (None, Some(area)) if area.degraded => {
+            return Err(format!(
+                "Container did not replay completely: {}",
+                one_line(&area.title)
+            ));
+        }
         (None, Some(area)) => return Ok(Container::Area(area.uuid)),
         (None, None) => return Err(format!("Container not found: {target}")),
         (Some(project), None) if project.is_project() => project,
@@ -364,6 +371,13 @@ pub fn resolve_container(
         return Err(format!(
             "Container is of kind {}: {}",
             project.entity,
+            one_line(&project.title)
+        ));
+    }
+    // one that did not replay completely may be as well
+    if project.degraded {
+        return Err(format!(
+            "Container did not replay completely: {}",
             one_line(&project.title)
         ));
     }
@@ -430,6 +444,22 @@ fn resolve_tags(store: &ThingsStore, raw_tags: &str, removable: bool) -> (Vec<Th
                 _ => return (Vec::new(), err),
             },
         };
+        // a tag that did not replay completely may not be what it shows
+        // taking one off an item stays open
+        if !removable
+            && store
+                .tags_by_uuid
+                .get(&tag_uuid)
+                .is_some_and(|tag| tag.degraded)
+        {
+            return (
+                Vec::new(),
+                format!(
+                    "Tag did not replay completely: {}",
+                    one_line(&store.resolve_tag_title(&tag_uuid))
+                ),
+            );
+        }
         if seen.insert(tag_uuid.clone()) {
             resolved.push(tag_uuid);
         }

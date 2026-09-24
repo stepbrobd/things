@@ -221,6 +221,15 @@ fn build_new_plan(
                 one_line(&task.title)
             ));
         }
+        // an anchor that did not replay completely may sit in a list it does not show
+        if let Some(task) = &task
+            && task.degraded
+        {
+            return Err(format!(
+                "Anchor did not replay completely: {}",
+                one_line(&task.title)
+            ));
+        }
         if let Some(task) = &task
             && let Some(state) = store.closed_state(task)
         {

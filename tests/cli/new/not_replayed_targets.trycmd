@@ -1,0 +1,103 @@
+```trycmd
+$ run.sh things new x --in Pa
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container did not replay completely: Garden
+
+```
+
+```trycmd
+$ run.sh things edit Ta --move Pa
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container did not replay completely: Garden
+
+```
+
+```trycmd
+$ run.sh things new x --in Aq
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container did not replay completely: Studio
+
+```
+
+```trycmd
+$ run.sh things projects new Barn --area Aq
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container did not replay completely: Studio
+
+```
+
+```trycmd
+$ run.sh things projects edit Pb --move Aq
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container did not replay completely: Studio
+
+```
+
+```trycmd
+$ run.sh things new x --after Tz
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Anchor did not replay completely: Sort seeds
+
+```
+
+```trycmd
+$ run.sh things reorder Ta --after-id Tz
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Anchor did not replay completely: Sort seeds
+
+```
+
+```trycmd
+$ run.sh things edit Tz --add-checklist Shoes
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Item did not replay completely: Sort seeds
+
+```
+
+```trycmd
+$ run.sh things mark Tz --check Cz
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Item did not replay completely: Sort seeds
+
+```
+
+```trycmd
+$ run.sh things tags new Mint --parent Stale
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Parent did not replay completely: Stale
+
+```
+
+```trycmd
+$ run.sh things tags edit Fresh --move Stale
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Parent did not replay completely: Stale
+
+```
+
+```trycmd
+$ run.sh things new x --tags Stale
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Tag did not replay completely: Stale
+
+```
+
+```trycmd
+$ run.sh things tags edit Fresh --move Child
+? 1
+4 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Parent sits under a tag that did not replay completely: Stale
+
+```

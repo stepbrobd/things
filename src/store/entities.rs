@@ -104,6 +104,10 @@ pub struct Tag {
     pub shortcut: Option<String>,
     pub index: i32,
     pub parent_uuid: Option<ThingsId>,
+    /// the tag's replay did not complete
+    ///
+    /// no tag or item goes under it
+    pub degraded: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +116,10 @@ pub struct Area {
     pub title: String,
     pub tags: Vec<ThingsId>,
     pub index: i32,
+    /// the area's replay did not complete
+    ///
+    /// no to-do or project goes into it
+    pub degraded: bool,
 }
 
 #[derive(Debug, Clone)]

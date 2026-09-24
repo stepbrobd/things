@@ -135,14 +135,14 @@ impl ThingsStore {
                     let StateProperties::Area(props) = &obj.properties else {
                         continue;
                     };
-                    let area = self.parse_area(uuid, props);
+                    let area = self.parse_area(uuid, props, obj.degraded);
                     self.areas_by_uuid.insert(uuid.clone(), area);
                 }
                 Some(entity) if entity.is_tag_family() => {
                     let StateProperties::Tag(props) = &obj.properties else {
                         continue;
                     };
-                    let tag = self.parse_tag(uuid, props);
+                    let tag = self.parse_tag(uuid, props, obj.degraded);
                     self.tags_by_uuid.insert(uuid.clone(), tag);
                 }
                 Some(entity) if entity.is_checklist_family() => {
@@ -242,22 +242,24 @@ impl ThingsStore {
         }
     }
 
-    fn parse_area(&self, uuid: &ThingsId, p: &AreaStateProps) -> Area {
+    fn parse_area(&self, uuid: &ThingsId, p: &AreaStateProps, degraded: bool) -> Area {
         Area {
             uuid: uuid.clone(),
             title: p.title.clone(),
             tags: p.tag_ids.clone(),
             index: p.sort_index,
+            degraded,
         }
     }
 
-    fn parse_tag(&self, uuid: &ThingsId, p: &TagStateProps) -> Tag {
+    fn parse_tag(&self, uuid: &ThingsId, p: &TagStateProps, degraded: bool) -> Tag {
         Tag {
             uuid: uuid.clone(),
             title: p.title.clone(),
             shortcut: p.shortcut.clone(),
             index: p.sort_index,
             parent_uuid: p.parent_ids.first().cloned(),
+            degraded,
         }
     }
 
@@ -818,6 +820,8 @@ impl ThingsStore {
             format!("Item is of unknown kind {raw}: {}", one_line(&task.title))
         } else if !task.entity.can_upgrade_to_task7() {
             format!("Item is of kind {}: {}", task.entity, one_line(&task.title))
+        } else if task.degraded {
+            format!("Item did not replay completely: {}", one_line(&task.title))
         } else {
             return resolved;
         };

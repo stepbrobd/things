@@ -176,6 +176,13 @@ fn build_projects_edit_plan(
                 (Some(_), None) => {
                     return Err("Projects can only be moved to an area or clear.".to_string());
                 }
+                // an area that did not replay completely may not be what it shows
+                (None, Some(area)) if area.degraded => {
+                    return Err(format!(
+                        "Container did not replay completely: {}",
+                        one_line(&area.title)
+                    ));
+                }
                 (None, Some(area)) => {
                     update.area_ids = Some(vec![area.uuid]);
                     labels.push(format!("move={move_raw}"));
@@ -330,6 +337,13 @@ impl Command for ProjectsArgs {
                     let Some(area) = area_opt else {
                         bail!("{err}");
                     };
+                    // an area that did not replay completely may not be what it shows
+                    if area.degraded {
+                        bail!(
+                            "Container did not replay completely: {}",
+                            one_line(&area.title)
+                        );
+                    }
                     props.area_ids = vec![area.uuid];
                 }
 

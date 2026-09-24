@@ -76,6 +76,30 @@ struct TagsEditPlan {
     labels: Vec<String>,
 }
 
+/// why `parent` takes no tag under it, None when it does
+///
+/// a parent that did not replay completely may sit elsewhere in the history
+/// so may one under such a tag
+/// a cycle check would read a stale chain there
+fn parent_refusal(store: &crate::store::ThingsStore, parent: &Tag) -> Option<String> {
+    if parent.degraded {
+        return Some(format!(
+            "Parent did not replay completely: {}",
+            one_line(&store.resolve_tag_title(&parent.uuid))
+        ));
+    }
+    store
+        .tag_ancestors(&parent.uuid)
+        .into_iter()
+        .find(|id| store.tags_by_uuid.get(id).is_some_and(|tag| tag.degraded))
+        .map(|id| {
+            format!(
+                "Parent sits under a tag that did not replay completely: {}",
+                one_line(&store.resolve_tag_title(&id))
+            )
+        })
+}
+
 /// the tag's delete and, in the same commit as the app writes it, the tag taken off every item and area that carries it
 fn build_tags_delete_plan(
     identifier: &str,
@@ -200,6 +224,9 @@ fn build_tags_edit_plan(
             if parent.uuid == tag.uuid {
                 return Err("A tag cannot be its own parent.".to_string());
             }
+            if let Some(refusal) = parent_refusal(store, &parent) {
+                return Err(refusal);
+            }
             // a parent below the tag would close a cycle that no walk from the roots reaches
             if store.tag_ancestors(&parent.uuid).contains(&tag.uuid) {
                 return Err(format!(
@@ -300,6 +327,9 @@ impl Command for TagsArgs {
                     let Some(parent) = parent else {
                         bail!("{err}");
                     };
+                    if let Some(refusal) = parent_refusal(&store, &parent) {
+                        bail!("{refusal}");
+                    }
                     props.parent_ids = vec![parent.uuid];
                 }
 

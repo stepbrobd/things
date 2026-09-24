@@ -173,6 +173,7 @@ fn build_reorder_plan(
         return Err("Cannot reorder an item relative to itself.".to_string());
     }
     // an item or anchor of a kind the writes do not know may sit in a list they cannot see
+    // so may one that did not replay completely
     // one that is closed or in the Trash takes no place in a list
     for (role, task) in [("Item", &item), ("Anchor", &anchor)] {
         if let Some(raw) = task.unknown_kind() {
@@ -185,6 +186,12 @@ fn build_reorder_plan(
             return Err(format!(
                 "{role} is of kind {}: {}",
                 task.entity,
+                one_line(&task.title)
+            ));
+        }
+        if task.degraded {
+            return Err(format!(
+                "{role} did not replay completely: {}",
                 one_line(&task.title)
             ));
         }
