@@ -392,16 +392,7 @@ impl ThingsStore {
         let mut out: Vec<Task> = self
             .tasks_by_uuid
             .values()
-            .filter(|t| {
-                !self.in_trash(t)
-                    && t.status == TaskStatus::Incomplete
-                    && t.start == TaskStart::Someday
-                    && !t.is_heading()
-                    && !t.is_blank()
-                    && !t.is_recurrence_template()
-                    && t.start_date.is_none()
-                    && (t.is_project() || self.effective_project_uuid(t).is_none())
-            })
+            .filter(|t| self.in_someday(t))
             .cloned()
             .collect();
         out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
@@ -512,6 +503,19 @@ impl ThingsStore {
             && !task.is_project()
             && !task.is_heading()
             && !task.is_blank()
+    }
+
+    /// in the Someday list as the Someday view reads it
+    ///
+    /// a to-do that is blank, done or canceled, a repeat template, a to-do inside a project and what is in the Trash are out of it
+    pub fn in_someday(&self, task: &Task) -> bool {
+        task.status == TaskStatus::Incomplete
+            && task.in_someday()
+            && !task.is_heading()
+            && !task.is_blank()
+            && !task.is_recurrence_template()
+            && !self.in_trash(task)
+            && (task.is_project() || self.effective_project_uuid(task).is_none())
     }
 
     /// in the Today list as the Today view reads it

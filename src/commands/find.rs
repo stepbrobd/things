@@ -479,14 +479,7 @@ fn matches(
     if args.today && !store.in_today(task, today) {
         return MatchResult::no();
     }
-    // Someday leaves out a blank or closed to-do, a repeat template, a to-do inside a project and what is in the Trash
-    let in_someday = task.status == TaskStatus::Incomplete
-        && task.in_someday()
-        && !task.is_blank()
-        && !store.in_trash(task)
-        && !task.is_recurrence_template()
-        && (task.is_project() || store.effective_project_uuid(task).is_none());
-    if args.someday && !in_someday {
+    if args.someday && !store.in_someday(task) {
         return MatchResult::no();
     }
     if args.evening && !task.evening {
