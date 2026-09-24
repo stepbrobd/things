@@ -1,12 +1,13 @@
 use std::{
     collections::BTreeMap,
     fmt,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Instant, SystemTime, UNIX_EPOCH},
 };
 
 use anyhow::{Context, Result, anyhow};
 use reqwest::blocking::Client;
 use serde_json::{Value, json};
+use tracing::debug;
 use urlencoding::encode;
 
 use crate::wire::wire_object::WireObject;
@@ -32,6 +33,24 @@ fn now_ts() -> f64 {
 pub(crate) fn now_timestamp() -> f64 {
     now_ts()
 }
+
+/// an answer with an error status
+///
+/// a caller tells it apart from a request that never reached the server
+#[derive(Debug)]
+pub struct HttpStatus {
+    pub status: u16,
+    label: String,
+    body: String,
+}
+
+impl fmt::Display for HttpStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "HTTP {} for {}: {}", self.status, self.label, self.body)
+    }
+}
+
+impl std::error::Error for HttpStatus {}
 
 #[derive(Clone)]
 pub struct ThingsCloudClient {
@@ -95,6 +114,7 @@ impl ThingsCloudClient {
                 .json(&payload);
         }
 
+        let started = Instant::now();
         let resp = req
             .send()
             .map_err(reqwest::Error::without_url)
@@ -109,9 +129,14 @@ impl ThingsCloudClient {
                     status.as_u16()
                 )
             })?;
+        debug!(target: "things::cloud", request = label, status = status.as_u16(), elapsed = ?started.elapsed(), "answered");
         if !status.is_success() {
-            let body: String = text.chars().take(300).collect();
-            return Err(anyhow!("HTTP {} for {label}: {body}", status.as_u16()));
+            return Err(HttpStatus {
+                status: status.as_u16(),
+                label: label.to_string(),
+                body: text.chars().take(300).collect(),
+            }
+            .into());
         }
         if text.trim().is_empty() {
             return Ok(json!({}));

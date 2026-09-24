@@ -20,7 +20,7 @@ use serde_json::Value;
 use tracing::{debug, warn};
 
 use crate::{
-    client::{ThingsCloudClient, now_timestamp},
+    client::{HttpStatus, ThingsCloudClient, now_timestamp},
     dirs::create_private_dir,
     store::{RawState, fold_item},
     wire::wire_object::WireItem,
@@ -44,6 +44,11 @@ struct CursorData {
     log_offset: Option<u64>,
     #[serde(default)]
     updated_at: Option<f64>,
+    /// the email whose sign-in gave the history key, absent on cursors written before the field existed
+    ///
+    /// those cursors sign in once more
+    #[serde(default)]
+    email: Option<String>,
 }
 
 impl CursorData {
@@ -320,13 +325,54 @@ fn repair_log(cache_dir: &Path, cursor: &mut CursorData) -> Result<()> {
     Ok(())
 }
 
-/// append what the server holds past the cursor, authenticating first to bind the journal to the account behind the credentials
+/// the history key the cursor holds for `email`
+///
+/// a run uses it instead of signing in again
+fn stored_key_for<'a>(cursor: &'a CursorData, email: &str) -> Option<&'a str> {
+    (!cursor.history_key.is_empty() && cursor.email.as_deref() == Some(email))
+        .then_some(cursor.history_key.as_str())
+}
+
+/// sign in with the configured credentials
+///
+/// the cursor then names the history they reach and the email that reached it
+fn sign_in(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<CursorData> {
+    let history_key = client.authenticate()?;
+    let mut cursor = cursor_for_history(cache_dir, &history_key)?;
+    if cursor.email.as_deref() != Some(client.email.as_str()) {
+        cursor.email = Some(client.email.clone());
+        write_cursor(cache_dir, &cursor)?;
+    }
+    Ok(cursor)
+}
+
+/// append what the server holds past the cursor
+///
+/// the history key a sign-in gave stands in for the next sign-in while the configured email stays the same, as in the app
+/// a run signs in when the cursor holds no key for that email, and once more when the server answers the stored key with an error
+/// a sign-in that reaches another history starts the journal over
+/// only an error the server answered leads to that second sign-in
 fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
     // what the disk holds now, which lets a repair alone be persisted even when the server has nothing new
     let stored = read_cursor(cache_dir);
-    let history_key = client.authenticate()?;
-    let mut cursor = cursor_for_history(cache_dir, &history_key)?;
+    let reused = stored_key_for(&stored, &client.email).map(str::to_string);
+    let mut cursor = match &reused {
+        Some(history_key) => {
+            client.history_key = Some(history_key.clone());
+            stored.clone()
+        }
+        None => sign_in(client, cache_dir)?,
+    };
     repair_log(cache_dir, &mut cursor)?;
+    let mut page = match client.get_items_page(cursor.next_start_index) {
+        Err(error) if reused.is_some() && error.downcast_ref::<HttpStatus>().is_some() => {
+            warn!(target: "things::sync", "the stored history key was answered with an error, signing in: {error:#}");
+            cursor = sign_in(client, cache_dir)?;
+            repair_log(cache_dir, &mut cursor)?;
+            client.get_items_page(cursor.next_start_index)?
+        }
+        page => page?,
+    };
 
     let log_path = cache_dir.join(LOG_FILE);
     let mut log = OpenOptions::new()
@@ -336,7 +382,6 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
         .with_context(|| format!("failed to open {}", log_path.display()))?;
 
     loop {
-        let page = client.get_items_page(cursor.next_start_index)?;
         let items = page
             .get("items")
             .and_then(Value::as_array)
@@ -374,6 +419,7 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
         if items.is_empty() || end >= latest {
             break;
         }
+        page = client.get_items_page(cursor.next_start_index)?;
     }
 
     cursor.head_index = client.head_index;
@@ -500,6 +546,25 @@ mod tests {
     const TASK_ID: &str = "A7h5eCi24RvAWKC3Hv3muf";
     const SETTINGS_ONE: &str = r#"{"Se11111111111111111111":{"t":0,"e":"Settings5","p":{}}}"#;
     const SETTINGS_TWO: &str = r#"{"Se21111111111111111111":{"t":0,"e":"Settings5","p":{}}}"#;
+
+    #[test]
+    fn a_stored_key_stands_in_for_a_sign_in_for_its_own_email_alone() {
+        let cursor: CursorData = serde_json::from_str(
+            r#"{"next_start_index":7,"history_key":"h","email":"user@example.com"}"#,
+        )
+        .expect("cursor");
+        assert_eq!(stored_key_for(&cursor, "user@example.com"), Some("h"));
+        assert_eq!(stored_key_for(&cursor, "other@example.com"), None);
+        // a cursor from before the email was kept signs in once more
+        let older: CursorData =
+            serde_json::from_str(r#"{"next_start_index":7,"history_key":"h"}"#).expect("cursor");
+        assert_eq!(stored_key_for(&older, "user@example.com"), None);
+        let keyless = CursorData {
+            email: Some("user@example.com".to_string()),
+            ..Default::default()
+        };
+        assert_eq!(stored_key_for(&keyless, "user@example.com"), None);
+    }
 
     fn seed_log(cache_dir: &Path, content: &str) {
         fs::write(cache_dir.join(LOG_FILE), content).expect("seed log");
@@ -698,6 +763,7 @@ mod tests {
             head_index: 1,
             log_offset: Some(acknowledged.len() as u64),
             updated_at: None,
+            email: None,
         };
 
         repair_log(cache_dir, &mut cursor).expect("repair");
@@ -720,6 +786,7 @@ mod tests {
             head_index: 2,
             log_offset: None,
             updated_at: None,
+            email: None,
         };
 
         repair_log(cache_dir, &mut cursor).expect("repair");
@@ -741,6 +808,7 @@ mod tests {
             head_index: 7,
             log_offset: None,
             updated_at: None,
+            email: None,
         };
 
         repair_log(cache_dir, &mut cursor).expect("repair");
@@ -763,6 +831,7 @@ mod tests {
             head_index: 7,
             log_offset: Some(500),
             updated_at: None,
+            email: None,
         };
 
         repair_log(cache_dir, &mut cursor).expect("repair");
@@ -779,6 +848,7 @@ mod tests {
             head_index: 7,
             log_offset: Some(0),
             updated_at: None,
+            email: None,
         };
         repair_log(cache_dir, &mut cursor).expect("repair");
         assert_eq!(cursor.next_start_index, 0);
@@ -797,6 +867,7 @@ mod tests {
             head_index: 1,
             log_offset: Some(9),
             updated_at: None,
+            email: None,
         };
         write_cursor(cache_dir, &stored).expect("seed cursor");
 
