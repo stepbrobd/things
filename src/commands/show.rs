@@ -7,7 +7,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::{Command, write_json},
-    common::{DIM, ICONS, colored, fmt_date, fmt_date_local, one_line},
+    common::{DIM, ICONS, colored, fmt_date, fmt_date_local, one_line, shown_title},
     ui::views::json::common::build_tasks_json,
     wire::task::{TaskStart, TaskStatus, TaskType},
 };
@@ -32,7 +32,7 @@ impl Command for ShowArgs {
         let Some(task) = task else {
             let candidates = ambiguous
                 .iter()
-                .map(|task| format!("\n  {}  ({})", one_line(&task.title), task.uuid))
+                .map(|task| format!("\n  {}  ({})", shown_title(&task.title), task.uuid))
                 .collect::<String>();
             bail!("{err}{candidates}");
         };
@@ -45,13 +45,12 @@ impl Command for ShowArgs {
 
         let no_color = cli.no_color();
         let field = |name: &str| colored(format!("{name}:"), &[DIM], no_color);
-        // an item without a title is shown as the lists show it
-        let title = if task.title.trim().is_empty() {
-            "(untitled)".to_string()
-        } else {
-            one_line(&task.title)
-        };
-        writeln!(out, "{title}  {}", colored(&task.uuid, &[DIM], no_color))?;
+        writeln!(
+            out,
+            "{}  {}",
+            shown_title(&task.title),
+            colored(&task.uuid, &[DIM], no_color)
+        )?;
         let kind = match task.item_type {
             TaskType::Todo => "to-do".to_string(),
             TaskType::Project => "project".to_string(),
@@ -104,7 +103,7 @@ impl Command for ShowArgs {
                 out,
                 "{} {}",
                 field("Project"),
-                one_line(&store.resolve_project_title(&project))
+                shown_title(&store.resolve_project_title(&project))
             )?;
         }
         if let Some(heading) = task
@@ -112,14 +111,14 @@ impl Command for ShowArgs {
             .as_ref()
             .and_then(|id| store.get_task(&id.to_string()))
         {
-            writeln!(out, "{} {}", field("Heading"), one_line(&heading.title))?;
+            writeln!(out, "{} {}", field("Heading"), shown_title(&heading.title))?;
         }
         if let Some(area) = store.effective_area_uuid(&task) {
             writeln!(
                 out,
                 "{} {}",
                 field("Area"),
-                one_line(&store.resolve_area_title(&area))
+                shown_title(&store.resolve_area_title(&area))
             )?;
         }
         if !task.tags.is_empty() {

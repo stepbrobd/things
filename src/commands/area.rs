@@ -8,7 +8,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::{Command, detailed_json_conflict, write_json},
-    common::{ICONS, one_line},
+    common::{ICONS, shown_title},
     ui::{
         render_element_to_string,
         views::{area::AreaView, json::common::build_tasks_json},
@@ -46,7 +46,7 @@ impl Command for AreaArgs {
                     format!(
                         "\n  {} {}  ({})",
                         ICONS.area,
-                        one_line(&area.title),
+                        shown_title(&area.title),
                         area.uuid
                     )
                 })

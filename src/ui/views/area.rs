@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::{ICONS, counted, one_line},
+    common::{ICONS, counted, shown_title},
     store::{Area, Task, ThingsStore},
     ui::components::{
         tags_badge::TagsBadge,
@@ -65,7 +65,7 @@ pub fn AreaView<'a>(hooks: Hooks, props: &AreaViewProps<'a>) -> impl Into<AnyEle
         View(flex_direction: FlexDirection::Column) {
             View(flex_direction: FlexDirection::Row, gap: 1) {
                 Text(
-                    content: format!("{} {}{}", ICONS.area, one_line(&area.title), count_str),
+                    content: format!("{} {}{}", ICONS.area, shown_title(&area.title), count_str),
                     wrap: TextWrap::NoWrap,
                     color: Color::Magenta,
                     weight: Weight::Bold,

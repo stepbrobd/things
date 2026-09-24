@@ -10,7 +10,7 @@ use crate::{
     commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
     common::{
         DIM, GREEN, ICONS, colored, day_timestamp, kind_with_article, one_line, parse_day,
-        resolve_removable_tag_ids, resolve_tag_ids, task6_note,
+        resolve_removable_tag_ids, resolve_tag_ids, shown_title, task6_note,
     },
     ids::ThingsId,
     ui::{
@@ -113,7 +113,11 @@ fn build_projects_edit_plan(
         return Err(err);
     };
     if !project.is_project() {
-        return Err(format!("Not a project: {}", one_line(&project.title)));
+        return Err(format!(
+            "Item is {}: {}",
+            kind_with_article(&project),
+            shown_title(&project.title)
+        ));
     }
 
     let mut update = TaskPatch::default();
@@ -177,14 +181,14 @@ fn build_projects_edit_plan(
                     return Err(format!(
                         "Container is {}, and projects go into an area or clear: {}",
                         kind_with_article(&item),
-                        one_line(&item.title)
+                        shown_title(&item.title)
                     ));
                 }
                 // an area that did not replay completely may not be what it shows
                 (None, Some(area)) if area.degraded => {
                     return Err(format!(
                         "Container did not replay completely: {}",
-                        one_line(&area.title)
+                        shown_title(&area.title)
                     ));
                 }
                 (None, Some(area)) => {
@@ -345,7 +349,7 @@ impl Command for ProjectsArgs {
                     if area.degraded {
                         bail!(
                             "Container did not replay completely: {}",
-                            one_line(&area.title)
+                            shown_title(&area.title)
                         );
                     }
                     props.area_ids = vec![area.uuid];

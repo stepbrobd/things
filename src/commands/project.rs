@@ -8,7 +8,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::{Command, detailed_json_conflict, write_json},
-    common::one_line,
+    common::{kind_with_article, shown_title},
     ui::{
         render_element_to_string,
         views::{
@@ -41,16 +41,20 @@ impl Command for ProjectArgs {
         let Some(project) = task_opt else {
             let candidates = ambiguous
                 .iter()
-                .map(|task| format!("\n  {}  ({})", one_line(&task.title), task.uuid))
+                .map(|task| format!("\n  {}  ({})", shown_title(&task.title), task.uuid))
                 .collect::<String>();
             bail!("{err}{candidates}");
         };
 
         if !project.is_project() {
-            bail!("Not a project: {}", one_line(&project.title));
+            bail!(
+                "Item is {}: {}",
+                kind_with_article(&project),
+                shown_title(&project.title)
+            );
         }
         if store.in_trash(&project) {
-            bail!("Project is in the Trash: {}", one_line(&project.title));
+            bail!("Project is in the Trash: {}", shown_title(&project.title));
         }
 
         let children = store

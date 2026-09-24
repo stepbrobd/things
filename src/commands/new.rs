@@ -11,7 +11,7 @@ use crate::{
     commands::Command,
     common::{
         Container, DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day,
-        parse_reminder, resolve_container, resolve_tag_ids, task6_note,
+        parse_reminder, resolve_container, resolve_tag_ids, shown_title, task6_note,
     },
     ids::ThingsId,
     ordering::{allocate, in_today_order, today_group, today_view_order},
@@ -238,7 +238,7 @@ fn build_new_plan(
         if let Some(task) = &task
             && task.is_heading()
         {
-            return Err(format!("Anchor is a heading: {}", one_line(&task.title)));
+            return Err(format!("Anchor is a heading: {}", shown_title(&task.title)));
         }
         // a repeat template shows in no list
         if let Some(task) = &task

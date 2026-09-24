@@ -254,6 +254,15 @@ pub fn one_line(text: &str) -> String {
     sanitized(text, Shown::Field)
 }
 
+/// a title as the lists show it, "(untitled)" when it holds nothing
+pub fn shown_title(title: &str) -> String {
+    if title.trim().is_empty() {
+        "(untitled)".to_string()
+    } else {
+        one_line(title)
+    }
+}
+
 /// a note from the cloud for the terminal
 ///
 /// each line passes `one_line`
@@ -371,7 +380,7 @@ pub fn resolve_container(
         (None, Some(area)) if area.degraded => {
             return Err(format!(
                 "Container did not replay completely: {}",
-                one_line(&area.title)
+                shown_title(&area.title)
             ));
         }
         (None, Some(area)) => return Ok(Container::Area(area.uuid)),
@@ -381,7 +390,7 @@ pub fn resolve_container(
             return Err(format!(
                 "Container is {}: {}",
                 kind_with_article(&item),
-                one_line(&item.title)
+                shown_title(&item.title)
             ));
         }
     };
@@ -390,14 +399,14 @@ pub fn resolve_container(
         return Err(format!(
             "Container is of kind {}: {}",
             project.entity,
-            one_line(&project.title)
+            shown_title(&project.title)
         ));
     }
     // one that did not replay completely may be as well
     if project.degraded {
         return Err(format!(
             "Container did not replay completely: {}",
-            one_line(&project.title)
+            shown_title(&project.title)
         ));
     }
     // a closed project lists no open to-do
@@ -405,7 +414,7 @@ pub fn resolve_container(
     if let Some(state) = store.closed_state(&project) {
         return Err(format!(
             "Container is {state}: {}",
-            one_line(&project.title)
+            shown_title(&project.title)
         ));
     }
     // the template of a repeating project shows in no list
@@ -413,7 +422,7 @@ pub fn resolve_container(
     if project.is_recurrence_template() {
         return Err(format!(
             "Container is a repeat template: {}",
-            one_line(&project.title)
+            shown_title(&project.title)
         ));
     }
     Ok(Container::Project(project.uuid))

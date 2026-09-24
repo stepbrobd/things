@@ -1,0 +1,109 @@
+```trycmd
+$ run.sh things show Tp
+Sand the rail  Tp11111111111111111111
+Kind: to-do, incomplete
+When: anytime
+Project: (project Pu111111)
+Heading: (untitled)
+Area: (untitled)
+Dates: created 1970-01-01, modified 1970-01-01
+
+```
+
+```trycmd
+$ run.sh things project Pu
+◯ (untitled) (0/1)
+
+  (untitled)
+    T ▢ Sand the rail
+
+```
+
+```trycmd
+$ run.sh things area Ar
+◆ (untitled)  (1 project, 2 tasks)
+
+  G ▢ ⭑ Oil the hinge
+  E ▢ ☽ Sweep the porch
+
+  P ◯ (untitled)
+
+```
+
+```trycmd
+$ run.sh things areas
+◆ Areas  (1)
+
+  A ◆ (untitled)
+
+```
+
+```trycmd
+$ run.sh things today
+⭑ Today  (2 tasks)
+
+  A ◆ (untitled)
+    G ▢ Oil the hinge
+
+☽ This Evening
+
+  E ▢ Sweep the porch  [◆ (untitled)]
+
+```
+
+```trycmd
+$ run.sh things anytime
+≋ Anytime  (3 tasks)
+
+  A ◆ (untitled)
+    G ▢ ⭑ Oil the hinge
+    E ▢ ☽ Sweep the porch
+    P ● (project Pu111111)
+      T ▢ Sand the rail
+
+```
+
+```trycmd
+$ run.sh things projects
+● Projects  (1)
+
+
+  A ◆ (untitled)
+    P ◯ (untitled)
+
+```
+
+```trycmd
+$ run.sh things project Hu
+? 1
+Item is a heading: (untitled)
+
+```
+
+```trycmd
+$ run.sh things project Xt
+? 1
+Project is in the Trash: (untitled)
+
+```
+
+```trycmd
+$ run.sh things new x --in Hu
+? 1
+Container is a heading: (untitled)
+
+```
+
+```trycmd
+$ run.sh things new x --after Hu
+? 1
+Anchor is a heading: (untitled)
+
+```
+
+```trycmd
+$ run.sh things reorder Hu --after-id Tp
+? 1
+Item is a heading: (untitled)
+
+```

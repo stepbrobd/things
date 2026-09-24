@@ -1,6 +1,6 @@
 use iocraft::prelude::*;
 
-use crate::{common::one_line, ids::ThingsId, ui::components::id::Id};
+use crate::{common::shown_title, ids::ThingsId, ui::components::id::Id};
 
 #[derive(Default, Props)]
 pub struct HeaderProps<'a> {
@@ -17,9 +17,9 @@ pub fn Header<'a>(props: &HeaderProps<'a>) -> impl Into<AnyElement<'a>> {
     };
 
     let text = if let Some(icon) = props.icon {
-        format!("{} {}", icon, one_line(title))
+        format!("{} {}", icon, shown_title(title))
     } else {
-        one_line(title)
+        shown_title(title)
     };
 
     element! {

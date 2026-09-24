@@ -11,7 +11,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored, one_line},
+    common::{DIM, GREEN, ICONS, colored, one_line, shown_title},
     ids::ThingsId,
     ordering::{allocate, in_today_order, today_group, today_view_order},
     wire::{
@@ -213,7 +213,10 @@ fn build_reorder_plan(
         } else {
             ("Item", &item)
         };
-        return Err(format!("{role} is a heading: {}", one_line(&heading.title)));
+        return Err(format!(
+            "{role} is a heading: {}",
+            shown_title(&heading.title)
+        ));
     }
 
     // only an open to-do that Today lists is ordered within it

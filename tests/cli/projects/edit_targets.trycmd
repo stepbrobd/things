@@ -1,0 +1,13 @@
+```trycmd
+$ run.sh things projects edit Ta --title Porch
+? 1
+Item is a to-do: Inbox item
+
+```
+
+```trycmd
+$ run.sh things project Ta
+? 1
+Item is a to-do: Inbox item
+
+```

@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use iocraft::prelude::*;
 
 use crate::{
-    common::{ICONS, one_line},
+    common::{ICONS, one_line, shown_title},
     store::{Task, ThingsStore},
     ui::components::{deadline_badge::DeadlineBadge, tags_badge::TagsBadge},
 };
@@ -121,7 +121,7 @@ fn context_element<'a>(
     if show_area && let Some(area) = store.effective_area_uuid(task) {
         let title = store.resolve_area_title(&area);
         return element! {
-            Text(content: format!("[{} {}]", ICONS.area, one_line(&title)), color: Color::DarkGrey)
+            Text(content: format!("[{} {}]", ICONS.area, shown_title(&title)), color: Color::DarkGrey)
         }
         .into_any();
     }
