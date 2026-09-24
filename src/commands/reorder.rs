@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
-use chrono::{TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use clap::{ArgGroup, Args};
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     commands::Command,
     common::{DIM, GREEN, ICONS, colored, one_line},
     ids::ThingsId,
-    ordering::{allocate, today_group},
+    ordering::{allocate, today_group, today_view_order},
     wire::{
         task::{TaskPatch, TaskStatus},
         wire_object::{EntityType, WireObject},
@@ -31,6 +31,103 @@ pub struct ReorderArgs {
     pub after_id: Option<String>,
 }
 
+/// the item already sits right next to the anchor in every list of `lists` that holds both
+///
+/// before it when `before` is set, after it otherwise
+/// no list holding both leaves `own`, the item's own list in the order a write keeps, to decide
+fn already_in_place(
+    lists: &[Vec<&ThingsId>],
+    own: &[&ThingsId],
+    item: &ThingsId,
+    anchor: &ThingsId,
+    before: bool,
+) -> bool {
+    let positions = |order: &[&ThingsId]| {
+        let at = |id: &ThingsId| order.iter().position(|entry| *entry == id);
+        Some((at(item)?, at(anchor)?))
+    };
+    let adjacent = |(item_at, anchor_at): (usize, usize)| {
+        if before {
+            item_at + 1 == anchor_at
+        } else {
+            anchor_at + 1 == item_at
+        }
+    };
+    let both: Vec<(usize, usize)> = lists.iter().filter_map(|order| positions(order)).collect();
+    if both.is_empty() {
+        return positions(own).is_some_and(adjacent);
+    }
+    both.into_iter().all(adjacent)
+}
+
+/// every list that shows `item`, each in its own order
+///
+/// a project view shows the to-dos under each heading at every status
+/// an area view shows its own to-dos at every status and start
+/// Anytime groups its to-dos by container
+/// Someday shows its to-dos in one list
+/// a repeat template and what is in the Trash show in no list
+fn lists_showing(
+    store: &crate::store::ThingsStore,
+    item: &crate::store::Task,
+    today: &DateTime<Utc>,
+) -> Vec<Vec<crate::store::Task>> {
+    let shown = |task: &crate::store::Task| !store.in_trash(task) && !task.is_recurrence_template();
+    let project = store.effective_project_uuid(item);
+    let area = store.effective_area_uuid(item);
+    let same_container = |task: &crate::store::Task| {
+        store.effective_project_uuid(task) == project
+            && (project.is_some() || store.effective_area_uuid(task) == area)
+    };
+    let rows = |keep: &dyn Fn(&crate::store::Task) -> bool| {
+        let mut rows: Vec<crate::store::Task> = store
+            .tasks_by_uuid
+            .values()
+            .filter(|task| shown(task) && keep(task))
+            .cloned()
+            .collect();
+        rows.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
+        rows
+    };
+    if item.is_heading() {
+        return vec![rows(&|task| {
+            task.is_heading() && task.project == item.project
+        })];
+    }
+    if item.is_project() {
+        return vec![
+            rows(&|task| task.is_project() && task.area == item.area),
+            store
+                .someday()
+                .into_iter()
+                .filter(|task| task.is_project())
+                .collect(),
+        ];
+    }
+    let to_do = |task: &crate::store::Task| !task.is_project() && !task.is_heading();
+    let mut lists = vec![
+        store.inbox(),
+        store
+            .anytime(today)
+            .into_iter()
+            .filter(|task| same_container(task))
+            .collect(),
+        store
+            .someday()
+            .into_iter()
+            .filter(|task| to_do(task))
+            .collect(),
+    ];
+    if project.is_some() || area.is_some() {
+        lists.push(rows(&|task| {
+            to_do(task)
+                && same_container(task)
+                && (project.is_none() || task.action_group == item.action_group)
+        }));
+    }
+    lists
+}
+
 /// every patch of a reorder in one commit
 ///
 /// a rebalance lands whole or not at all
@@ -39,6 +136,7 @@ struct ReorderPlan {
     item: crate::store::Task,
     changes: BTreeMap<String, WireObject>,
     reorder_label: String,
+    already_in_place: bool,
 }
 
 fn build_reorder_plan(
@@ -100,6 +198,45 @@ fn build_reorder_plan(
     }
 
     if is_today_reorder {
+        let today_label = |today_ref: i64, today_index: i32| {
+            format!(
+                "({}={}, today_ref={today_ref}, today_index={today_index})",
+                if args.before_id.is_some() {
+                    "before"
+                } else {
+                    "after"
+                },
+                one_line(&anchor.title)
+            )
+        };
+        // a move to where the item already sits in the Today view writes nothing
+        let mut section: Vec<&crate::store::Task> = store
+            .tasks_by_uuid
+            .values()
+            .filter(|task| {
+                is_today_orderable(task)
+                    && !task.is_heading()
+                    && !task.is_blank()
+                    && task.evening == anchor.evening
+            })
+            .collect();
+        section.sort_by_key(|task| today_view_order(task));
+        let ids: Vec<&ThingsId> = section.iter().map(|task| &task.uuid).collect();
+        if already_in_place(
+            std::slice::from_ref(&ids),
+            &ids,
+            &item.uuid,
+            &anchor.uuid,
+            args.before_id.is_some(),
+        ) {
+            return Ok(ReorderPlan {
+                reorder_label: today_label(today_group(&item, today_ts), item.today_index),
+                item,
+                changes: BTreeMap::new(),
+                already_in_place: true,
+            });
+        }
+
         let anchor_tir = today_group(&anchor, today_ts);
         // the item joins the anchor's day group and takes a slot next to the anchor among that group's today indexes
         let mut group: Vec<&crate::store::Task> = store
@@ -160,26 +297,11 @@ fn build_reorder_plan(
             ),
         );
 
-        let reorder_label = if args.before_id.is_some() {
-            format!(
-                "(before={}, today_ref={}, today_index={})",
-                one_line(&anchor.title),
-                anchor_tir,
-                new_ti
-            )
-        } else {
-            format!(
-                "(after={}, today_ref={}, today_index={})",
-                one_line(&anchor.title),
-                anchor_tir,
-                new_ti
-            )
-        };
-
         return Ok(ReorderPlan {
+            reorder_label: today_label(anchor_tir, new_ti),
             item,
             changes,
-            reorder_label,
+            already_in_place: false,
         });
     }
 
@@ -209,12 +331,9 @@ fn build_reorder_plan(
                     .unwrap_or_default(),
             ];
         }
+        // an area view shows its to-dos of every start in one order
         if let Some(area_uuid) = store.effective_area_uuid(task) {
-            return vec![
-                "task-area".to_string(),
-                area_uuid.to_string(),
-                i32::from(task.start).to_string(),
-            ];
+            return vec!["task-area".to_string(), area_uuid.to_string()];
         }
         vec!["task-root".to_string(), i32::from(task.start).to_string()]
     };
@@ -244,6 +363,36 @@ fn build_reorder_plan(
         .collect::<BTreeMap<_, _>>();
     if !by_uuid.contains_key(&item.uuid) || !by_uuid.contains_key(&anchor.uuid) {
         return Err("Cannot reorder item in the selected list.".to_string());
+    }
+
+    let structural_label = |index: i32| {
+        if args.before_id.is_some() {
+            format!("(before={}, index={})", one_line(&anchor.title), index)
+        } else {
+            format!("(after={}, index={})", one_line(&anchor.title), index)
+        }
+    };
+    // a move to where the item already sits writes nothing
+    // it sits there when every list that shows both has no row between them
+    let shown = lists_showing(store, &item, &today);
+    let lists: Vec<Vec<&ThingsId>> = shown
+        .iter()
+        .map(|list| list.iter().map(|task| &task.uuid).collect())
+        .collect();
+    let own: Vec<&ThingsId> = siblings.iter().map(|task| &task.uuid).collect();
+    if already_in_place(
+        &lists,
+        &own,
+        &item.uuid,
+        &anchor.uuid,
+        args.before_id.is_some(),
+    ) {
+        return Ok(ReorderPlan {
+            reorder_label: structural_label(item.index),
+            item,
+            changes: BTreeMap::new(),
+            already_in_place: true,
+        });
     }
 
     let mut order = siblings
@@ -299,16 +448,25 @@ fn build_reorder_plan(
         );
     }
 
-    let reorder_label = if args.before_id.is_some() {
-        format!("(before={}, index={})", one_line(&anchor.title), new_index)
-    } else {
-        format!("(after={}, index={})", one_line(&anchor.title), new_index)
-    };
+    // a plan that writes nothing leaves the item where it sits in its own list
+    // another list that shows both still has rows between them
+    if changes.is_empty() {
+        return Err(format!(
+            "Item already sits {} the anchor in its own list, while another list shows rows between them: {}",
+            if args.before_id.is_some() {
+                "before"
+            } else {
+                "after"
+            },
+            one_line(&item.title)
+        ));
+    }
 
     Ok(ReorderPlan {
+        reorder_label: structural_label(new_index),
         item,
         changes,
-        reorder_label,
+        already_in_place: false,
     })
 }
 
@@ -323,14 +481,25 @@ impl Command for ReorderArgs {
         let plan = build_reorder_plan(self, &store, ctx.now_timestamp(), ctx.today_timestamp())
             .map_err(anyhow::Error::msg)?;
 
-        ctx.commit_changes(plan.changes)
-            .with_context(|| "Failed to reorder item")?;
+        // a move to where the item already sits writes nothing
+        if !plan.changes.is_empty() {
+            ctx.commit_changes(plan.changes)
+                .with_context(|| "Failed to reorder item")?;
+        }
 
         writeln!(
             out,
             "{} {}  {} {}",
             colored(
-                format!("{} Reordered", ICONS.done),
+                format!(
+                    "{} {}",
+                    ICONS.done,
+                    if plan.already_in_place {
+                        "Already in place"
+                    } else {
+                        "Reordered"
+                    }
+                ),
                 &[GREEN],
                 cli.no_color()
             ),

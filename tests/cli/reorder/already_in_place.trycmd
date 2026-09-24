@@ -1,0 +1,38 @@
+```trycmd
+$ run.sh things reorder Tb --after-id Ta
+✓ Already in place B  Tb11111111111111111111 (after=A, index=1536)
+
+```
+
+```trycmd
+$ run.sh things reorder Td --after-id Tc
+✓ Already in place D  Td11111111111111111111 (after=C, index=4096)
+
+```
+
+```trycmd
+$ run.sh things reorder Tc --before-id Td
+✓ Already in place C  Tc11111111111111111111 (before=D, index=2048)
+
+```
+
+```trycmd
+$ run.sh things reorder Tq --after-id Tp
+✓ Already in place Q  Tq11111111111111111111 (after=P, today_ref=1774396800, today_index=20)
+
+```
+
+```trycmd
+$ run.sh things project Pr
+◯ Chores (0/2)
+
+  Ra ▢ Sweep
+  Rc ▢ Mop
+
+```
+
+```trycmd
+$ run.sh things reorder Rc --after-id Ra
+✓ Already in place Mop  Rc11111111111111111111 (after=Sweep, index=2048)
+
+```

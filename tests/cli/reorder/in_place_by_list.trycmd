@@ -1,0 +1,142 @@
+```trycmd
+$ run.sh things project Pd
+◑ Move house (1/3)
+
+  Da ▢ Pack books
+  Db ◼ Book van
+  Dc ▢ Pack kitchen
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Dc --after-id Da
+✓ Reordered Pack kitchen  Dc11111111111111111111 (after=Pack books, index=1025)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Dc11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 1025,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things area Ar
+◆ Home  (4 tasks)
+
+  Ea ▢ Water plants
+  Eb ⬚ Paint fence
+  Ec ▢ Fix tap
+  Ey ⬚ Build a shed
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Ec --after-id Ea
+✓ Reordered Fix tap  Ec11111111111111111111 (after=Water plants, index=1536)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Ec11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 1536,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things inbox
+⬓ Inbox  (2 tasks)
+
+  Na ▢ Call mum
+  Nc ▢ Buy milk
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Nc --after-id Na
+✓ Already in place Buy milk  Nc11111111111111111111 (after=Call mum, index=3072)
+
+```
+
+```trycmd
+$ run.sh things someday
+⬚ Someday  (7 items)
+
+  Kb ⬚ Build a bench
+  Eb ⬚ Paint fence
+  Sa ⬚ Learn piano
+  Sb ⬚ Learn chess
+  Sx ⬚ Learn knots
+  Ey ⬚ Build a shed
+  Sy ⬚ Learn sailing
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Sb --after-id Sa
+✓ Already in place Learn chess  Sb11111111111111111111 (after=Learn piano, index=12288)
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Sy --after-id Sx
+✓ Reordered Learn sailing  Sy11111111111111111111 (after=Learn knots, index=20481)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Sy11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 20481,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things area Aw
+◆ Workshop  (4 tasks)
+
+  Ka ▢ Sharpen chisels
+  Kb ⬚ Build a bench
+  Kc ▢ Oil the saw
+  Kd ▢ Sweep the floor
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Kc --after-id Ka
+✓ Reordered Oil the saw  Kc11111111111111111111 (after=Sharpen chisels, index=1025)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Kc11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 1025,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```

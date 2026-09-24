@@ -1,0 +1,30 @@
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Sd --after-id Sa
+✓ Already in place Dated  Sd11111111111111111111 (after=Learn piano, index=11264)
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Sa --before-id Sd
+✓ Already in place Learn piano  Sa11111111111111111111 (before=Dated, index=10240)
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Sb --before-id Sa
+✓ Reordered Learn chess  Sb11111111111111111111 (before=Learn piano, index=10239)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Sb11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 10239,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```

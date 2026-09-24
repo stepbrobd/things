@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things anytime
+≋ Anytime  (4 tasks)
+
+  Pa ● Garden
+    Ta ▢ Weed beds
+    Tx ▢ Mow
+    Ti ▢ Mulch beds
+    Hiding 1 more
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Ti --after-id Ta
+? 1
+Item already sits after the anchor in its own list, while another list shows rows between them: Mulch beds
+
+```
