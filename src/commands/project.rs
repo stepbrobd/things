@@ -23,7 +23,7 @@ use crate::{
 pub struct ProjectArgs {
     /// Project ID (or unique ID prefix)
     pub project_id: IdentifierToken,
-    /// Show notes beneath each task
+    /// Show notes and checklists beneath each task
     #[arg(long, short = 'd')]
     pub detailed: bool,
 }

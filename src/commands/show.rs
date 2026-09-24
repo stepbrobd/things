@@ -148,7 +148,12 @@ impl Command for ShowArgs {
             ));
         }
         if task.stop_date.is_some() {
-            dates.push(format!("completed {}", fmt_date_local(task.stop_date)));
+            let closed = if task.is_canceled() {
+                "canceled"
+            } else {
+                "completed"
+            };
+            dates.push(format!("{closed} {}", fmt_date_local(task.stop_date)));
         }
         writeln!(out, "{} {}", field("Dates"), dates.join(", "))?;
         if let Some(notes) = task

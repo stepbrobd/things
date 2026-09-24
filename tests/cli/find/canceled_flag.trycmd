@@ -13,3 +13,12 @@ $ run.sh things find --canceled --completed-on '>=2025-02-28'
   C ☒ Canceled task
 
 ```
+
+```trycmd
+$ run.sh things show Cxa4
+Canceled task  Cxa4NsRNaKS4pb2evdnPP
+Kind: to-do, canceled
+When: anytime
+Dates: created 2025-01-01, modified 2025-01-01, canceled 2025-03-01
+
+```

@@ -50,7 +50,7 @@ pub(crate) fn write_json<T: Serialize>(out: &mut dyn std::io::Write, value: &T) 
 
 #[derive(Debug, Default, Clone, Args)]
 pub struct DetailedArgs {
-    /// Show notes beneath each task
+    /// Show notes and checklists beneath each task
     #[arg(long, short = 'd')]
     pub detailed: bool,
 }

@@ -21,7 +21,7 @@ use crate::{
 pub struct AreaArgs {
     /// Area ID (or unique ID prefix)
     pub area_id: IdentifierToken,
-    /// Show notes beneath each task/project
+    /// Show notes and checklists beneath each item
     #[arg(long, short = 'd')]
     pub detailed: bool,
     /// Include completed and canceled items

@@ -22,13 +22,13 @@ pub struct LogbookArgs {
     #[arg(
         long = "from",
         short = 'f',
-        help = "Show items completed on/after this date (YYYY-MM-DD)"
+        help = "Show items completed or canceled on or after this date (YYYY-MM-DD)"
     )]
     pub from_date: Option<String>,
     #[arg(
         long = "to",
         short = 't',
-        help = "Show items completed on/before this date (YYYY-MM-DD)"
+        help = "Show items completed or canceled on or before this date (YYYY-MM-DD)"
     )]
     pub to_date: Option<String>,
 }
