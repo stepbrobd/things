@@ -4,7 +4,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context as _, Result, anyhow};
 
 const APP_NAME: &str = "things";
 
@@ -53,12 +53,13 @@ pub fn auth_file_path() -> Result<PathBuf> {
 /// the config directory holds the Things Cloud password
 /// the state directory holds a journal with every title and note
 /// the default 0755 leaves them readable to every local user
-pub fn create_private_dir(dir: &Path) -> std::io::Result<()> {
-    fs::create_dir_all(dir)?;
+pub fn create_private_dir(dir: &Path) -> Result<()> {
+    fs::create_dir_all(dir).with_context(|| format!("failed to create {}", dir.display()))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(dir, fs::Permissions::from_mode(0o700))?;
+        fs::set_permissions(dir, fs::Permissions::from_mode(0o700))
+            .with_context(|| format!("failed to make {} private", dir.display()))?;
     }
     Ok(())
 }

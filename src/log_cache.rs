@@ -105,8 +105,7 @@ pub struct CacheLock {
 }
 
 fn lock_cache(cache_dir: &Path) -> Result<CacheLock> {
-    create_private_dir(cache_dir)
-        .with_context(|| format!("failed to create {}", cache_dir.display()))?;
+    create_private_dir(cache_dir)?;
     let path = cache_dir.join(LOCK_FILE);
     let file = OpenOptions::new()
         .create(true)
@@ -153,8 +152,10 @@ fn write_durable(path: &Path, payload: &[u8]) -> Result<()> {
         .create_new(true)
         .open(&tmp)
         .with_context(|| format!("failed to write {}", tmp.display()))?;
-    file.write_all(payload)?;
-    file.sync_all()?;
+    file.write_all(payload)
+        .with_context(|| format!("failed to write {}", tmp.display()))?;
+    file.sync_all()
+        .with_context(|| format!("failed to sync {}", tmp.display()))?;
     fs::rename(&tmp, path).with_context(|| format!("failed to replace {}", path.display()))?;
     Ok(())
 }
@@ -432,11 +433,19 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
                 lines.push_str(&serde_json::to_string(item)?);
                 lines.push('\n');
             }
-            log.write_all(lines.as_bytes())?;
+            log.write_all(lines.as_bytes())
+                .with_context(|| format!("failed to append to {}", log_path.display()))?;
             // the data reaches disk before the cursor claims it
-            log.sync_all()?;
+            log.sync_all()
+                .with_context(|| format!("failed to sync {}", log_path.display()))?;
             cursor.next_start_index += items.len() as i64;
-            cursor.log_offset = Some(log.metadata()?.len());
+            cursor.log_offset = Some(
+                log.metadata()
+                    .with_context(|| {
+                        format!("failed to read the length of {}", log_path.display())
+                    })?
+                    .len(),
+            );
             cursor.head_index = client.head_index;
             cursor.updated_at = Some(now_ts_f64());
             write_cursor(cache_dir, &cursor)?;
@@ -543,8 +552,13 @@ fn fold_locked(cache_dir: &Path) -> Result<RawState> {
         safe_offset = reader.stream_position()?;
     }
 
-    if new_lines > 0 || stale {
-        write_state_cache(cache_dir, &state, safe_offset, hasher.finalize(), &lines)?;
+    // the state cache saves a later run the fold
+    // one that cannot be written leaves this state standing
+    if (new_lines > 0 || stale)
+        && let Err(error) =
+            write_state_cache(cache_dir, &state, safe_offset, hasher.finalize(), &lines)
+    {
+        warn!(target: "things::sync", error = %format!("{error:#}"), "the state cache cannot be written, a later run folds the journal again");
     }
 
     Ok(state)
@@ -771,6 +785,26 @@ mod tests {
             .expect("task");
         assert_eq!(task.notes.as_deref(), Some("done"));
         assert!(!task.degraded);
+    }
+
+    #[test]
+    fn a_state_cache_that_cannot_be_written_leaves_the_fold_standing() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        seed_log(
+            cache_dir,
+            &format!(
+                "{{\"{TASK_ID}\":{{\"t\":0,\"e\":\"Task7\",\"p\":{{\"tt\":\"Notes\",\"tp\":0,\"ss\":0,\"st\":1}}}}}}\n"
+            ),
+        );
+        // a directory at the staging name is no file to remove
+        let staging = cache_dir.join(STATE_CACHE_FILE).with_extension("tmp");
+        fs::create_dir(&staging).expect("staging dir");
+        fs::write(staging.join("held"), "x").expect("hold it");
+
+        let state = fold_state_from_append_log(cache_dir).expect("fold");
+        assert!(state.contains_key(&TASK_ID.parse().expect("id")));
+        assert!(!cache_dir.join(STATE_CACHE_FILE).exists());
     }
 
     #[cfg(unix)]
