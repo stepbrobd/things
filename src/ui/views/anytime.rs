@@ -96,6 +96,30 @@ fn group_items(items: &[Task], store: &ThingsStore) -> Grouped {
         }
     }
 
+    // the groups follow the sidebar, areas and projects each in their own order
+    // a container the store lacks goes last
+    let project_order = |id: &ThingsId| {
+        let index = store
+            .tasks_by_uuid
+            .get(id)
+            .map_or(i32::MAX, |project| project.index);
+        (index, id.clone())
+    };
+    let area_order = |id: &ThingsId| {
+        let index = store
+            .areas_by_uuid
+            .get(id)
+            .map_or(i32::MAX, |area| area.index);
+        (index, id.clone())
+    };
+    grouped
+        .project_only
+        .sort_by_key(|(id, _)| project_order(id));
+    grouped.by_area.sort_by_key(|(id, _)| area_order(id));
+    for (_, area_group) in &mut grouped.by_area {
+        area_group.projects.sort_by_key(|(id, _)| project_order(id));
+    }
+
     grouped
 }
 

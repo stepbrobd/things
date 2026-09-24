@@ -1,0 +1,15 @@
+```trycmd
+$ run.sh things anytime
+≋ Anytime  (4 tasks)
+
+  Aa ◆ Home
+    Ta ▢ Sweep the floor
+    Pa ● Kitchen
+      Tc ▢ Order tiles
+    Pb ● Garden
+      Td ▢ Plant bulbs
+
+  Ab ◆ Work
+    Tb ▢ File the report
+
+```
