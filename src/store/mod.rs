@@ -523,6 +523,17 @@ impl ThingsStore {
             .collect()
     }
 
+    /// a to-do, project or area still carries the tag id
+    pub fn tag_is_carried(&self, id: &ThingsId) -> bool {
+        self.tasks_by_uuid
+            .values()
+            .any(|task| task.tags.contains(id))
+            || self
+                .areas_by_uuid
+                .values()
+                .any(|area| area.tags.contains(id))
+    }
+
     /// in the Trash itself or through a trashed project or heading
     pub fn in_trash(&self, task: &Task) -> bool {
         task.trashed || self.in_trashed_container(task)

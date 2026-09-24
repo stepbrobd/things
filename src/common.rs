@@ -348,6 +348,18 @@ pub fn resolve_single_tag(store: &ThingsStore, identifier: &str) -> (Option<Tag>
 }
 
 pub fn resolve_tag_ids(store: &ThingsStore, raw_tags: &str) -> (Vec<ThingsId>, String) {
+    resolve_tags(store, raw_tags, false)
+}
+
+/// the tags a removal names
+///
+/// a tag deleted before its carriers were cleared leaves its id on them
+/// the full id of such a tag still names it while something carries it
+pub fn resolve_removable_tag_ids(store: &ThingsStore, raw_tags: &str) -> (Vec<ThingsId>, String) {
+    resolve_tags(store, raw_tags, true)
+}
+
+fn resolve_tags(store: &ThingsStore, raw_tags: &str, removable: bool) -> (Vec<ThingsId>, String) {
     let tokens = raw_tags
         .split(',')
         .map(str::trim)
@@ -364,7 +376,10 @@ pub fn resolve_tag_ids(store: &ThingsStore, raw_tags: &str) -> (Vec<ThingsId>, S
     for token in tokens {
         let tag_uuid = match resolve_single_tag_id(&all_tags, token) {
             Ok(tag_uuid) => tag_uuid,
-            Err(err) => return (Vec::new(), err),
+            Err(err) => match token.parse::<ThingsId>() {
+                Ok(id) if removable && store.tag_is_carried(&id) => id,
+                _ => return (Vec::new(), err),
+            },
         };
         if seen.insert(tag_uuid.clone()) {
             resolved.push(tag_uuid);

@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::{
     app::Cli,
     commands::{Command, TagDeltaArgs, write_json},
-    common::{DIM, GREEN, ICONS, colored, one_line, resolve_tag_ids},
+    common::{DIM, GREEN, ICONS, colored, one_line, resolve_removable_tag_ids, resolve_tag_ids},
     ui::{
         render_element_to_string,
         views::{areas::AreasView, json::common::build_area_json},
@@ -104,7 +104,7 @@ fn build_areas_edit_plan(
         labels.push("add-tags".to_string());
     }
     if let Some(remove_tags) = &args.tag_delta.remove_tags {
-        let (ids, err) = resolve_tag_ids(store, remove_tags);
+        let (ids, err) = resolve_removable_tag_ids(store, remove_tags);
         if !err.is_empty() {
             return Err(err);
         }

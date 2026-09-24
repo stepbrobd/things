@@ -1,0 +1,27 @@
+```trycmd
+$ run.sh things --now-ts 1774400000.0 edit Ta --remove-tags Gh11111111111111111111
+✓ Edited Buy milk  Ta11111111111111111111 (remove-tags)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Ta11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "tg": [
+          "Tg11111111111111111111"
+        ]
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things edit Ta --remove-tags Erand
+? 1
+Tag not found: Erand
+
+```

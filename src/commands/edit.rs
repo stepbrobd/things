@@ -13,7 +13,7 @@ use crate::{
     commands::{Command, TagDeltaArgs},
     common::{
         DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day, parse_instant,
-        parse_reminder, resolve_tag_ids, task6_note,
+        parse_reminder, resolve_removable_tag_ids, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
     ordering::allocate,
@@ -566,7 +566,7 @@ fn build_edit_plan(
         labels.push("add-tags".to_string());
     }
     if let Some(raw) = &args.tag_delta.remove_tags {
-        let (ids, err) = resolve_tag_ids(store, raw);
+        let (ids, err) = resolve_removable_tag_ids(store, raw);
         if !err.is_empty() {
             return Err(err);
         }

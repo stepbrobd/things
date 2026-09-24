@@ -8,7 +8,8 @@ use crate::{
     app::Cli,
     commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
     common::{
-        DIM, GREEN, ICONS, colored, day_timestamp, one_line, parse_day, resolve_tag_ids, task6_note,
+        DIM, GREEN, ICONS, colored, day_timestamp, one_line, parse_day, resolve_removable_tag_ids,
+        resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
     ui::{
@@ -197,7 +198,7 @@ fn build_projects_edit_plan(
         labels.push("add-tags".to_string());
     }
     if let Some(remove_tags) = &args.tag_delta.remove_tags {
-        let (ids, err) = resolve_tag_ids(store, remove_tags);
+        let (ids, err) = resolve_removable_tag_ids(store, remove_tags);
         if !err.is_empty() {
             return Err(err);
         }
