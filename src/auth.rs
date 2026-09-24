@@ -148,10 +148,11 @@ fn write_verified_auth_at(
 
 fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
     let (email, password) = validate_auth(email, password)?;
+    let saving = || format!("Failed to save the auth file at {}", path.display());
     let parent = path
         .parent()
         .ok_or_else(|| anyhow!("Invalid auth file path"))?;
-    create_private_dir(parent).with_context(|| format!("Failed creating {}", parent.display()))?;
+    create_private_dir(parent).with_context(saving)?;
 
     let payload = AuthPayload { email, password };
     let serialized = serde_json::to_string(&payload)?;
@@ -171,23 +172,26 @@ fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
     // a staging file an interrupted run left behind goes first
     // create_new refuses it
     let _ = fs::remove_file(&tmp_path);
-    let mut file = opts
-        .open(&tmp_path)
-        .with_context(|| format!("Failed writing {}", tmp_path.display()))?;
-    // open filters the mode through the umask
-    // the umask can clear owner bits too
-    // the mode is restated before the password goes in
-    // the file is no wider than 0600 meanwhile
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        fs::set_permissions(&tmp_path, fs::Permissions::from_mode(0o600))
-            .with_context(|| format!("Failed securing {}", tmp_path.display()))?;
+    let mut file = opts.open(&tmp_path).with_context(saving)?;
+    // the staging file holds the password from here on
+    // a step that fails takes it away again
+    let staged = (|| {
+        // open filters the mode through the umask
+        // the umask can clear owner bits too
+        // the mode is restated before the password goes in
+        // the file is no wider than 0600 meanwhile
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&tmp_path, fs::Permissions::from_mode(0o600))?;
+        }
+        file.write_all(serialized.as_bytes())?;
+        fs::rename(&tmp_path, path)
+    })();
+    if let Err(error) = staged {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(error).with_context(saving);
     }
-    file.write_all(serialized.as_bytes())
-        .with_context(|| format!("Failed writing {}", tmp_path.display()))?;
-
-    fs::rename(&tmp_path, path).with_context(|| format!("Failed finalizing {}", path.display()))?;
 
     Ok(())
 }
@@ -196,6 +200,20 @@ fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn a_failed_save_names_the_auth_file_and_leaves_no_staging_file() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        // a directory where the file goes fails the rename
+        fs::create_dir(&path).expect("directory");
+        let error = write_auth_at(&path, "user@example.com", "hunter2").expect_err("no file");
+        assert!(
+            format!("{error:#}").contains("Failed to save the auth file at"),
+            "{error:#}"
+        );
+        assert!(!path.with_extension("tmp").exists());
+    }
 
     #[test]
     fn auth_file_is_created_private() {
