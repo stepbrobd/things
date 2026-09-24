@@ -38,19 +38,19 @@ pub struct Cli {
     /// Output JSON when supported by the selected command
     #[arg(long, global = true)]
     pub json: bool,
-    /// For testing: disable cloud sync and cloud writes
+    /// Test hook that disables cloud sync and cloud writes
     #[arg(long, hide = true)]
     pub no_cloud: bool,
-    /// For testing: override "today" UTC midnight timestamp
+    /// Test hook that sets the UTC midnight timestamp of today
     #[arg(long, global = true, hide = true, value_name = "TIMESTAMP")]
     pub today_ts: Option<i64>,
-    /// For testing: override current UNIX timestamp
+    /// Test hook that sets the current UNIX timestamp
     #[arg(long, global = true, hide = true, value_name = "TIMESTAMP")]
     pub now_ts: Option<f64>,
-    /// For testing: derive new ids from a seed instead of random bytes
+    /// Test hook that derives new ids from a seed instead of random bytes
     #[arg(long, global = true, hide = true, value_name = "SEED")]
     pub id_seed: Option<u64>,
-    /// For testing: load the state from a JSON array of history items instead of syncing
+    /// Test hook that loads the state from a JSON array of history items instead of syncing
     #[arg(long, value_name = "FILE", hide = true)]
     pub load_journal: Option<PathBuf>,
     #[command(subcommand)]

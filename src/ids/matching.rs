@@ -144,7 +144,7 @@ mod tests {
                 .collect();
             assert!(
                 matches.len() > 1,
-                "prefix {:?} is not minimal — {:?} (one char shorter) still only matches 1 ID",
+                "prefix {:?} is not minimal, {:?} is one char shorter and still matches 1 ID alone",
                 prefix,
                 shorter
             );
