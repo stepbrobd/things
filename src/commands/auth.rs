@@ -6,7 +6,13 @@ use std::{
 use anyhow::{Context as _, Result, bail};
 use clap::Args;
 
-use crate::{app::Cli, auth::write_verified_auth, client::ThingsCloudClient, commands::Command};
+use crate::{
+    app::Cli,
+    auth::write_verified_auth,
+    client::ThingsCloudClient,
+    commands::Command,
+    dirs::{auth_file_path, create_private_dir},
+};
 
 #[derive(Args)]
 #[command(about = "Configure Things Cloud credentials")]
@@ -25,6 +31,12 @@ impl Command for AuthArgs {
         out: &mut dyn std::io::Write,
         _ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
+        // where the credentials go is settled before anything is asked
+        // a config home that cannot hold the auth file fails before the password goes anywhere
+        let path = auth_file_path()?;
+        let saving = || format!("Failed to save the auth file at {}", path.display());
+        create_private_dir(path.parent().expect("the auth file sits in a directory"))
+            .with_context(saving)?;
         // the email prompt goes to the terminal
         // rpassword writes the password prompt there too
         // standard output keeps the result alone
@@ -49,7 +61,7 @@ impl Command for AuthArgs {
 
         // the prompt strips the newline
         // trailing spaces are part of the password
-        let path = write_verified_auth(email.trim(), &password, |email, password| {
+        write_verified_auth(&path, email.trim(), &password, |email, password| {
             if cli.no_cloud {
                 return Ok(());
             }

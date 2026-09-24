@@ -442,6 +442,54 @@ fn failed_sync_with_a_cache_that_does_not_read() {
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
 }
 
+/// `auth` names a missing place for the auth file before it asks for anything
+#[test]
+fn auth_without_a_place_for_the_auth_file() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_things"))
+        .args(["--no-cloud", "auth"])
+        .current_dir(home.path())
+        .env("HOME", "home")
+        .env("XDG_CONFIG_HOME", "config")
+        .env("XDG_STATE_HOME", home.path().join("state"))
+        .env_remove("THINGS_LOG")
+        .env_remove("THINGS_LOG_FORMAT")
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("things runs");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(1), "{stderr}");
+    assert!(
+        stderr.contains("No absolute home directory, set XDG_CONFIG_HOME."),
+        "{stderr}"
+    );
+    assert!(output.stdout.is_empty());
+}
+
+/// a config home that cannot hold the auth file fails before anything is asked
+#[test]
+fn auth_with_a_config_home_that_is_a_file() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let config = home.path().join("config");
+    std::fs::write(&config, "").expect("a file where the config home goes");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_things"))
+        .args(["--no-cloud", "auth"])
+        .env("XDG_CONFIG_HOME", &config)
+        .env("XDG_STATE_HOME", home.path().join("state"))
+        .env_remove("THINGS_LOG")
+        .env_remove("THINGS_LOG_FORMAT")
+        .stdin(std::process::Stdio::null())
+        .output()
+        .expect("things runs");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert_eq!(output.status.code(), Some(1), "{stderr}");
+    assert!(
+        stderr.contains("Failed to save the auth file at"),
+        "{stderr}"
+    );
+    assert!(output.stdout.is_empty());
+}
+
 /// a reader that closed stderr leaves the exit status as it is
 #[test]
 fn closed_stderr() {
