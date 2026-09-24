@@ -509,6 +509,15 @@ pub fn due_instances(
                 // a template in a closed or trashed project or heading makes nothing
                 // its to-dos show nowhere
                 && !store.in_closed_container(template)
+                // a template in a project or heading whose replay failed makes nothing either
+                // that container may be closed or in the Trash without showing it
+                // a container missing from the store failed to replay or was never seen
+                && !template
+                    .action_group
+                    .iter()
+                    .cloned()
+                    .chain(store.effective_project_uuid(template))
+                    .any(|id| store.tasks_by_uuid.get(&id).is_none_or(|container| container.degraded))
                 // a template with a deadline is left to the Apple clients
                 // the app keeps an instance's deadline as an offset no capture has shown written
                 && template.deadline.is_none()
@@ -1229,6 +1238,33 @@ mod tests {
             1
         );
         assert!(due_on(&with_project(TaskStatus::Completed), "2026-03-25").is_empty());
+    }
+
+    #[test]
+    fn a_template_in_a_project_whose_replay_failed_makes_nothing() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        const PROJECT: &str = "Pj11111111111111111111";
+        let in_project = |project: &str| {
+            let (uuid, mut object) = template_object(daily, "2026-03-25", 1);
+            if let crate::wire::wire_object::Properties::TaskCreate(props) = &mut object.payload {
+                props.parent_project_ids = vec![PROJECT.parse().expect("project id")];
+            }
+            let project: WireObject = serde_json::from_str(project).expect("project");
+            store_of(vec![(uuid, object), (PROJECT.to_string(), project)])
+        };
+        // a field of the project that does not parse marks it
+        let marked = in_project(
+            r#"{"t":0,"e":"Task7","p":{"tt":"Garden season","tp":1,"st":1,"md":"2026-03-24"}}"#,
+        );
+        assert!(due_on(&marked, "2026-03-25").is_empty());
+        // a payload that is no object leaves the project out of the store
+        let missing = in_project(r#"{"t":0,"e":"Task7","p":"garbled"}"#);
+        assert!(
+            !missing
+                .tasks_by_uuid
+                .contains_key(&PROJECT.parse().expect("project id"))
+        );
+        assert!(due_on(&missing, "2026-03-25").is_empty());
     }
 
     #[test]
