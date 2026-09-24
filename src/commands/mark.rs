@@ -32,19 +32,19 @@ pub struct MarkArgs {
     #[arg(
         long = "check",
         short = 'k',
-        help = "Mark checklist items completed by comma-separated short IDs"
+        help = "Mark checklist items completed by comma-separated ID prefixes"
     )]
     pub check_ids: Option<String>,
     #[arg(
         long = "uncheck",
         short = 'u',
-        help = "Mark checklist items incomplete by comma-separated short IDs"
+        help = "Mark checklist items incomplete by comma-separated ID prefixes"
     )]
     pub uncheck_ids: Option<String>,
     #[arg(
         long = "check-cancel",
         short = 'x',
-        help = "Mark checklist items canceled by comma-separated short IDs"
+        help = "Mark checklist items canceled by comma-separated ID prefixes"
     )]
     pub check_cancel_ids: Option<String>,
 }

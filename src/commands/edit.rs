@@ -62,14 +62,14 @@ pub struct EditArgs {
         long = "remove-checklist",
         short = 'x',
         value_name = "IDS",
-        help = "Remove checklist items by comma-separated short IDs (single to-do only)"
+        help = "Remove checklist items by comma-separated ID prefixes (single to-do only)"
     )]
     pub remove_checklist: Option<String>,
     #[arg(
         long = "rename-checklist",
         short = 'k',
         value_name = "ID:TITLE",
-        help = "Rename a checklist item: short-id:new title (repeatable, single to-do only)"
+        help = "Rename a checklist item: ID-prefix:new title (repeatable, single to-do only)"
     )]
     pub rename_checklist: Vec<String>,
     #[arg(
@@ -544,14 +544,14 @@ fn build_edit_plan(
     for token in &args.rename_checklist {
         let Some((short_id, new_title)) = token.split_once(':') else {
             return Err(format!(
-                "--rename-checklist requires 'id:new title' format, got: {token:?}"
+                "--rename-checklist requires 'ID-prefix:new title' format, got: {token:?}"
             ));
         };
         let short_id = short_id.trim();
         let new_title = new_title.trim();
         if short_id.is_empty() || new_title.is_empty() {
             return Err(format!(
-                "--rename-checklist requires 'id:new title' format, got: {token:?}"
+                "--rename-checklist requires 'ID-prefix:new title' format, got: {token:?}"
             ));
         }
         renames.push((short_id.to_string(), new_title.to_string()));
