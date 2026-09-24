@@ -9,6 +9,13 @@ export THINGS_LOG_FORMAT=json
 # the runner behind every trycmd case
 # things gets --no-cloud and a fixed --today-ts unless the case sets them, and --load-journal journal.json when the case directory holds one
 
+# the auth file and the sync cache of every run live in a scratch directory
+# a case without a journal folds that empty cache, never the one of whoever runs the tests
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+export XDG_CONFIG_HOME="$scratch/config"
+export XDG_STATE_HOME="$scratch/state"
+
 argv=("$@")
 
 if [[ ${#argv[@]} -gt 0 && "${argv[0]}" == "things" ]]; then
@@ -46,8 +53,7 @@ if [[ ${#argv[@]} -gt 0 && "${argv[0]}" == "things" ]]; then
 	fi
 fi
 
-stderr_file="$(mktemp)"
-trap 'rm -f "$stderr_file"' EXIT
+stderr_file="$scratch/stderr"
 
 set +e
 "${argv[@]}" 2>"$stderr_file"
