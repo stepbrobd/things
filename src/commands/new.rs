@@ -1,6 +1,6 @@
 use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context as _, Result};
 use chrono::{TimeZone, Utc};
 use clap::Args;
 use serde_json::json;
@@ -586,7 +586,7 @@ impl Command for NewArgs {
             build_new_plan(self, &store, now, today, &mut id_gen).map_err(anyhow::Error::msg)?;
 
         ctx.commit_changes(plan.changes, None)
-            .map_err(|e| anyhow!("Failed to create task: {e}"))?;
+            .with_context(|| "Failed to create task")?;
 
         let repeat = plan
             .repeat_label

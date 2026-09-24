@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context as _, Result, bail};
 use clap::{ArgGroup, Args};
 
 use crate::{
@@ -359,7 +359,7 @@ impl Command for MarkArgs {
                     .map_err(anyhow::Error::msg)?;
 
             ctx.commit_changes(plan.changes, None)
-                .map_err(|e| anyhow!("Failed to mark checklist items: {e}"))?;
+                .with_context(|| "Failed to mark checklist items")?;
 
             let title = match label.as_str() {
                 "checked" => format!("{} Checked", ICONS.checklist_done),
@@ -395,7 +395,7 @@ impl Command for MarkArgs {
         }
 
         ctx.commit_changes(plan.changes, None)
-            .map_err(|e| anyhow!("Failed to mark items {action}: {e}"))?;
+            .with_context(|| format!("Failed to mark items {action}"))?;
 
         let label = match action {
             "done" => format!("{} Done", ICONS.done),

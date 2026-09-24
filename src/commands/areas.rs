@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context as _, Result, bail};
 use clap::{Args, Subcommand};
 use iocraft::prelude::*;
 use serde_json::json;
@@ -191,7 +191,7 @@ impl Command for AreasArgs {
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Area3, props));
                 ctx.commit_changes(changes, None)
-                    .map_err(|e| anyhow!("Failed to create area: {e}"))?;
+                    .with_context(|| "Failed to create area")?;
 
                 writeln!(
                     out,
@@ -212,7 +212,7 @@ impl Command for AreasArgs {
                     WireObject::update(EntityType::Area3, plan.update.clone()),
                 );
                 ctx.commit_changes(changes, None)
-                    .map_err(|e| anyhow!("Failed to edit area: {e}"))?;
+                    .with_context(|| "Failed to edit area")?;
 
                 let title = plan.update.title.as_deref().unwrap_or(&plan.area.title);
                 writeln!(

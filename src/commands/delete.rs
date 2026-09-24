@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashSet};
 
-use anyhow::Result;
+use anyhow::{Context as _, Result};
 use clap::Args;
 
 use crate::{
@@ -181,7 +181,7 @@ impl Command for DeleteArgs {
             build_delete_plan(self, &store, ctx.now_timestamp()).map_err(anyhow::Error::msg)?;
 
         ctx.commit_changes(plan.changes, None)
-            .map_err(|e| anyhow::anyhow!("Failed to delete items: {e}"))?;
+            .with_context(|| "Failed to delete items")?;
 
         for (uuid, _entity, title, taken) in plan.targets {
             let along = if taken > 0 {
@@ -275,8 +275,9 @@ mod tests {
             .run_with_ctx(&cli, &mut out, &mut FailingCtx)
             .expect_err("failed commit must fail the command");
 
+        // the chain as main prints it, the cause after the context
         assert_eq!(
-            error.to_string(),
+            format!("{error:#}"),
             "Failed to delete items: cloud unavailable"
         );
         assert!(out.is_empty());

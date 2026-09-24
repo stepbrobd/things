@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context as _, Result, bail};
 use clap::{Args, Subcommand};
 use iocraft::prelude::*;
 
@@ -388,7 +388,7 @@ impl Command for ProjectsArgs {
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Task7, props));
                 ctx.commit_changes(changes, None)
-                    .map_err(|e| anyhow!("Failed to create project: {e}"))?;
+                    .with_context(|| "Failed to create project")?;
 
                 writeln!(
                     out,
@@ -409,7 +409,7 @@ impl Command for ProjectsArgs {
                     WireObject::update(EntityType::Task7, plan.update.clone()),
                 );
                 ctx.commit_changes(changes, None)
-                    .map_err(|e| anyhow!("Failed to edit project: {e}"))?;
+                    .with_context(|| "Failed to edit project")?;
 
                 let title = plan.update.title.as_deref().unwrap_or(&plan.project.title);
                 writeln!(

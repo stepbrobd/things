@@ -3,7 +3,7 @@ use std::{
     collections::BTreeMap,
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context as _, Result};
 use chrono::{TimeZone, Utc};
 use clap::{ArgGroup, Args};
 
@@ -323,7 +323,7 @@ impl Command for ReorderArgs {
             .map_err(anyhow::Error::msg)?;
 
         ctx.commit_changes(plan.changes, None)
-            .map_err(|e| anyhow!("Failed to reorder item: {e}"))?;
+            .with_context(|| "Failed to reorder item")?;
 
         writeln!(
             out,

@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use anyhow::{Result, anyhow, bail};
+use anyhow::{Context as _, Result, bail};
 use clap::{Args, Subcommand};
 use iocraft::prelude::*;
 use serde_json::json;
@@ -290,7 +290,7 @@ impl Command for TagsArgs {
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Tag4, props));
                 ctx.commit_changes(changes, None)
-                    .map_err(|e| anyhow!("Failed to create tag: {e}"))?;
+                    .with_context(|| "Failed to create tag")?;
 
                 writeln!(
                     out,
@@ -311,7 +311,7 @@ impl Command for TagsArgs {
                     WireObject::update(EntityType::Tag4, plan.update.clone()),
                 );
                 ctx.commit_changes(changes, None)
-                    .map_err(|e| anyhow!("Failed to edit tag: {e}"))?;
+                    .with_context(|| "Failed to edit tag")?;
 
                 let name = plan.update.title.as_deref().unwrap_or(&plan.tag.title);
                 writeln!(
@@ -333,7 +333,7 @@ impl Command for TagsArgs {
                     build_tags_delete_plan(&args.tag_id, &store).map_err(anyhow::Error::msg)?;
                 let carriers = changes.len() - 1;
                 ctx.commit_changes(changes, None)
-                    .map_err(|e| anyhow!("Failed to delete tag: {e}"))?;
+                    .with_context(|| "Failed to delete tag")?;
 
                 let from = if carriers > 0 {
                     colored(

@@ -3,7 +3,7 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context as _, Result};
 use clap::Args;
 use serde_json::json;
 
@@ -413,7 +413,7 @@ impl Command for EditArgs {
             build_edit_plan(self, &store, now, today, &mut id_gen).map_err(anyhow::Error::msg)?;
 
         ctx.commit_changes(plan.changes.clone(), None)
-            .map_err(|e| anyhow!("Failed to edit item: {e}"))?;
+            .with_context(|| "Failed to edit item")?;
 
         let label_str = colored(
             format!("({})", plan.labels.join(", ")),
