@@ -111,6 +111,8 @@ fn show() {
 /// the proxy refuses the connection
 ///
 /// the sync fails without a request leaving the machine
+/// REQUEST_METHOD is taken out in every such case
+/// hyper drops each proxy while it is set
 /// with no journal on disk there is no cached state to show
 #[test]
 fn failed_sync() {
@@ -129,6 +131,7 @@ fn failed_sync() {
         .env("HTTPS_PROXY", "http://127.0.0.1:1")
         .env_remove("NO_PROXY")
         .env_remove("no_proxy")
+        .env_remove("REQUEST_METHOD")
         .env_remove("THINGS_EMAIL")
         .env_remove("THINGS_PASSWORD")
         .env_remove("THINGS_LOG")
