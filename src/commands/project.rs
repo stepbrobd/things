@@ -97,22 +97,24 @@ impl Command for ProjectArgs {
             ungrouped.push(t);
         }
 
-        let mut sorted_heading_uuids = by_heading.keys().cloned().collect::<Vec<_>>();
-        sorted_heading_uuids.sort_by_key(|u| headings.get(u).map(|h| h.index).unwrap_or(0));
+        let mut sorted_headings = headings.values().collect::<Vec<_>>();
+        sorted_headings.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
         ungrouped.sort_by_key(|t| t.index);
         for items in by_heading.values_mut() {
             items.sort_by_key(|t| t.index);
         }
 
-        let heading_groups = sorted_heading_uuids
+        // a heading shows whether it holds a to-do or not
+        // reorder moves an empty one too
+        let heading_groups = sorted_headings
             .iter()
-            .filter_map(|heading_uuid| {
-                let heading = headings.get(heading_uuid)?;
-                let tasks = by_heading.get(heading_uuid)?;
-                Some(ProjectHeadingGroup {
-                    title: heading.title.clone(),
-                    items: tasks.iter().collect::<Vec<_>>(),
-                })
+            .map(|heading| ProjectHeadingGroup {
+                uuid: heading.uuid.clone(),
+                title: heading.title.clone(),
+                items: by_heading
+                    .get(&heading.uuid)
+                    .map(|tasks| tasks.iter().collect::<Vec<_>>())
+                    .unwrap_or_default(),
             })
             .collect::<Vec<_>>();
 

@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things project Pa
+◯ Move house (0/1)
+
+  Hd Packing
+    Tb ▢ Buy boxes
+
+  He Utilities
+
+```
+
+```trycmd
+$ run.sh things project Pe
+◯ Plan trip (0/0)
+
+  Hf Flights
+
+```

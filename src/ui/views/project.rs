@@ -4,10 +4,12 @@ use iocraft::prelude::*;
 
 use crate::{
     common::{one_line, shown_title},
+    ids::ThingsId,
     store::{Task, ThingsStore},
     ui::components::{
         deadline_badge::DeadlineBadge,
         details_container::DetailsContainer,
+        header::Header,
         progress_badge::ProgressBadge,
         tags_badge::TagsBadge,
         tasks::{TaskList, TaskOptions},
@@ -15,6 +17,7 @@ use crate::{
 };
 
 pub struct ProjectHeadingGroup<'a> {
+    pub uuid: ThingsId,
     pub title: String,
     pub items: Vec<&'a Task>,
 }
@@ -28,7 +31,7 @@ pub struct ProjectViewProps<'a> {
 }
 
 #[component]
-pub fn ProjectView<'a>(hooks: Hooks, props: &ProjectViewProps<'a>) -> impl Into<AnyElement<'a>> {
+pub fn ProjectView<'a>(hooks: Hooks, props: &'a ProjectViewProps<'a>) -> impl Into<AnyElement<'a>> {
     let store = hooks.use_context::<Arc<ThingsStore>>().clone();
     let Some(project) = props.project else {
         return element! { Text(content: "") }.into_any();
@@ -39,7 +42,10 @@ pub fn ProjectView<'a>(hooks: Hooks, props: &ProjectViewProps<'a>) -> impl Into<
         .iter()
         .map(|t| t.uuid.clone())
         .collect::<Vec<_>>();
+    // a heading carries its id as a row does
+    // reorder takes it
     for group in &props.heading_groups {
+        all_uuids.push(group.uuid.clone());
         all_uuids.extend(group.items.iter().map(|t| t.uuid.clone()));
     }
     let id_prefix_len = store.unique_prefix_length(&all_uuids);
@@ -109,7 +115,9 @@ pub fn ProjectView<'a>(hooks: Hooks, props: &ProjectViewProps<'a>) -> impl Into<
             #(props.heading_groups.iter().map(|group| element! {
                 View(flex_direction: FlexDirection::Column) {
                     Text(content: "", wrap: TextWrap::NoWrap)
-                    Text(content: format!("  {}", shown_title(&group.title)), wrap: TextWrap::NoWrap, weight: Weight::Bold)
+                    View(padding_left: 2) {
+                        Header(uuid: &group.uuid, title: group.title.as_str(), id_prefix_len)
+                    }
                     View(flex_direction: FlexDirection::Column, padding_left: 4) {
                         TaskList(items: group.items.clone(), id_prefix_len, options)
                     }
