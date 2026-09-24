@@ -211,7 +211,7 @@ fn build_new_plan(
         {
             return Err(format!(
                 "Anchor is of unknown kind {raw}: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         if let Some(task) = &task
@@ -220,7 +220,7 @@ fn build_new_plan(
             return Err(format!(
                 "Anchor is of kind {}: {}",
                 task.entity,
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         // an anchor that did not replay completely may sit in a list it does not show
@@ -229,13 +229,13 @@ fn build_new_plan(
         {
             return Err(format!(
                 "Anchor did not replay completely: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         if let Some(task) = &task
             && let Some(state) = store.closed_state(task)
         {
-            return Err(format!("Anchor is {state}: {}", one_line(&task.title)));
+            return Err(format!("Anchor is {state}: {}", shown_title(&task.title)));
         }
         if let Some(task) = &task
             && task.is_heading()
@@ -248,7 +248,7 @@ fn build_new_plan(
         {
             return Err(format!(
                 "Anchor is a repeat template: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         anchor = task;
@@ -378,7 +378,7 @@ fn build_new_plan(
     {
         return Err(format!(
             "Anchor is in another list: {}",
-            one_line(&anchor.title)
+            shown_title(&anchor.title)
         ));
     }
 
@@ -455,7 +455,7 @@ fn build_new_plan(
     {
         return Err(format!(
             "Anchor is in Today by its deadline alone, which gives it no place in Today's order: {}",
-            one_line(&anchor.title)
+            shown_title(&anchor.title)
         ));
     }
     if new_is_today
@@ -615,7 +615,7 @@ impl Command for NewArgs {
             out,
             "{} {}  {}{}",
             colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
-            one_line(&plan.title),
+            shown_title(&plan.title),
             colored(&plan.new_uuid, &[DIM], cli.no_color()),
             repeat
         )?;

@@ -9,7 +9,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs, write_json},
-    common::{DIM, GREEN, ICONS, colored, one_line, resolve_removable_tag_ids, resolve_tag_ids},
+    common::{DIM, GREEN, ICONS, colored, resolve_removable_tag_ids, resolve_tag_ids, shown_title},
     ui::{
         render_element_to_string,
         views::{areas::AreasView, json::common::build_area_json},
@@ -198,7 +198,7 @@ impl Command for AreasArgs {
                     out,
                     "{} {}  {}",
                     colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
-                    one_line(title),
+                    shown_title(title),
                     colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
@@ -220,7 +220,7 @@ impl Command for AreasArgs {
                     out,
                     "{} {}  {} {}",
                     colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                    one_line(title),
+                    shown_title(title),
                     colored(&plan.area.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),

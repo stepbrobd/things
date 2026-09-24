@@ -16,7 +16,9 @@ use crate::{
     client::ThingsCloudClient,
     cmd_ctx::{CmdCtx, DefaultCmdCtx},
     commands::{Command, Commands},
-    common::{ICONS, counted, eprint_line, one_line, printable, printable_json, printable_plain},
+    common::{
+        ICONS, counted, eprint_line, printable, printable_json, printable_plain, shown_title,
+    },
     dirs::append_log_dir,
     ids::ThingsId,
     log_cache::{CacheLock, fold_state_from_append_log, get_state_with_append_log},
@@ -245,7 +247,7 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
         eprint_line(&format!(
             "{} Created {} for {}  {}",
             ICONS.repeat,
-            one_line(&materialized.title),
+            shown_title(&materialized.title),
             materialized.day,
             materialized.instance_id
         ));

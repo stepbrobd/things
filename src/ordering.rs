@@ -9,7 +9,7 @@ use std::cmp::Reverse;
 use chrono::{DateTime, Utc};
 
 use crate::{
-    common::one_line,
+    common::shown_title,
     ids::ThingsId,
     store::{Task, ThingsStore},
 };
@@ -249,7 +249,7 @@ pub fn place_next_to(
     if holding.iter().any(|list| !list.iter().all(in_own)) || reorders {
         return Err(format!(
             "Cannot rebalance next to the anchor without reordering another list: {}",
-            one_line(&anchor.title)
+            shown_title(&anchor.title)
         ));
     }
     Ok((index, moved))

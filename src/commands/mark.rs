@@ -7,7 +7,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored, one_line},
+    common::{DIM, GREEN, ICONS, colored, one_line, shown_title},
     wire::{
         checklist::ChecklistItemPatch,
         recurrence::RecurrenceType,
@@ -210,7 +210,11 @@ fn build_mark_status_plan(
     for task in targets {
         let validation_error = validate_mark_target(&task, action, store);
         if !validation_error.is_empty() {
-            errors.push(format!("{} ({})", validation_error, one_line(&task.title)));
+            errors.push(format!(
+                "{} ({})",
+                validation_error,
+                shown_title(&task.title)
+            ));
             continue;
         }
 
@@ -245,8 +249,8 @@ fn build_mark_status_plan(
                     errors.push(format!(
                         "{} ({}, in {})",
                         validation_error,
-                        one_line(&child.title),
-                        one_line(&task.title)
+                        shown_title(&child.title),
+                        shown_title(&task.title)
                     ));
                     continue;
                 }
@@ -366,7 +370,7 @@ impl Command for MarkArgs {
             let task = tasks.remove(0);
 
             if task.checklist_items.is_empty() {
-                bail!("Item has no checklist: {}", one_line(&task.title));
+                bail!("Item has no checklist: {}", shown_title(&task.title));
             }
 
             let (plan, items, label) =
@@ -422,7 +426,7 @@ impl Command for MarkArgs {
                 out,
                 "{} {}  {}",
                 colored(&label, &[GREEN], cli.no_color()),
-                one_line(&task.title),
+                shown_title(&task.title),
                 colored(&task.uuid, &[DIM], cli.no_color())
             )?;
         }

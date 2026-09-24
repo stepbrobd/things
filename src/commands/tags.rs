@@ -9,7 +9,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::{Command, write_json},
-    common::{DIM, GREEN, ICONS, colored, counted, one_line, resolve_single_tag},
+    common::{DIM, GREEN, ICONS, colored, counted, one_line, resolve_single_tag, shown_title},
     store::Tag,
     ui::{
         render_element_to_string,
@@ -137,7 +137,7 @@ fn build_tags_delete_plan(
         if let Some(raw) = task.unknown_kind() {
             return Err(format!(
                 "Item is of unknown kind {raw} and carries the tag: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         changes.insert(

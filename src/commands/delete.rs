@@ -7,7 +7,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored, counted, one_line},
+    common::{DIM, GREEN, ICONS, colored, counted, shown_title},
     ids::ThingsId,
     store::Task,
     wire::{
@@ -95,23 +95,26 @@ fn build_delete_plan(
             if let Some(raw) = task.unknown_kind() {
                 return Err(format!(
                     "Item is of unknown kind {raw}: {}",
-                    one_line(&task.title)
+                    shown_title(&task.title)
                 ));
             }
             if !task.entity.can_upgrade_to_task7() {
                 return Err(format!(
                     "Item is of kind {}: {}",
                     task.entity,
-                    one_line(&task.title)
+                    shown_title(&task.title)
                 ));
             }
             if store.in_trash(&task) {
-                return Err(format!("Item is in the Trash: {}", one_line(&task.title)));
+                return Err(format!(
+                    "Item is in the Trash: {}",
+                    shown_title(&task.title)
+                ));
             }
             if task.has_repeater() {
                 return Err(format!(
                     "Cannot delete an item with a repeater, whose bookkeeping the Apple clients keep: {}",
-                    one_line(&task.title)
+                    shown_title(&task.title)
                 ));
             }
             if !seen.insert(task.uuid.clone()) {
@@ -169,13 +172,13 @@ fn build_delete_plan(
                 if let Some(raw) = child.unknown_kind() {
                     return Err(format!(
                         "Item is of unknown kind {raw}: {}",
-                        one_line(&child.title)
+                        shown_title(&child.title)
                     ));
                 }
                 if child.has_repeater() {
                     return Err(format!(
                         "Cannot delete an item with a repeater, whose bookkeeping the Apple clients keep: {}",
-                        one_line(&child.title)
+                        shown_title(&child.title)
                     ));
                 }
                 if changes.insert(child.uuid.to_string(), trash(now)).is_none() {
@@ -226,7 +229,7 @@ impl Command for DeleteArgs {
                     &[GREEN],
                     cli.no_color()
                 ),
-                one_line(&title),
+                shown_title(&title),
                 colored(&uuid, &[DIM], cli.no_color()),
                 along
             )?;

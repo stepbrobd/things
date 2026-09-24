@@ -17,7 +17,7 @@ pub use state::{
 };
 
 use crate::{
-    common::one_line,
+    common::shown_title,
     common::{day_of, day_timestamp},
     ids::{
         ThingsId,
@@ -832,15 +832,25 @@ impl ThingsStore {
             return resolved;
         };
         let refusal = if self.in_trash(task) {
-            format!("Item is in the Trash: {}", one_line(&task.title))
+            format!("Item is in the Trash: {}", shown_title(&task.title))
         } else if task.is_heading() {
-            format!("Item is a heading: {}", one_line(&task.title))
+            format!("Item is a heading: {}", shown_title(&task.title))
         } else if let Some(raw) = task.unknown_kind() {
-            format!("Item is of unknown kind {raw}: {}", one_line(&task.title))
+            format!(
+                "Item is of unknown kind {raw}: {}",
+                shown_title(&task.title)
+            )
         } else if !task.entity.can_upgrade_to_task7() {
-            format!("Item is of kind {}: {}", task.entity, one_line(&task.title))
+            format!(
+                "Item is of kind {}: {}",
+                task.entity,
+                shown_title(&task.title)
+            )
         } else if task.degraded {
-            format!("Item did not replay completely: {}", one_line(&task.title))
+            format!(
+                "Item did not replay completely: {}",
+                shown_title(&task.title)
+            )
         } else {
             return resolved;
         };

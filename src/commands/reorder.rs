@@ -11,7 +11,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored, one_line, shown_title},
+    common::{DIM, GREEN, ICONS, colored, shown_title},
     ids::ThingsId,
     ordering::{
         allocate, in_today_order, lists_showing, place_next_to, today_group, today_view_order,
@@ -113,30 +113,30 @@ fn build_reorder_plan(
         if let Some(raw) = task.unknown_kind() {
             return Err(format!(
                 "{role} is of unknown kind {raw}: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         if !task.entity.can_upgrade_to_task7() {
             return Err(format!(
                 "{role} is of kind {}: {}",
                 task.entity,
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         if task.degraded {
             return Err(format!(
                 "{role} did not replay completely: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
         if let Some(state) = store.closed_state(task) {
-            return Err(format!("{role} is {state}: {}", one_line(&task.title)));
+            return Err(format!("{role} is {state}: {}", shown_title(&task.title)));
         }
         // a repeat template shows in no list
         if task.is_recurrence_template() {
             return Err(format!(
                 "{role} is a repeat template: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
     }
@@ -161,7 +161,7 @@ fn build_reorder_plan(
     if is_today_reorder && !in_today_order(&anchor) {
         return Err(format!(
             "Anchor is in Today by its deadline alone, which gives it no place in Today's order: {}",
-            one_line(&anchor.title)
+            shown_title(&anchor.title)
         ));
     }
 
@@ -174,7 +174,7 @@ fn build_reorder_plan(
                 } else {
                     "after"
                 },
-                one_line(&anchor.title)
+                shown_title(&anchor.title)
             )
         };
         // a move to where the item already sits in the Today view writes nothing
@@ -324,7 +324,7 @@ fn build_reorder_plan(
     if item_bucket != anchor_bucket {
         return Err(format!(
             "Anchor is in another list: {}",
-            one_line(&anchor.title)
+            shown_title(&anchor.title)
         ));
     }
 
@@ -353,9 +353,9 @@ fn build_reorder_plan(
 
     let structural_label = |index: i32| {
         if args.before_id.is_some() {
-            format!("(before={}, index={})", one_line(&anchor.title), index)
+            format!("(before={}, index={})", shown_title(&anchor.title), index)
         } else {
-            format!("(after={}, index={})", one_line(&anchor.title), index)
+            format!("(after={}, index={})", shown_title(&anchor.title), index)
         }
     };
     // a move to where the item already sits writes nothing
@@ -472,7 +472,7 @@ impl Command for ReorderArgs {
                 &[GREEN],
                 cli.no_color()
             ),
-            one_line(&plan.item.title),
+            shown_title(&plan.item.title),
             colored(&plan.item.uuid, &[DIM], cli.no_color()),
             colored(&plan.reorder_label, &[DIM], cli.no_color())
         )?;

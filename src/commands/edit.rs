@@ -14,7 +14,7 @@ use crate::{
     common::{
         Container, DIM, GREEN, ICONS, colored, container_refusal, day_of, day_timestamp, one_line,
         parse_day, parse_instant, parse_reminder, resolve_container, resolve_removable_tag_ids,
-        resolve_tag_ids, task6_note,
+        resolve_tag_ids, shown_title, task6_note,
     },
     ids::ThingsId,
     ordering::allocate,
@@ -334,7 +334,7 @@ fn apply_schedule(
             if area.degraded {
                 return Err(format!(
                     "Container did not replay completely: {}",
-                    one_line(&area.title)
+                    shown_title(&area.title)
                 ));
             }
         }
@@ -473,7 +473,7 @@ impl Command for EditArgs {
                 out,
                 "{} {}  {} {}",
                 colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                one_line(&title_display),
+                shown_title(&title_display),
                 colored(&task.uuid, &[DIM], cli.no_color()),
                 label_str
             )?;
@@ -622,7 +622,7 @@ fn build_edit_plan(
         {
             return Err(format!(
                 "Item is a repeat template and takes no --when, --deadline or --move inbox, which belong to its instances: {}",
-                one_line(&task.title)
+                shown_title(&task.title)
             ));
         }
 

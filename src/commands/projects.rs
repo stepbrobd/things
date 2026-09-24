@@ -407,7 +407,7 @@ impl Command for ProjectsArgs {
                     out,
                     "{} {}  {}",
                     colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
-                    one_line(title),
+                    shown_title(title),
                     colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
@@ -429,7 +429,7 @@ impl Command for ProjectsArgs {
                     out,
                     "{} {}  {} {}",
                     colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                    one_line(title),
+                    shown_title(title),
                     colored(&plan.project.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),

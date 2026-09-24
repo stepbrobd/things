@@ -106,3 +106,44 @@ $ run.sh things reorder Hu --after-id Tp
 Item is a heading: (untitled)
 
 ```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 mark Hu --done
+? 1
+Item is a heading: (untitled)
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 delete Hu
+× Deleted (untitled)  Hu11111111111111111111  (with 1 item)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Hu11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "tr": true
+      },
+      "t": 1
+    },
+    "Tp11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "tr": true
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Xt --before-id Pu
+? 1
+Item is in the Trash: (untitled)
+
+```
