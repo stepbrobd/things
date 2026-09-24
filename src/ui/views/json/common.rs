@@ -328,7 +328,7 @@ fn task_to_json(task: &Task, store: &ThingsStore, today: &DateTime<Utc>) -> Reso
                 .collect(),
         },
         flags: TaskFlagsJson {
-            trashed: task.trashed,
+            trashed: store.in_trash(task),
             is_new: task.is_staged_for_today(today),
             instance_creation_paused: task.instance_creation_paused,
             leaves_tombstone: task.leaves_tombstone,

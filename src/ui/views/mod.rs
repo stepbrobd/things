@@ -10,4 +10,5 @@ pub mod projects;
 pub mod someday;
 pub mod tags;
 pub mod today;
+pub mod trash;
 pub mod upcoming;

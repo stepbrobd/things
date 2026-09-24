@@ -1,0 +1,300 @@
+```trycmd
+$ run.sh things --json trash
+[
+  {
+    "id": "Td11111111111111111111",
+    "short_id": "Td",
+    "title": "Return the old router",
+    "status": "incomplete",
+    "type": "todo",
+    "start": {
+      "bucket": "inbox",
+      "scheduled_at": null,
+      "reminder": null,
+      "today_index_reference": null,
+      "evening": false
+    },
+    "project": null,
+    "area": null,
+    "heading": null,
+    "tags": [],
+    "dates": {
+      "deadline_at": null,
+      "created_at": "2026-03-20T09:46:40+00:00",
+      "modified_at": "2026-03-24T11:00:00+00:00",
+      "completed_at": null
+    },
+    "notes": null,
+    "checklist": [],
+    "recurrence": {
+      "is_template": false,
+      "is_instance": false,
+      "rule": null,
+      "template_ids": []
+    },
+    "flags": {
+      "trashed": true,
+      "is_new": false,
+      "instance_creation_paused": false,
+      "leaves_tombstone": false,
+      "degraded": false
+    },
+    "indexes": {
+      "sort_index": 30,
+      "today_sort_index": 0
+    }
+  },
+  {
+    "id": "Pj11111111111111111111",
+    "short_id": "Pj",
+    "title": "Kitchen remodel",
+    "status": "incomplete",
+    "type": "project",
+    "start": {
+      "bucket": "anytime",
+      "scheduled_at": null,
+      "reminder": null,
+      "today_index_reference": null,
+      "evening": false
+    },
+    "project": null,
+    "area": {
+      "id": "Ar11111111111111111111",
+      "short_id": "A",
+      "title": "Home"
+    },
+    "heading": null,
+    "tags": [],
+    "dates": {
+      "deadline_at": null,
+      "created_at": "2026-03-20T09:46:40+00:00",
+      "modified_at": "2026-03-23T21:06:40+00:00",
+      "completed_at": null
+    },
+    "notes": null,
+    "checklist": [],
+    "recurrence": {
+      "is_template": false,
+      "is_instance": false,
+      "rule": null,
+      "template_ids": []
+    },
+    "flags": {
+      "trashed": true,
+      "is_new": false,
+      "instance_creation_paused": false,
+      "leaves_tombstone": false,
+      "degraded": false
+    },
+    "indexes": {
+      "sort_index": 10,
+      "today_sort_index": 0
+    },
+    "progress": {
+      "done": 1,
+      "total": 2
+    }
+  },
+  {
+    "id": "Ta11111111111111111111",
+    "short_id": "Ta",
+    "title": "Order tiles",
+    "status": "incomplete",
+    "type": "todo",
+    "start": {
+      "bucket": "anytime",
+      "scheduled_at": null,
+      "reminder": null,
+      "today_index_reference": null,
+      "evening": false
+    },
+    "project": {
+      "id": "Pj11111111111111111111",
+      "short_id": "Pj",
+      "title": "Kitchen remodel"
+    },
+    "area": {
+      "id": "Ar11111111111111111111",
+      "short_id": "A",
+      "title": "Home"
+    },
+    "heading": null,
+    "tags": [],
+    "dates": {
+      "deadline_at": null,
+      "created_at": "2026-03-20T09:46:40+00:00",
+      "modified_at": "2026-03-23T21:06:40+00:00",
+      "completed_at": null
+    },
+    "notes": null,
+    "checklist": [],
+    "recurrence": {
+      "is_template": false,
+      "is_instance": false,
+      "rule": null,
+      "template_ids": []
+    },
+    "flags": {
+      "trashed": true,
+      "is_new": false,
+      "instance_creation_paused": false,
+      "leaves_tombstone": false,
+      "degraded": false
+    },
+    "indexes": {
+      "sort_index": 1,
+      "today_sort_index": 0
+    }
+  },
+  {
+    "id": "Tb11111111111111111111",
+    "short_id": "Tb",
+    "title": "Call the plumber",
+    "status": "completed",
+    "type": "todo",
+    "start": {
+      "bucket": "anytime",
+      "scheduled_at": null,
+      "reminder": null,
+      "today_index_reference": null,
+      "evening": false
+    },
+    "project": {
+      "id": "Pj11111111111111111111",
+      "short_id": "Pj",
+      "title": "Kitchen remodel"
+    },
+    "area": {
+      "id": "Ar11111111111111111111",
+      "short_id": "A",
+      "title": "Home"
+    },
+    "heading": null,
+    "tags": [],
+    "dates": {
+      "deadline_at": null,
+      "created_at": "2026-03-20T09:46:40+00:00",
+      "modified_at": "2026-03-23T21:06:40+00:00",
+      "completed_at": "2026-03-21T13:33:20+00:00"
+    },
+    "notes": null,
+    "checklist": [],
+    "recurrence": {
+      "is_template": false,
+      "is_instance": false,
+      "rule": null,
+      "template_ids": []
+    },
+    "flags": {
+      "trashed": true,
+      "is_new": false,
+      "instance_creation_paused": false,
+      "leaves_tombstone": false,
+      "degraded": false
+    },
+    "indexes": {
+      "sort_index": 2,
+      "today_sort_index": 0
+    }
+  },
+  {
+    "id": "Tg11111111111111111111",
+    "short_id": "Tg",
+    "title": "Renew the permit",
+    "status": "incomplete",
+    "type": "todo",
+    "start": {
+      "bucket": "anytime",
+      "scheduled_at": null,
+      "reminder": null,
+      "today_index_reference": null,
+      "evening": false
+    },
+    "project": null,
+    "area": {
+      "id": "Ar11111111111111111111",
+      "short_id": "A",
+      "title": "Home"
+    },
+    "heading": null,
+    "tags": [],
+    "dates": {
+      "deadline_at": null,
+      "created_at": "2026-03-20T09:46:40+00:00",
+      "modified_at": "2026-03-23T07:13:20+00:00",
+      "completed_at": null
+    },
+    "notes": null,
+    "checklist": [],
+    "recurrence": {
+      "is_template": false,
+      "is_instance": false,
+      "rule": null,
+      "template_ids": []
+    },
+    "flags": {
+      "trashed": true,
+      "is_new": false,
+      "instance_creation_paused": false,
+      "leaves_tombstone": false,
+      "degraded": false
+    },
+    "indexes": {
+      "sort_index": 60,
+      "today_sort_index": 0
+    }
+  },
+  {
+    "id": "Tc11111111111111111111",
+    "short_id": "Tc",
+    "title": "Plant bulbs",
+    "status": "incomplete",
+    "type": "todo",
+    "start": {
+      "bucket": "anytime",
+      "scheduled_at": null,
+      "reminder": null,
+      "today_index_reference": null,
+      "evening": false
+    },
+    "project": {
+      "id": "Pk11111111111111111111",
+      "short_id": "Pk",
+      "title": "Garden"
+    },
+    "area": null,
+    "heading": {
+      "id": "Hd11111111111111111111",
+      "short_id": "H",
+      "title": "Spring"
+    },
+    "tags": [],
+    "dates": {
+      "deadline_at": null,
+      "created_at": "2026-03-20T09:46:40+00:00",
+      "modified_at": "2026-03-22T03:26:40+00:00",
+      "completed_at": null
+    },
+    "notes": null,
+    "checklist": [],
+    "recurrence": {
+      "is_template": false,
+      "is_instance": false,
+      "rule": null,
+      "template_ids": []
+    },
+    "flags": {
+      "trashed": true,
+      "is_new": false,
+      "instance_creation_paused": false,
+      "leaves_tombstone": false,
+      "degraded": false
+    },
+    "indexes": {
+      "sort_index": 1,
+      "today_sort_index": 0
+    }
+  }
+]
+
+```

@@ -1,0 +1,12 @@
+```trycmd
+$ run.sh things trash
+× Trash  (6 items)
+
+  Td ▢ Return the old router
+  Pj ◑ Kitchen remodel
+      Ta ▢ Order tiles
+      Tb ◼ Call the plumber
+  Tg ▢ Renew the permit
+  Tc ▢ Plant bulbs  [● Garden]
+
+```

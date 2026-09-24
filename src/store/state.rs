@@ -610,6 +610,26 @@ mod tests {
         assert_eq!(task.title, "Plant bulbs");
     }
 
+    #[test]
+    fn the_trash_lists_a_to_do_whose_trashed_container_is_no_project() {
+        // an update before any create leaves the container a partial to-do
+        let items = [
+            r#"{"Pj11111111111111111111":{"t":1,"e":"Task7","p":{"tr":true}}}"#,
+            r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Order tiles","st":1,"pr":["Pj11111111111111111111"]}}}"#,
+        ];
+        let store = ThingsStore::from_raw_state(&fold_items(items.map(wire_item)));
+        let listed = store
+            .trash()
+            .iter()
+            .flat_map(|(entry, held)| std::iter::once(entry).chain(held))
+            .map(|task| task.uuid.to_string())
+            .collect::<Vec<_>>();
+        assert!(
+            listed.contains(&"Ta11111111111111111111".to_string()),
+            "{listed:?}"
+        );
+    }
+
     fn task6_create() -> WireItem {
         wire_item(&format!(
             r#"{{"{TASK_ID}":{{"t":0,"e":"Task6","p":{{"tt":"Send tracking number","tp":0,"ss":0,"st":1,"cd":1.0,"md":1.0}}}}}}"#

@@ -17,6 +17,7 @@ pub mod show;
 pub mod someday;
 pub mod tags;
 pub mod today;
+pub mod trash;
 pub mod upcoming;
 
 use anyhow::{Result, bail};
@@ -92,6 +93,8 @@ pub enum Commands {
     Someday(someday::SomedayArgs),
     #[command(about = "Show the Logbook")]
     Logbook(logbook::LogbookArgs),
+    #[command(about = "Show the Trash")]
+    Trash(trash::TrashArgs),
     #[command(about = "Show, create, or edit projects")]
     Projects(projects::ProjectsArgs),
     #[command(about = "Show all tasks in a project")]
@@ -110,7 +113,7 @@ pub enum Commands {
     Mark(mark::MarkArgs),
     #[command(about = "Reorder item relative to another item")]
     Reorder(reorder::ReorderArgs),
-    #[command(about = "Delete tasks/projects/headings/areas")]
+    #[command(about = "Move to-dos, projects and headings to the Trash, or delete an area")]
     Delete(delete::DeleteArgs),
     #[command(about = "Configure Things Cloud credentials")]
     Auth(auth::AuthArgs),
@@ -136,6 +139,7 @@ impl Command for Commands {
             Commands::Anytime(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Someday(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Logbook(args) => args.run_with_ctx(cli, out, ctx),
+            Commands::Trash(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Projects(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Project(args) => args.run_with_ctx(cli, out, ctx),
             Commands::Areas(args) => args.run_with_ctx(cli, out, ctx),

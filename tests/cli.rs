@@ -95,6 +95,11 @@ fn today() {
 }
 
 #[test]
+fn trash() {
+    cases("tests/cli/trash/**/*.trycmd");
+}
+
+#[test]
 fn upcoming() {
     cases("tests/cli/upcoming/**/*.trycmd");
 }

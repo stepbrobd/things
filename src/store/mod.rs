@@ -101,13 +101,21 @@ impl ThingsStore {
 
         for task in self.tasks_by_uuid.values() {
             // a template stands for instances still to come, it is no to-do of the project yet
-            if task.trashed || !task.is_todo() || task.is_recurrence_template() {
+            if !task.is_todo() || task.is_recurrence_template() {
                 continue;
             }
 
             let Some(project_uuid) = self.effective_project_uuid(task) else {
                 continue;
             };
+            // a to-do in the Trash counts for a project in the Trash alone
+            let project_trashed = self
+                .tasks_by_uuid
+                .get(&project_uuid)
+                .is_some_and(|project| project.trashed);
+            if self.in_trash(task) && !project_trashed {
+                continue;
+            }
 
             *totals.entry(project_uuid.clone()).or_insert(0) += 1;
             if task.is_completed() {
@@ -463,6 +471,51 @@ impl ThingsStore {
             (Reverse(stop_key), Reverse(t.index), t.uuid.clone())
         });
         out
+    }
+
+    /// the Trash as the app lists it, most recently changed first, each trashed project with the to-dos it took along
+    pub fn trash(&self) -> Vec<(Task, Vec<Task>)> {
+        let in_trashed_project = |task: &Task| {
+            self.effective_project_uuid(task)
+                .and_then(|id| self.tasks_by_uuid.get(&id))
+                .is_some_and(|project| project.trashed && project.is_project())
+        };
+        let mut entries: Vec<&Task> = self
+            .tasks_by_uuid
+            .values()
+            .filter(|task| !task.is_heading() && self.in_trash(task) && !in_trashed_project(task))
+            .collect();
+        entries.sort_by(|a, b| {
+            (Reverse(a.modification_date), a.index, &a.uuid).cmp(&(
+                Reverse(b.modification_date),
+                b.index,
+                &b.uuid,
+            ))
+        });
+        entries
+            .into_iter()
+            .map(|entry| {
+                let mut held: Vec<Task> = if entry.is_project() {
+                    self.tasks_by_uuid
+                        .values()
+                        .filter(|task| {
+                            !task.is_heading()
+                                && self.effective_project_uuid(task).as_ref() == Some(&entry.uuid)
+                        })
+                        .cloned()
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                held.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
+                (entry.clone(), held)
+            })
+            .collect()
+    }
+
+    /// in the Trash itself or through a trashed project or heading
+    pub fn in_trash(&self, task: &Task) -> bool {
+        task.trashed || self.in_trashed_container(task)
     }
 
     /// under a trashed heading or in a trashed project, which puts a to-do in the Trash along with them
