@@ -1,0 +1,9 @@
+```trycmd
+$ run.sh things area Aa --all
+◆ Home  (3 projects)
+
+  Pa ◯ Paint the fence
+  Pb ☒ Build a shed
+  Pc ✓ Fix the gate
+
+```

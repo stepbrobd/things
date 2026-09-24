@@ -64,6 +64,22 @@ fn project_progress(project: &Task, store: &ThingsStore) -> Progress {
     let total = progress.total;
     let done = progress.done;
 
+    // a closed project shows how it closed, as a closed to-do does
+    if project.is_completed() {
+        return Progress {
+            marker: ICONS.done,
+            total,
+            done,
+        };
+    }
+    if project.is_canceled() {
+        return Progress {
+            marker: ICONS.canceled,
+            total,
+            done,
+        };
+    }
+
     // a someday project keeps its own marker and still counts its to-dos
     if project.in_someday() {
         return Progress {
