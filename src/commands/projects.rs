@@ -103,6 +103,48 @@ struct ProjectsEditPlan {
     labels: Vec<String>,
 }
 
+/// the area `target` names for a project, or why a project cannot go there
+///
+/// `flag` names the option in messages
+/// `places` says where a project can go
+fn resolve_project_area(
+    store: &crate::store::ThingsStore,
+    target: &str,
+    flag: &str,
+    places: &str,
+) -> std::result::Result<ThingsId, String> {
+    let (item, _, item_candidates) = store.resolve_task_identifier(target);
+    let (area, _, area_candidates) = store.resolve_area_identifier(target);
+    if !item_candidates.is_empty() {
+        return Err(format!(
+            "Ambiguous {flag} target '{target}' (matches several items)."
+        ));
+    }
+    if !area_candidates.is_empty() {
+        return Err(format!(
+            "Ambiguous {flag} target '{target}' (matches several areas)."
+        ));
+    }
+    match (item, area) {
+        (Some(_), Some(_)) => Err(format!(
+            "Ambiguous {flag} target '{target}' (matches an item and an area)."
+        )),
+        // a project, heading or to-do is no place for a project, wherever it is
+        (Some(item), None) => Err(format!(
+            "Container is {}, and projects go into {places}: {}",
+            kind_with_article(&item),
+            shown_title(&item.title)
+        )),
+        // an area that did not replay completely may not be what it shows
+        (None, Some(area)) if area.degraded => Err(format!(
+            "Container did not replay completely: {}",
+            shown_title(&area.title)
+        )),
+        (None, Some(area)) => Ok(area.uuid),
+        (None, None) => Err(format!("Container not found: {target}")),
+    }
+}
+
 fn build_projects_edit_plan(
     args: &ProjectsEditArgs,
     store: &crate::store::ThingsStore,
@@ -158,45 +200,9 @@ fn build_projects_edit_plan(
             update.area_ids = Some(vec![]);
             labels.push("move=clear".to_string());
         } else {
-            let (item, _, item_candidates) = store.resolve_task_identifier(move_raw);
-            let (area, _, area_candidates) = store.resolve_area_identifier(move_raw);
-            if !item_candidates.is_empty() {
-                return Err(format!(
-                    "Ambiguous --move target '{move_raw}' (matches several items)."
-                ));
-            }
-            if !area_candidates.is_empty() {
-                return Err(format!(
-                    "Ambiguous --move target '{move_raw}' (matches several areas)."
-                ));
-            }
-            match (item, area) {
-                (Some(_), Some(_)) => {
-                    return Err(format!(
-                        "Ambiguous --move target '{move_raw}' (matches an item and an area)."
-                    ));
-                }
-                // a project, heading or to-do is no place for a project, wherever it is
-                (Some(item), None) => {
-                    return Err(format!(
-                        "Container is {}, and projects go into an area or clear: {}",
-                        kind_with_article(&item),
-                        shown_title(&item.title)
-                    ));
-                }
-                // an area that did not replay completely may not be what it shows
-                (None, Some(area)) if area.degraded => {
-                    return Err(format!(
-                        "Container did not replay completely: {}",
-                        shown_title(&area.title)
-                    ));
-                }
-                (None, Some(area)) => {
-                    update.area_ids = Some(vec![area.uuid]);
-                    labels.push(format!("move={move_raw}"));
-                }
-                (None, None) => return Err(format!("Container not found: {move_raw}")),
-            }
+            let area = resolve_project_area(store, move_raw, "--move", "an area or clear")?;
+            update.area_ids = Some(vec![area]);
+            labels.push(format!("move={move_raw}"));
         }
     }
 
@@ -341,18 +347,9 @@ impl Command for ProjectsArgs {
                 };
 
                 if let Some(area_id) = &args.area {
-                    let (area_opt, err, _) = store.resolve_area_identifier(area_id);
-                    let Some(area) = area_opt else {
-                        bail!("{err}");
-                    };
-                    // an area that did not replay completely may not be what it shows
-                    if area.degraded {
-                        bail!(
-                            "Container did not replay completely: {}",
-                            shown_title(&area.title)
-                        );
-                    }
-                    props.area_ids = vec![area.uuid];
+                    let area = resolve_project_area(&store, area_id, "--area", "an area")
+                        .map_err(anyhow::Error::msg)?;
+                    props.area_ids = vec![area];
                 }
 
                 if let Some(when_raw) = &args.when {

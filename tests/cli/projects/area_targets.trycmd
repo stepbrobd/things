@@ -1,0 +1,34 @@
+```trycmd
+$ run.sh things projects new Porch --area Ta
+? 1
+Container is a to-do, and projects go into an area: Buy paint
+
+```
+
+```trycmd
+$ run.sh things projects new Porch --area Ab2
+? 1
+Container is a project, and projects go into an area: Kitchen
+
+```
+
+```trycmd
+$ run.sh things projects new Porch --area Ab
+? 1
+Ambiguous --area target 'Ab' (matches an item and an area).
+
+```
+
+```trycmd
+$ run.sh things projects new Porch --area Zq
+? 1
+Container not found: Zq
+
+```
+
+```trycmd
+$ run.sh things projects edit Ab2 --move Ta
+? 1
+Container is a to-do, and projects go into an area or clear: Buy paint
+
+```
