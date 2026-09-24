@@ -336,17 +336,7 @@ impl ThingsStore {
         let mut out: Vec<Task> = self
             .tasks_by_uuid
             .values()
-            .filter(|t| {
-                !t.trashed
-                    && t.status == TaskStatus::Incomplete
-                    && t.start == TaskStart::Inbox
-                    && self.effective_project_uuid(t).is_none()
-                    && self.effective_area_uuid(t).is_none()
-                    && !t.is_project()
-                    && !t.is_heading()
-                    && !t.is_blank()
-                    && t.creation_date.is_some()
-            })
+            .filter(|t| self.in_inbox(t))
             .cloned()
             .collect();
         out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
@@ -497,6 +487,21 @@ impl ThingsStore {
                 (entry.clone(), held)
             })
             .collect()
+    }
+
+    /// in the Inbox list as the Inbox view reads it
+    ///
+    /// a marked object without a create shows here as elsewhere
+    /// a capture that is done, canceled or in the Trash is out of it
+    pub fn in_inbox(&self, task: &Task) -> bool {
+        task.status == TaskStatus::Incomplete
+            && task.start == TaskStart::Inbox
+            && !self.in_trash(task)
+            && self.effective_project_uuid(task).is_none()
+            && self.effective_area_uuid(task).is_none()
+            && !task.is_project()
+            && !task.is_heading()
+            && !task.is_blank()
     }
 
     /// in the Today list as the Today view reads it

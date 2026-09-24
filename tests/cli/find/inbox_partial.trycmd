@@ -1,0 +1,19 @@
+```trycmd
+$ run.sh things inbox
+⬓ Inbox  (2 tasks)
+
+  Ta ▢ Partial capture
+  Tb ▢ Inbox item
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
+
+```trycmd
+$ run.sh things find --inbox
+⌕ Find  (2 tasks)
+
+  Ta ▢ Partial capture
+  Tb ▢ Inbox item
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```

@@ -25,6 +25,12 @@ No matching tasks.
 ```
 
 ```trycmd
+$ run.sh things find --trashed --inbox
+No matching tasks.
+
+```
+
+```trycmd
 $ run.sh things find --inbox --any-status
 No matching tasks.
 

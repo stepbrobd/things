@@ -19,7 +19,7 @@ use crate::{
             json::common::build_tasks_json,
         },
     },
-    wire::task::{TaskStart, TaskStatus},
+    wire::task::TaskStatus,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -473,23 +473,16 @@ fn matches(
     }
 
     // each view filter takes what its view lists
-    // no view lists a blank or closed to-do or what is in the Trash
-    if (args.inbox || args.someday)
-        && (task.is_blank() || task.status != TaskStatus::Incomplete || store.in_trash(task))
-    {
-        return MatchResult::no();
-    }
-    let in_inbox = task.start == TaskStart::Inbox
-        && store.effective_project_uuid(task).is_none()
-        && store.effective_area_uuid(task).is_none();
-    if args.inbox && !in_inbox {
+    if args.inbox && !store.in_inbox(task) {
         return MatchResult::no();
     }
     if args.today && !store.in_today(task, today) {
         return MatchResult::no();
     }
-    // Someday leaves out a to-do inside a project and what is in the Trash
-    let in_someday = task.in_someday()
+    // Someday leaves out a blank or closed to-do, a repeat template, a to-do inside a project and what is in the Trash
+    let in_someday = task.status == TaskStatus::Incomplete
+        && task.in_someday()
+        && !task.is_blank()
         && !store.in_trash(task)
         && !task.is_recurrence_template()
         && (task.is_project() || store.effective_project_uuid(task).is_none());
