@@ -1,0 +1,6 @@
+```trycmd
+$ run.sh things new "Wind down" --when evening --after Tc
+? 1
+--when evening and an anchor in the day section of Today disagree.
+
+```

@@ -418,6 +418,14 @@ fn build_new_plan(
         let mut section_evening = if props.evening_bit != 0 { 1 } else { 0 };
 
         if anchor_is_today && let Some(anchor) = &anchor {
+            // the anchor names the section
+            // an evening that disagrees is refused rather than dropped
+            if props.evening_bit != 0 && !anchor.evening {
+                return Err(
+                    "--when evening and an anchor in the day section of Today disagree."
+                        .to_string(),
+                );
+            }
             section_evening = if anchor.evening { 1 } else { 0 };
             props.evening_bit = section_evening;
         }
