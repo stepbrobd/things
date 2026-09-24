@@ -486,3 +486,48 @@ fn bad_log_directive_with_closed_stderr() {
         .expect("things runs");
     assert_eq!(status.code(), Some(0));
 }
+
+/// a log setting that cannot apply is reported
+///
+/// the command runs on with the default in its place
+#[cfg(unix)]
+#[test]
+fn unread_log_settings_are_reported() {
+    use std::os::unix::ffi::OsStringExt;
+    let home = tempfile::tempdir().expect("tempdir");
+    let journal = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("cli")
+        .join("today")
+        .join("basic_list.in")
+        .join("journal.json");
+    let run = |name: &str, value: std::ffi::OsString| {
+        let output = std::process::Command::new(env!("CARGO_BIN_EXE_things"))
+            .args(["--no-cloud", "--load-journal"])
+            .arg(&journal)
+            .args(["--today-ts", "1774396800", "today"])
+            .env("XDG_CONFIG_HOME", home.path().join("config"))
+            .env("XDG_STATE_HOME", home.path().join("state"))
+            .env_remove("THINGS_LOG")
+            .env_remove("THINGS_LOG_FORMAT")
+            .env(name, value)
+            .output()
+            .expect("things runs");
+        assert_eq!(output.status.code(), Some(0));
+        String::from_utf8_lossy(&output.stderr).into_owned()
+    };
+    assert_eq!(
+        run("THINGS_LOG_FORMAT", "JSON".into()),
+        "THINGS_LOG_FORMAT is ignored: \"JSON\" is not pretty, simplified or json\n"
+    );
+    assert_eq!(
+        run("THINGS_LOG", std::ffi::OsString::from_vec(vec![0xff])),
+        "THINGS_LOG is ignored: \"\\xFF\" is not valid UTF-8\n"
+    );
+    let unparsed = run("THINGS_LOG", "things=nope".into());
+    assert!(
+        unparsed.starts_with("THINGS_LOG is ignored: "),
+        "{unparsed}"
+    );
+    assert_eq!(unparsed.lines().count(), 1, "{unparsed}");
+}

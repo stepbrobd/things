@@ -1,4 +1,4 @@
-use std::{io::IsTerminal, sync::OnceLock};
+use std::{env::VarError, io::IsTerminal, sync::OnceLock};
 
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, Layer, prelude::*};
@@ -17,6 +17,7 @@ pub enum LogFormat {
 /// THINGS_LOG holds a filter directive
 ///
 /// THINGS_LOG_FORMAT holds one of pretty, simplified or json
+/// a value that cannot apply is reported and ignored
 pub fn init() {
     static INIT: OnceLock<()> = OnceLock::new();
     let _ = INIT.get_or_init(|| {
@@ -24,11 +25,20 @@ pub fn init() {
             .with_writer(std::io::stderr)
             .with_target(true);
 
-        let log_format = match std::env::var("THINGS_LOG_FORMAT").as_deref() {
-            Ok("pretty") => LogFormat::Pretty,
-            Ok("simplified") => LogFormat::Simplified,
-            Ok("json") => LogFormat::Json,
-            _ => LogFormat::Auto,
+        let log_format = match std::env::var_os("THINGS_LOG_FORMAT") {
+            None => LogFormat::Auto,
+            Some(value) => match value.to_str() {
+                Some("") => LogFormat::Auto,
+                Some("pretty") => LogFormat::Pretty,
+                Some("simplified") => LogFormat::Simplified,
+                Some("json") => LogFormat::Json,
+                _ => {
+                    eprint_line(&format!(
+                        "THINGS_LOG_FORMAT is ignored: {value:?} is not pretty, simplified or json"
+                    ));
+                    LogFormat::Auto
+                }
+            },
         };
         let terminal = std::io::stderr().is_terminal();
         let color = terminal && !crate::common::no_color_requested();
@@ -51,7 +61,16 @@ pub fn init() {
 
         // warnings name the objects and repairs behind a notice already printed
         // they wait for THINGS_LOG
-        let directive = std::env::var("THINGS_LOG").unwrap_or_default();
+        let directive = match std::env::var("THINGS_LOG") {
+            Ok(directive) => directive,
+            Err(VarError::NotPresent) => String::new(),
+            Err(VarError::NotUnicode(value)) => {
+                eprint_line(&format!(
+                    "THINGS_LOG is ignored: {value:?} is not valid UTF-8"
+                ));
+                String::new()
+            }
+        };
         let builder = EnvFilter::builder().with_default_directive(LevelFilter::ERROR.into());
         // a directive that does not parse is reported through eprint_line
         // the library's own report would panic on a closed stderr
