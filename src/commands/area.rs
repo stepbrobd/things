@@ -7,7 +7,7 @@ use iocraft::prelude::*;
 use crate::{
     app::Cli,
     commands::{Command, detailed_json_conflict, write_json},
-    common::ICONS,
+    common::{ICONS, one_line},
     ui::{
         render_element_to_string,
         views::{area::AreaView, json::common::build_tasks_json},
@@ -41,7 +41,14 @@ impl Command for AreaArgs {
         let Some(area) = area_opt else {
             let candidates = ambiguous
                 .iter()
-                .map(|area| format!("\n  {} {}  ({})", ICONS.area, area.title, area.uuid))
+                .map(|area| {
+                    format!(
+                        "\n  {} {}  ({})",
+                        ICONS.area,
+                        one_line(&area.title),
+                        area.uuid
+                    )
+                })
                 .collect::<String>();
             bail!("{err}{candidates}");
         };

@@ -4,7 +4,7 @@ use chrono::{DateTime, Utc};
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, one_line},
     store::{Task, ThingsStore},
     ui::components::{deadline_badge::DeadlineBadge, tags_badge::TagsBadge},
 };
@@ -100,7 +100,7 @@ fn title_element<'a>(task: &Task) -> AnyElement<'a> {
         return element!(Text(content: "(untitled)", color: Color::DarkGrey)).into_any();
     }
 
-    let content = task.title.clone();
+    let content = one_line(&task.title);
     element!(Text(content: content)).into_any()
 }
 
@@ -113,7 +113,7 @@ fn context_element<'a>(
     if show_project && let Some(proj) = store.effective_project_uuid(task) {
         let title = store.resolve_project_title(&proj);
         return element! {
-            Text(content: format!("[{} {}]", ICONS.project, title), color: Color::DarkGrey)
+            Text(content: format!("[{} {}]", ICONS.project, one_line(&title)), color: Color::DarkGrey)
         }
         .into_any();
     }
@@ -121,7 +121,7 @@ fn context_element<'a>(
     if show_area && let Some(area) = store.effective_area_uuid(task) {
         let title = store.resolve_area_title(&area);
         return element! {
-            Text(content: format!("[{} {}]", ICONS.area, title), color: Color::DarkGrey)
+            Text(content: format!("[{} {}]", ICONS.area, one_line(&title)), color: Color::DarkGrey)
         }
         .into_any();
     }

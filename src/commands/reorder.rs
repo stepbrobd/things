@@ -10,7 +10,7 @@ use clap::{ArgGroup, Args};
 use crate::{
     app::Cli,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored},
+    common::{DIM, GREEN, ICONS, colored, one_line},
     ids::ThingsId,
     ordering::{allocate, today_group},
     wire::{
@@ -155,12 +155,16 @@ fn build_reorder_plan(
         let reorder_label = if args.before_id.is_some() {
             format!(
                 "(before={}, today_ref={}, today_index={})",
-                anchor.title, anchor_tir, new_ti
+                one_line(&anchor.title),
+                anchor_tir,
+                new_ti
             )
         } else {
             format!(
                 "(after={}, today_ref={}, today_index={})",
-                anchor.title, anchor_tir, new_ti
+                one_line(&anchor.title),
+                anchor_tir,
+                new_ti
             )
         };
 
@@ -288,9 +292,9 @@ fn build_reorder_plan(
     }
 
     let reorder_label = if args.before_id.is_some() {
-        format!("(before={}, index={})", anchor.title, new_index)
+        format!("(before={}, index={})", one_line(&anchor.title), new_index)
     } else {
-        format!("(after={}, index={})", anchor.title, new_index)
+        format!("(after={}, index={})", one_line(&anchor.title), new_index)
     };
 
     Ok(ReorderPlan {
@@ -322,7 +326,7 @@ impl Command for ReorderArgs {
                 &[GREEN],
                 cli.no_color()
             ),
-            plan.item.title,
+            one_line(&plan.item.title),
             colored(&plan.item.uuid, &[DIM], cli.no_color()),
             colored(&plan.reorder_label, &[DIM], cli.no_color())
         )?;

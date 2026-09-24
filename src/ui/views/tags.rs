@@ -2,7 +2,12 @@ use std::collections::BTreeMap;
 
 use iocraft::prelude::*;
 
-use crate::{common::ICONS, ids::ThingsId, store::Tag, ui::components::empty_text::EmptyText};
+use crate::{
+    common::{ICONS, one_line},
+    ids::ThingsId,
+    store::Tag,
+    ui::components::empty_text::EmptyText,
+};
 
 #[derive(Default, Props)]
 pub struct TagsViewProps {
@@ -24,7 +29,7 @@ pub fn TagsView<'a>(props: &'a TagsViewProps) -> impl Into<AnyElement<'a>> {
                 View(flex_direction: FlexDirection::Row, gap: 0, padding_left: 2) {
                     Text(content: ICONS.tag, color: Color::DarkGrey, wrap: TextWrap::NoWrap)
                     Text(content: " ", wrap: TextWrap::NoWrap)
-                    Text(content: tag.title.clone(), wrap: TextWrap::NoWrap)
+                    Text(content: one_line(&tag.title), wrap: TextWrap::NoWrap)
                     #(shortcut_element(tag))
                 }
             }
@@ -52,7 +57,7 @@ pub fn TagsView<'a>(props: &'a TagsViewProps) -> impl Into<AnyElement<'a>> {
 fn shortcut_element<'a>(tag: &Tag) -> Option<AnyElement<'a>> {
     tag.shortcut.as_ref().map(|shortcut| {
         element! {
-            Text(content: format!("  [{shortcut}]"), color: Color::DarkGrey, wrap: TextWrap::NoWrap)
+            Text(content: format!("  [{}]", one_line(shortcut)), color: Color::DarkGrey, wrap: TextWrap::NoWrap)
         }
         .into_any()
     })
@@ -76,7 +81,7 @@ fn render_subtags<'a>(
                     Text(content: connector, color: Color::DarkGrey, wrap: TextWrap::NoWrap)
                     Text(content: ICONS.tag, color: Color::DarkGrey, wrap: TextWrap::NoWrap)
                     Text(content: " ", wrap: TextWrap::NoWrap)
-                    Text(content: tag.title.clone(), wrap: TextWrap::NoWrap)
+                    Text(content: one_line(&tag.title), wrap: TextWrap::NoWrap)
                     #(shortcut_element(tag))
                 }
             }

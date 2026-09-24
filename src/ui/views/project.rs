@@ -3,6 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
+    common::one_line,
     store::{Task, ThingsStore},
     ui::components::{
         deadline_badge::DeadlineBadge,
@@ -61,7 +62,7 @@ pub fn ProjectView<'a>(hooks: Hooks, props: &ProjectViewProps<'a>) -> impl Into<
         .lines()
         .map(|line| {
             element! {
-                Text(content: line, wrap: TextWrap::NoWrap, color: Color::DarkGrey)
+                Text(content: one_line(line), wrap: TextWrap::NoWrap, color: Color::DarkGrey)
             }
             .into_any()
         })
@@ -111,7 +112,7 @@ pub fn ProjectView<'a>(hooks: Hooks, props: &ProjectViewProps<'a>) -> impl Into<
             #(props.heading_groups.iter().map(|group| element! {
                 View(flex_direction: FlexDirection::Column) {
                     Text(content: "", wrap: TextWrap::NoWrap)
-                    Text(content: format!("  {}", group.title), wrap: TextWrap::NoWrap, weight: Weight::Bold)
+                    Text(content: format!("  {}", one_line(&group.title)), wrap: TextWrap::NoWrap, weight: Weight::Bold)
                     View(flex_direction: FlexDirection::Column, padding_left: 4) {
                         TaskList(items: group.items.clone(), id_prefix_len, options)
                     }

@@ -12,7 +12,7 @@ use crate::{
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs},
     common::{
-        DIM, GREEN, ICONS, colored, day_of, day_timestamp, parse_day, parse_instant,
+        DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day, parse_instant,
         parse_reminder, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
@@ -427,7 +427,7 @@ impl Command for EditArgs {
                 out,
                 "{} {}  {} {}",
                 colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                title_display,
+                one_line(&title_display),
                 colored(&task.uuid, &[DIM], cli.no_color()),
                 label_str
             )?;

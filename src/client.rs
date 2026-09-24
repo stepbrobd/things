@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 use tracing::debug;
 use urlencoding::encode;
 
-use crate::wire::wire_object::WireObject;
+use crate::{common::one_line, wire::wire_object::WireObject};
 
 const BASE_URL: &str = "https://cloud.culturedcode.com/version/1";
 const USER_AGENT: &str = "ThingsMac/32209501";
@@ -51,6 +51,17 @@ impl fmt::Display for HttpStatus {
 }
 
 impl std::error::Error for HttpStatus {}
+
+impl HttpStatus {
+    /// the answer as a message shows it, capped and on one line
+    fn new(status: u16, label: &str, text: &str) -> Self {
+        Self {
+            status,
+            label: label.to_string(),
+            body: one_line(&text.chars().take(300).collect::<String>()),
+        }
+    }
+}
 
 #[derive(Clone)]
 pub struct ThingsCloudClient {
@@ -131,12 +142,7 @@ impl ThingsCloudClient {
             })?;
         debug!(target: "things::cloud", request = label, status = status.as_u16(), elapsed = ?started.elapsed(), "answered");
         if !status.is_success() {
-            return Err(HttpStatus {
-                status: status.as_u16(),
-                label: label.to_string(),
-                body: text.chars().take(300).collect(),
-            }
-            .into());
+            return Err(HttpStatus::new(status.as_u16(), label, &text).into());
         }
         if text.trim().is_empty() {
             return Ok(json!({}));
@@ -211,5 +217,21 @@ impl ThingsCloudClient {
             .unwrap_or(idx);
         self.head_index = new_index;
         Ok(new_index)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn an_error_body_stays_on_one_line() {
+        let shown = HttpStatus::new(
+            401,
+            "the account",
+            "denied\n2026-09-24T08:00:00Z  WARN things::replay: forged\r\u{1b}[8m",
+        )
+        .to_string();
+        assert!(!shown.contains(['\n', '\r', '\u{1b}']), "{shown:?}");
     }
 }

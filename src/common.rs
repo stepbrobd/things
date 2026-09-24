@@ -192,19 +192,71 @@ pub fn parse_reminder(time: &str) -> Result<i64, String> {
         .map_err(|_| format!("Invalid --reminder time: {time} (expected HH:MM)"))
 }
 
-/// text for the terminal, the CLI's own SGR colors pass, the other C0 controls and DEL show in caret notation, C1 and the bidi controls as U+FFFD
+/// how `sanitized` shows the text it is given
+#[derive(PartialEq)]
+enum Shown {
+    /// the output on a terminal that shows colors
+    ///
+    /// the CLI's own SGR sequences pass
+    Colored,
+    /// text without colors of its own
+    ///
+    /// errors and output off a terminal
+    Plain,
+    /// JSON
+    ///
+    /// its escapes decode to the same text
+    Json,
+    /// one field of cloud text
+    ///
+    /// kept on its line
+    Field,
+}
+
+/// the finished output on a terminal that shows colors
 ///
-/// titles and notes come from the cloud, where anyone who can mail a to-do into the inbox writes them
+/// the CLI's own SGR colors pass
+/// other C0 controls and DEL show in caret notation
+/// C1 and the bidi controls show as U+FFFD
+/// titles and notes come from the cloud
+/// anyone who can mail a to-do into the Inbox writes them there
+/// the text they add passes `one_line` before it gets here
+/// that keeps their escape sequences out
 pub fn printable(text: &str) -> String {
-    sanitized(text, false)
+    sanitized(text, Shown::Colored)
 }
 
-/// JSON for the terminal, where the controls `serde_json` writes raw leave as `\u` escapes that decode to the same text
+/// errors and output without colors
+///
+/// no escape sequence passes
+/// the CLI adds none
+pub fn printable_plain(text: &str) -> String {
+    sanitized(text, Shown::Plain)
+}
+
+/// JSON for the terminal
+///
+/// the controls `serde_json` writes raw leave as `\u` escapes that decode to the same text
 pub fn printable_json(text: &str) -> String {
-    sanitized(text, true)
+    sanitized(text, Shown::Json)
 }
 
-fn sanitized(text: &str, json: bool) -> String {
+/// one field of cloud text, a title for instance, for a line of terminal output
+///
+/// every control character shows escaped, line breaks and escape sequences included
+pub fn one_line(text: &str) -> String {
+    sanitized(text, Shown::Field)
+}
+
+/// a note from the cloud for the terminal
+///
+/// each line passes `one_line`
+/// the layout then breaks the note at its own line breaks alone
+pub fn note_lines(text: &str) -> String {
+    text.lines().map(one_line).collect::<Vec<_>>().join("\n")
+}
+
+fn sanitized(text: &str, shown: Shown) -> String {
     let mut out = String::with_capacity(text.len());
     let mut skip_to = 0;
     for (at, c) in text.char_indices() {
@@ -212,16 +264,17 @@ fn sanitized(text: &str, json: bool) -> String {
             continue;
         }
         match c {
-            '\n' | '\t' => out.push(c),
-            '\u{1b}' => match sgr(&text[at..]) {
+            '\n' | '\t' if shown != Shown::Field => out.push(c),
+            '\u{1b}' if matches!(shown, Shown::Colored | Shown::Json) => match sgr(&text[at..]) {
                 Some(sequence) => {
                     out.push_str(sequence);
                     skip_to = at + sequence.len();
                 }
                 None => out.push_str("^["),
             },
-            // serde_json escapes c0 alone, del, c1 and the bidi controls stand raw in its strings
-            c if json && (c == '\u{7f}' || replaced(c)) => {
+            // serde_json escapes C0 alone
+            // DEL, C1 and the bidi controls stand raw in its strings
+            c if shown == Shown::Json && (c == '\u{7f}' || replaced(c)) => {
                 let _ = write!(out, "\\u{:04x}", u32::from(c));
             }
             '\u{7f}' => out.push_str("^?"),
@@ -230,6 +283,8 @@ fn sanitized(text: &str, json: bool) -> String {
                 out.push(char::from(c as u8 + 0x40));
             }
             c if replaced(c) => out.push('\u{fffd}'),
+            // the line and paragraph separators end a row in the layout
+            '\u{2028}' | '\u{2029}' if shown == Shown::Field => out.push('\u{fffd}'),
             c => out.push(c),
         }
     }
@@ -344,8 +399,8 @@ mod tests {
     use chrono::{FixedOffset, Local, NaiveTime, TimeZone, Utc};
 
     use super::{
-        day_of, day_timestamp, local_date_as_utc_midnight, parse_day, parse_instant, printable,
-        printable_json,
+        day_of, day_timestamp, local_date_as_utc_midnight, note_lines, one_line, parse_day,
+        parse_instant, printable, printable_json, printable_plain,
     };
 
     #[test]
@@ -361,6 +416,35 @@ mod tests {
         assert_eq!(
             printable("Invoice \u{202e}fdp.exe\u{202c} \u{2067}x\u{2069}"),
             "Invoice \u{fffd}fdp.exe\u{fffd} \u{fffd}x\u{fffd}"
+        );
+    }
+
+    #[test]
+    fn output_without_colors_passes_no_escape_sequence() {
+        assert_eq!(
+            printable_plain("A\u{1b}[8mB\u{1b}[0m\tnote\r\nnext"),
+            "A^[[8mB^[[0m\tnote^M\nnext"
+        );
+    }
+
+    #[test]
+    fn a_note_keeps_its_own_lines_and_escapes_the_rest() {
+        assert_eq!(
+            note_lines("bring photos\rand the passport\nlandlord\u{2028}IBAN\u{85}lease"),
+            "bring photos^Mand the passport\nlandlord\u{fffd}IBAN\u{fffd}lease"
+        );
+        // an ESC before a sequence that a stripper removes would join what follows
+        assert_eq!(
+            note_lines("plan \u{1b}\u{1b}[31m[8mconcealed"),
+            "plan ^[^[[31m[8mconcealed"
+        );
+    }
+
+    #[test]
+    fn a_field_stays_on_its_line_without_escape_sequences() {
+        assert_eq!(
+            one_line("Renew\nKind: to-do, done\r\u{1b}[8m\t\u{85}\u{2028}\u{202e}"),
+            "Renew^JKind: to-do, done^M^[[8m^I\u{fffd}\u{fffd}\u{fffd}"
         );
     }
 

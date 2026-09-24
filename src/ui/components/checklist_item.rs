@@ -1,6 +1,10 @@
 use iocraft::prelude::*;
 
-use crate::{common::ICONS, store::ChecklistItem, ui::components::id::Id};
+use crate::{
+    common::{ICONS, one_line},
+    store::ChecklistItem,
+    ui::components::id::Id,
+};
 
 /// one checklist item row
 ///
@@ -46,7 +50,7 @@ pub fn CheckListRow<'a>(props: &CheckListRowProps<'a>) -> impl Into<AnyElement<'
         }
         View(flex_direction: FlexDirection::Row, gap: 1) {
             Text(content: checklist_icon(item), color: Color::DarkGrey)
-            Text(content: item.title.clone())
+            Text(content: one_line(&item.title))
         }
     })
     .into_any()

@@ -7,7 +7,9 @@ use iocraft::prelude::*;
 use crate::{
     app::Cli,
     commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
-    common::{DIM, GREEN, ICONS, colored, day_timestamp, parse_day, resolve_tag_ids, task6_note},
+    common::{
+        DIM, GREEN, ICONS, colored, day_timestamp, one_line, parse_day, resolve_tag_ids, task6_note,
+    },
     ids::ThingsId,
     ui::{
         render_element_to_string,
@@ -389,7 +391,7 @@ impl Command for ProjectsArgs {
                     out,
                     "{} {}  {}",
                     colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
-                    title,
+                    one_line(title),
                     colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
@@ -411,7 +413,7 @@ impl Command for ProjectsArgs {
                     out,
                     "{} {}  {} {}",
                     colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                    title,
+                    one_line(title),
                     colored(&plan.project.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),

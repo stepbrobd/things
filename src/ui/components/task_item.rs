@@ -1,7 +1,7 @@
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, note_lines},
     store::Task,
     ui::components::{
         checklist::CheckList, details_container::DetailsContainer, id::Id, task_line::TaskLine,
@@ -99,7 +99,7 @@ fn TaskDetails<'a>(props: &TaskDetailProps<'a>) -> impl Into<AnyElement<'a>> {
     let note_text = if note_text.is_empty() {
         element!(Fragment).into_any()
     } else {
-        element!(Text(content: note_text, color: Color::DarkGrey)).into_any()
+        element!(Text(content: note_lines(note_text), color: Color::DarkGrey)).into_any()
     };
 
     element! {

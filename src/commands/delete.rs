@@ -7,7 +7,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored},
+    common::{DIM, GREEN, ICONS, colored, one_line},
     ids::ThingsId,
     store::Task,
     wire::{
@@ -84,12 +84,12 @@ fn build_delete_plan(
                 ));
             }
             if store.in_trash(&task) {
-                return Err(format!("Item already deleted: {}", task.title));
+                return Err(format!("Item already deleted: {}", one_line(&task.title)));
             }
             if task.has_repeater() {
                 return Err(format!(
                     "Task7 repeater tasks are blocked from deletion until repeater bookkeeping is supported: {}",
-                    task.title
+                    one_line(&task.title)
                 ));
             }
             if !seen.insert(task.uuid.clone()) {
@@ -144,7 +144,7 @@ fn build_delete_plan(
                 if child.has_repeater() {
                     return Err(format!(
                         "Task7 repeater tasks are blocked from deletion until repeater bookkeeping is supported: {}",
-                        child.title
+                        one_line(&child.title)
                     ));
                 }
                 if changes.insert(child.uuid.to_string(), trash(now)).is_none() {
@@ -191,7 +191,7 @@ impl Command for DeleteArgs {
                     &[GREEN],
                     cli.no_color()
                 ),
-                title,
+                one_line(&title),
                 colored(&uuid, &[DIM], cli.no_color()),
                 along
             )?;

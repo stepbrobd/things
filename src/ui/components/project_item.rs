@@ -1,6 +1,7 @@
 use iocraft::prelude::*;
 
 use crate::{
+    common::note_lines,
     store::Task,
     ui::components::{
         details_container::DetailsContainer, id::Id, progress_badge::ProgressBadge,
@@ -85,7 +86,7 @@ fn ProjectDetails<'a>(props: &ProjectDetailsProps<'a>) -> impl Into<AnyElement<'
 
     element! {
         DetailsContainer {
-            Text(content: note_text, wrap: TextWrap::NoWrap, color: Color::DarkGrey)
+            Text(content: note_lines(note_text), wrap: TextWrap::NoWrap, color: Color::DarkGrey)
         }
     }
     .into_any()

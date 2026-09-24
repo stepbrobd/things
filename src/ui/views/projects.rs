@@ -1,7 +1,7 @@
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, one_line},
     ids::ThingsId,
     store::Task,
     ui::components::{
@@ -97,7 +97,7 @@ fn ProjectsAreaSection<'a>(props: &ProjectsAreaSectionProps<'a>) -> impl Into<An
             View(flex_direction: FlexDirection::Row, gap: 1) {
                 Id(id: &group.area_uuid, length: props.id_prefix_len)
                 Text(content: ICONS.area, color: Color::DarkGrey)
-                Text(content: &group.area_title, wrap: TextWrap::NoWrap, weight: Weight::Bold)
+                Text(content: one_line(&group.area_title), wrap: TextWrap::NoWrap, weight: Weight::Bold)
             }
             View(flex_direction: FlexDirection::Column, padding_left: 2) {
                 TaskList(

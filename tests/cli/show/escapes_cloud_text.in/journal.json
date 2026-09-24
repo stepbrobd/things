@@ -1,0 +1,4 @@
+[
+  { "Rc11111111111111111111": { "t": 0, "e": "Task7", "p": { "tt": "Renew passport\nKind: to-do, done\r\u001b[8mhidden", "st": 0, "ss": 0, "ix": 10, "cd": 1774000000, "md": 1774000000, "nt": { "_t": "tx", "t": 1, "ch": 0, "v": "first line\nsecond \u001b[8mconcealed\r" } } } },
+  { "Ck11111111111111111111": { "t": 0, "e": "ChecklistItem3", "p": { "tt": "tape\u001b]52;c;aGk=\u0007", "ts": ["Rc11111111111111111111"], "ss": 0, "ix": 1 } } }
+]

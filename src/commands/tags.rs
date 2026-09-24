@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::{
     app::Cli,
     commands::{Command, write_json},
-    common::{DIM, GREEN, ICONS, colored, resolve_single_tag},
+    common::{DIM, GREEN, ICONS, colored, one_line, resolve_single_tag},
     store::Tag,
     ui::{
         render_element_to_string,
@@ -93,7 +93,7 @@ fn build_tags_delete_plan(
     {
         return Err(format!(
             "{} has child tags, move or delete them first.",
-            tag.title
+            one_line(&tag.title)
         ));
     }
     let without = |tags: &[crate::ids::ThingsId]| {
@@ -188,7 +188,8 @@ fn build_tags_edit_plan(
             if store.tag_ancestors(&parent.uuid).contains(&tag.uuid) {
                 return Err(format!(
                     "Cannot move {} under {}, which is below it.",
-                    tag.title, parent.title
+                    one_line(&tag.title),
+                    one_line(&parent.title)
                 ));
             }
             let parent_id = parent.uuid;
@@ -296,7 +297,7 @@ impl Command for TagsArgs {
                     out,
                     "{} {}  {}",
                     colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
-                    name,
+                    one_line(name),
                     colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
@@ -318,7 +319,7 @@ impl Command for TagsArgs {
                     out,
                     "{} {}  {} {}",
                     colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                    name,
+                    one_line(name),
                     colored(&plan.tag.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),
@@ -349,7 +350,7 @@ impl Command for TagsArgs {
                         &[GREEN],
                         cli.no_color()
                     ),
-                    tag.title,
+                    one_line(&tag.title),
                     colored(&tag.uuid, &[DIM], cli.no_color()),
                     from
                 )?;

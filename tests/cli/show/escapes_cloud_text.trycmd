@@ -1,0 +1,33 @@
+```trycmd
+$ run.sh things show Rc
+Renew passport^JKind: to-do, done^M^[[8mhidden  Rc11111111111111111111
+Kind: to-do, open
+When: inbox
+Dates: created 2026-03-20, modified 2026-03-20
+Notes:
+  first line
+  second ^[[8mconcealed^M
+Checklist:
+  ○ tape^[]52;c;aGk=^G
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 mark Rc --done
+✓ Done Renew passport^JKind: to-do, done^M^[[8mhidden  Rc11111111111111111111
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Rc11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "sp": 1774400000.0,
+        "ss": 3
+      },
+      "t": 1
+    }
+  }
+}
+
+```

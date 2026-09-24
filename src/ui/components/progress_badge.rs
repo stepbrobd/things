@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, one_line},
     store::{Task, ThingsStore},
 };
 
@@ -31,7 +31,7 @@ pub fn ProgressBadge<'a>(
     let weight = props.weight;
 
     let title = if let Some(title) = &props.title {
-        element!(Text(content: title.clone(), color, weight)).into_any()
+        element!(Text(content: one_line(title), color, weight)).into_any()
     } else {
         element!(Fragment).into_any()
     };

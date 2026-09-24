@@ -9,7 +9,7 @@ use crate::{
     app::Cli,
     commands::Command,
     common::{
-        DIM, GREEN, ICONS, colored, day_of, day_timestamp, parse_day, parse_reminder,
+        DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day, parse_reminder,
         resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
@@ -572,7 +572,7 @@ impl Command for NewArgs {
             out,
             "{} {}  {}{}",
             colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
-            plan.title,
+            one_line(&plan.title),
             colored(&plan.new_uuid, &[DIM], cli.no_color()),
             repeat
         )?;

@@ -7,6 +7,7 @@ use iocraft::prelude::*;
 use crate::{
     app::Cli,
     commands::{Command, detailed_json_conflict, write_json},
+    common::one_line,
     ui::{
         render_element_to_string,
         views::{
@@ -39,13 +40,13 @@ impl Command for ProjectArgs {
         let Some(project) = task_opt else {
             let candidates = ambiguous
                 .iter()
-                .map(|task| format!("\n  {}", task.title))
+                .map(|task| format!("\n  {}", one_line(&task.title)))
                 .collect::<String>();
             bail!("{err}{candidates}");
         };
 
         if !project.is_project() {
-            bail!("Not a project: {}", project.title);
+            bail!("Not a project: {}", one_line(&project.title));
         }
 
         let children = store

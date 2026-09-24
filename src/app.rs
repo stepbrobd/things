@@ -16,7 +16,7 @@ use crate::{
     client::ThingsCloudClient,
     cmd_ctx::{CmdCtx, DefaultCmdCtx},
     commands::{Command, Commands},
-    common::{ICONS, printable, printable_json},
+    common::{ICONS, one_line, printable, printable_json, printable_plain},
     dirs::append_log_dir,
     ids::ThingsId,
     log_cache::{CacheLock, fold_state_from_append_log, get_state_with_append_log},
@@ -146,7 +146,7 @@ impl Cli {
             Err(err) => {
                 eprintln!(
                     "Sync failed, showing the cached state: {}",
-                    printable(&format!("{err:#}"))
+                    printable_plain(&format!("{err:#}"))
                 );
                 self.offline.set(true);
                 fold_state_from_append_log(&cache_dir)
@@ -179,7 +179,7 @@ pub fn run() -> Result<ExitCode> {
         cli.ensure_state()?;
         if let Err(err) = materialize_due(&cli, &mut ctx) {
             // the pass stands in for the Apple clients, its failure is reported and the command still runs
-            eprintln!("{}", printable(&format!("{err:#}")));
+            eprintln!("{}", printable_plain(&format!("{err:#}")));
         }
         cli.cache_lock.borrow_mut().take();
     }
@@ -188,6 +188,8 @@ pub fn run() -> Result<ExitCode> {
     let out = String::from_utf8_lossy(&out);
     let out = if cli.json {
         printable_json(&out)
+    } else if cli.no_color() {
+        printable_plain(&out)
     } else {
         printable(&out)
     };
@@ -234,7 +236,7 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
         eprintln!(
             "{} Created {} for {}  {}",
             ICONS.repeat,
-            printable(&materialized.title),
+            one_line(&materialized.title),
             materialized.day,
             materialized.instance_id
         );

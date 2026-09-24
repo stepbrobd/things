@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use iocraft::prelude::*;
 
-use crate::{ids::ThingsId, store::ThingsStore};
+use crate::{common::one_line, ids::ThingsId, store::ThingsStore};
 
 #[derive(Default, Props)]
 pub struct TagsBadgeProps {
@@ -19,7 +19,7 @@ pub fn TagsBadge<'a>(hooks: Hooks, props: &TagsBadgeProps) -> impl Into<AnyEleme
     let names = props
         .tags
         .iter()
-        .map(|tag| store.resolve_tag_title(tag))
+        .map(|tag| one_line(&store.resolve_tag_title(tag)))
         .collect::<Vec<_>>()
         .join(", ");
 

@@ -60,6 +60,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_note_passes_the_colored_output_without_an_escape_sequence() {
+        let mut element = element! {
+            View(flex_direction: FlexDirection::Column) {
+                Text(content: crate::common::note_lines("plan \u{1b}\u{1b}[31m[8mconcealed\rover"))
+            }
+        };
+        let shown = crate::common::printable(&render_element_to_string(&mut element, false));
+        assert!(!shown.contains("\u{1b}[8m"), "{shown:?}");
+        assert_eq!(shown.lines().count(), 1, "{shown:?}");
+    }
+
+    #[test]
     fn colored_rows_end_without_a_carriage_return() {
         let mut element = element! {
             View(flex_direction: FlexDirection::Column) {

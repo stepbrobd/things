@@ -6,7 +6,7 @@ use clap::Args;
 use crate::{
     app::Cli,
     commands::{Command, write_json},
-    common::{DIM, ICONS, colored, fmt_date, fmt_date_local},
+    common::{DIM, ICONS, colored, fmt_date, fmt_date_local, one_line},
     ui::views::json::common::build_tasks_json,
     wire::task::{TaskStart, TaskStatus, TaskType},
 };
@@ -43,7 +43,7 @@ impl Command for ShowArgs {
         writeln!(
             out,
             "{}  {}",
-            task.title,
+            one_line(&task.title),
             colored(&task.uuid, &[DIM], no_color)
         )?;
         let kind = match task.item_type {
@@ -88,7 +88,7 @@ impl Command for ShowArgs {
                 out,
                 "{} {}",
                 field("Project"),
-                store.resolve_project_title(&project)
+                one_line(&store.resolve_project_title(&project))
             )?;
         }
         if let Some(heading) = task
@@ -96,16 +96,21 @@ impl Command for ShowArgs {
             .as_ref()
             .and_then(|id| store.get_task(&id.to_string()))
         {
-            writeln!(out, "{} {}", field("Heading"), heading.title)?;
+            writeln!(out, "{} {}", field("Heading"), one_line(&heading.title))?;
         }
         if let Some(area) = store.effective_area_uuid(&task) {
-            writeln!(out, "{} {}", field("Area"), store.resolve_area_title(&area))?;
+            writeln!(
+                out,
+                "{} {}",
+                field("Area"),
+                one_line(&store.resolve_area_title(&area))
+            )?;
         }
         if !task.tags.is_empty() {
             let tags: Vec<String> = task
                 .tags
                 .iter()
-                .map(|tag| store.resolve_tag_title(tag))
+                .map(|tag| one_line(&store.resolve_tag_title(tag)))
                 .collect();
             writeln!(out, "{} {}", field("Tags"), tags.join(", "))?;
         }
@@ -151,7 +156,7 @@ impl Command for ShowArgs {
         {
             writeln!(out, "{}", field("Notes"))?;
             for line in notes.lines() {
-                writeln!(out, "  {line}")?;
+                writeln!(out, "  {}", one_line(line))?;
             }
         }
         if !task.checklist_items.is_empty() {
@@ -164,7 +169,7 @@ impl Command for ShowArgs {
                 } else {
                     ICONS.checklist_open
                 };
-                writeln!(out, "  {mark} {}", item.title)?;
+                writeln!(out, "  {mark} {}", one_line(&item.title))?;
             }
         }
         Ok(())

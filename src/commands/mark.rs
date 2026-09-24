@@ -7,7 +7,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored},
+    common::{DIM, GREEN, ICONS, colored, one_line},
     wire::{
         checklist::ChecklistItemPatch,
         recurrence::RecurrenceType,
@@ -206,7 +206,7 @@ fn build_mark_status_plan(
     for task in targets {
         let validation_error = validate_mark_target(&task, action, store);
         if !validation_error.is_empty() {
-            errors.push(format!("{} ({})", validation_error, task.title));
+            errors.push(format!("{} ({})", validation_error, one_line(&task.title)));
             continue;
         }
 
@@ -239,7 +239,9 @@ fn build_mark_status_plan(
                 if !validation_error.is_empty() {
                     errors.push(format!(
                         "{} ({}, in {})",
-                        validation_error, child.title, task.title
+                        validation_error,
+                        one_line(&child.title),
+                        one_line(&task.title)
                     ));
                     continue;
                 }
@@ -294,7 +296,10 @@ fn build_mark_checklist_plan(
     let mut changes = BTreeMap::new();
     for item in &items {
         if item.status == status {
-            return Err(format!("Checklist item is already {label}: {}", item.title));
+            return Err(format!(
+                "Checklist item is already {label}: {}",
+                one_line(&item.title)
+            ));
         }
         // a closed item carries the moment it closed, as a to-do does
         let stop_date = (status != TaskStatus::Incomplete).then_some(now);
@@ -342,7 +347,7 @@ impl Command for MarkArgs {
             };
 
             if task.checklist_items.is_empty() {
-                bail!("Task has no checklist items: {}", task.title);
+                bail!("Task has no checklist items: {}", one_line(&task.title));
             }
 
             let (plan, items, label) =
@@ -363,7 +368,7 @@ impl Command for MarkArgs {
                     out,
                     "{} {}  {}",
                     colored(&title, &[GREEN], cli.no_color()),
-                    item.title,
+                    one_line(&item.title),
                     colored(&item.uuid, &[DIM], cli.no_color())
                 )?;
             }
@@ -397,7 +402,7 @@ impl Command for MarkArgs {
                 out,
                 "{} {}  {}",
                 colored(&label, &[GREEN], cli.no_color()),
-                task.title,
+                one_line(&task.title),
                 colored(&task.uuid, &[DIM], cli.no_color())
             )?;
         }

@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::{
     app::Cli,
     commands::{Command, TagDeltaArgs, write_json},
-    common::{DIM, GREEN, ICONS, colored, resolve_tag_ids},
+    common::{DIM, GREEN, ICONS, colored, one_line, resolve_tag_ids},
     ui::{
         render_element_to_string,
         views::{areas::AreasView, json::common::build_area_json},
@@ -197,7 +197,7 @@ impl Command for AreasArgs {
                     out,
                     "{} {}  {}",
                     colored(format!("{} Created", ICONS.done), &[GREEN], cli.no_color()),
-                    title,
+                    one_line(title),
                     colored(&uuid, &[DIM], cli.no_color())
                 )?;
             }
@@ -219,7 +219,7 @@ impl Command for AreasArgs {
                     out,
                     "{} {}  {} {}",
                     colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                    title,
+                    one_line(title),
                     colored(&plan.area.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),
