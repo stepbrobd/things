@@ -55,3 +55,27 @@ Ambiguous item ID prefix (2 matches).
   Rake leaves  (Tb11111111111111111111)
 
 ```
+
+```trycmd
+$ run.sh things new Oil --in Pn
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container is of kind Task8: Shed
+
+```
+
+```trycmd
+$ run.sh things new Oil --in Rp
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container is a repeat template: Weekly cleaning
+
+```
+
+```trycmd
+$ run.sh things edit Xa --move Rp
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container is a repeat template: Weekly cleaning
+
+```

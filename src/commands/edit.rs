@@ -12,8 +12,9 @@ use crate::{
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs},
     common::{
-        DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day, parse_instant,
-        parse_reminder, resolve_removable_tag_ids, resolve_tag_ids, task6_note,
+        Container, DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day,
+        parse_instant, parse_reminder, resolve_container, resolve_removable_tag_ids,
+        resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
     ordering::allocate,
@@ -499,75 +500,24 @@ fn build_edit_plan(
         } else if move_l == "clear" {
             labels.push("move=clear".to_string());
         } else {
-            let (project_opt, _, project_candidates) = store.resolve_mark_identifier(move_raw);
-            let (area_opt, _, area_candidates) = store.resolve_area_identifier(move_raw);
-            if !project_candidates.is_empty() || !area_candidates.is_empty() {
-                return Err(format!(
-                    "Ambiguous --move target '{move_raw}' (matches several items)."
-                ));
-            }
-
-            let project_uuid = project_opt.as_ref().and_then(|p| {
-                if p.is_project() {
-                    Some(p.uuid.clone())
-                } else {
-                    None
+            match resolve_container(
+                store,
+                move_raw,
+                "--move",
+                "Inbox, clear, a project ID, or an area ID",
+            )? {
+                Container::Project(project_uuid) => {
+                    shared_update.parent_project_ids = Some(vec![project_uuid]);
+                    shared_update.area_ids = Some(vec![]);
                 }
-            });
-            let area_uuid = area_opt.as_ref().map(|a| a.uuid.clone());
-
-            // an item of any kind and an area under one prefix leave the target open
-            let (any_item, _, item_candidates) = store.resolve_task_identifier(move_raw);
-            if (any_item.is_some() || !item_candidates.is_empty()) && area_uuid.is_some() {
-                return Err(format!(
-                    "Ambiguous --move target '{}' (matches an item and an area).",
-                    move_raw
-                ));
+                Container::Area(area_uuid) => {
+                    shared_update.area_ids = Some(vec![area_uuid]);
+                    shared_update.parent_project_ids = Some(vec![]);
+                }
             }
-            if project_opt.is_some() && project_uuid.is_none() {
-                return Err(
-                    "--move target must be Inbox, clear, a project ID, or an area ID.".to_string(),
-                );
-            }
-            // a closed project lists no open to-do
-            // one placed there would show nowhere
-            if let Some(project) = project_opt.as_ref().filter(|p| p.is_project())
-                && project.status != TaskStatus::Incomplete
-            {
-                return Err(format!(
-                    "Container is {}: {}",
-                    if project.status == TaskStatus::Canceled {
-                        "canceled"
-                    } else {
-                        "completed"
-                    },
-                    one_line(&project.title)
-                ));
-            }
-
-            if let Some(project_uuid) = project_uuid {
-                let project_id = project_uuid;
-                shared_update.parent_project_ids = Some(vec![project_id]);
-                shared_update.area_ids = Some(vec![]);
-                shared_update.action_group_ids = Some(vec![]);
-                move_from_inbox_st = Some(TaskStart::Anytime);
-                labels.push(format!("move={move_raw}"));
-            } else if let Some(area_uuid) = area_uuid {
-                let area_id = area_uuid;
-                shared_update.area_ids = Some(vec![area_id]);
-                shared_update.parent_project_ids = Some(vec![]);
-                shared_update.action_group_ids = Some(vec![]);
-                move_from_inbox_st = Some(TaskStart::Anytime);
-                labels.push(format!("move={move_raw}"));
-            } else if let (Some(task), _, _) = store.resolve_task_identifier(move_raw) {
-                return Err(if task.is_project() && store.in_trash(&task) {
-                    format!("Container is in the Trash: {}", one_line(&task.title))
-                } else {
-                    "--move target must be Inbox, clear, a project ID, or an area ID.".to_string()
-                });
-            } else {
-                return Err(format!("Container not found: {move_raw}"));
-            }
+            shared_update.action_group_ids = Some(vec![]);
+            move_from_inbox_st = Some(TaskStart::Anytime);
+            labels.push(format!("move={move_raw}"));
         }
     }
 

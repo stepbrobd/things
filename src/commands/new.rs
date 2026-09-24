@@ -10,8 +10,8 @@ use crate::{
     arg_types::IdentifierToken,
     commands::Command,
     common::{
-        DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day, parse_reminder,
-        resolve_tag_ids, task6_note,
+        Container, DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day,
+        parse_reminder, resolve_container, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
     ordering::{allocate, in_today_order, today_group, today_view_order},
@@ -245,65 +245,16 @@ fn build_new_plan(
 
     let in_target = &*args.in_target;
     if !in_target.eq_ignore_ascii_case("inbox") {
-        let (project, _, project_candidates) = store.resolve_mark_identifier(in_target);
-        let (area, _, area_candidates) = store.resolve_area_identifier(in_target);
-        if !project_candidates.is_empty() || !area_candidates.is_empty() {
-            return Err(format!(
-                "Ambiguous --in target '{in_target}' (matches several items)."
-            ));
+        match resolve_container(
+            store,
+            in_target,
+            "--in",
+            "inbox, a project ID, or an area ID",
+        )? {
+            Container::Project(project_uuid) => props.parent_project_ids = vec![project_uuid],
+            Container::Area(area_uuid) => props.area_ids = vec![area_uuid],
         }
-        let project_uuid = project.as_ref().and_then(|p| {
-            if p.is_project() {
-                Some(p.uuid.clone())
-            } else {
-                None
-            }
-        });
-        let area_uuid = area.map(|a| a.uuid);
-
-        // an item of any kind and an area under one prefix leave the target open
-        let (any_item, _, item_candidates) = store.resolve_task_identifier(in_target);
-        if (any_item.is_some() || !item_candidates.is_empty()) && area_uuid.is_some() {
-            return Err(format!(
-                "Ambiguous --in target '{}' (matches an item and an area).",
-                in_target
-            ));
-        }
-
-        if project.is_some() && project_uuid.is_none() {
-            return Err("--in target must be inbox, a project ID, or an area ID.".to_string());
-        }
-        // a closed project lists no open to-do
-        // one placed there would show nowhere
-        if let Some(project) = project.as_ref().filter(|p| p.is_project())
-            && project.status != TaskStatus::Incomplete
-        {
-            return Err(format!(
-                "Container is {}: {}",
-                if project.status == TaskStatus::Canceled {
-                    "canceled"
-                } else {
-                    "completed"
-                },
-                one_line(&project.title)
-            ));
-        }
-
-        if let Some(project_uuid) = project_uuid {
-            props.parent_project_ids = vec![project_uuid];
-            props.start_location = TaskStart::Anytime;
-        } else if let Some(area_uuid) = area_uuid {
-            props.area_ids = vec![area_uuid];
-            props.start_location = TaskStart::Anytime;
-        } else if let (Some(task), _, _) = store.resolve_task_identifier(in_target) {
-            return Err(if task.is_project() && store.in_trash(&task) {
-                format!("Container is in the Trash: {}", one_line(&task.title))
-            } else {
-                "--in target must be inbox, a project ID, or an area ID.".to_string()
-            });
-        } else {
-            return Err(format!("Container not found: {}", in_target));
-        }
+        props.start_location = TaskStart::Anytime;
     }
 
     if let Some(when_raw) = &args.when {

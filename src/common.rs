@@ -321,6 +321,72 @@ pub fn task6_note(value: &str) -> TaskNotes {
     })
 }
 
+/// the project or area a to-do goes into
+pub enum Container {
+    Project(ThingsId),
+    Area(ThingsId),
+}
+
+/// the project or area `target` names for a to-do, or why a to-do cannot go there
+///
+/// `flag` names the option in messages
+/// `takes` lists the values the option takes
+pub fn resolve_container(
+    store: &ThingsStore,
+    target: &str,
+    flag: &str,
+    takes: &str,
+) -> Result<Container, String> {
+    let (item, _, item_candidates) = store.resolve_task_identifier(target);
+    let (area, _, area_candidates) = store.resolve_area_identifier(target);
+    if !item_candidates.is_empty() {
+        return Err(format!(
+            "Ambiguous {flag} target '{target}' (matches several items)."
+        ));
+    }
+    if !area_candidates.is_empty() {
+        return Err(format!(
+            "Ambiguous {flag} target '{target}' (matches several areas)."
+        ));
+    }
+    let project = match (item, area) {
+        (Some(_), Some(_)) => {
+            return Err(format!(
+                "Ambiguous {flag} target '{target}' (matches an item and an area)."
+            ));
+        }
+        (None, Some(area)) => return Ok(Container::Area(area.uuid)),
+        (None, None) => return Err(format!("Container not found: {target}")),
+        (Some(project), None) if project.is_project() => project,
+        (Some(_), None) => return Err(format!("{flag} target must be {takes}.")),
+    };
+    // a project of a kind the writes do not know may be closed or in the Trash without showing it
+    if !project.entity.can_upgrade_to_task7() {
+        return Err(format!(
+            "Container is of kind {}: {}",
+            project.entity,
+            one_line(&project.title)
+        ));
+    }
+    // a closed project lists no open to-do
+    // one placed there would show nowhere
+    if let Some(state) = store.closed_state(&project) {
+        return Err(format!(
+            "Container is {state}: {}",
+            one_line(&project.title)
+        ));
+    }
+    // the template of a repeating project shows in no list
+    // a to-do placed there would show nowhere either
+    if project.is_recurrence_template() {
+        return Err(format!(
+            "Container is a repeat template: {}",
+            one_line(&project.title)
+        ));
+    }
+    Ok(Container::Project(project.uuid))
+}
+
 pub fn resolve_single_tag(store: &ThingsStore, identifier: &str) -> (Option<Tag>, String) {
     // the whole argument names one tag, whatever commas its title holds
     let all_tags: Vec<Tag> = store.tags_by_uuid.values().cloned().collect();
