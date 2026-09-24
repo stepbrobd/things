@@ -29,14 +29,14 @@ Item is a heading: Spring
 ```trycmd
 $ run.sh things new x --in W
 ? 1
-Ambiguous --in target 'W' (matches an item and an area).
+Ambiguous --in target 'W' (matches 1 item and 1 area).
 
 ```
 
 ```trycmd
 $ run.sh things edit Ta --move W
 ? 1
-Ambiguous --move target 'W' (matches an item and an area).
+Ambiguous --move target 'W' (matches 1 item and 1 area).
 
 ```
 
@@ -50,14 +50,14 @@ Container is a heading, and projects go into an area or clear: Spring
 ```trycmd
 $ run.sh things new x --in H
 ? 1
-Ambiguous --in target 'H' (matches an item and an area).
+Ambiguous --in target 'H' (matches 1 item and 1 area).
 
 ```
 
 ```trycmd
 $ run.sh things projects edit Pa --move H
 ? 1
-Ambiguous --move target 'H' (matches an item and an area).
+Ambiguous --move target 'H' (matches 1 item and 1 area).
 
 ```
 

@@ -15,7 +15,7 @@ Container is a project, and projects go into an area: Kitchen
 ```trycmd
 $ run.sh things projects new Porch --area Ab
 ? 1
-Ambiguous --area target 'Ab' (matches an item and an area).
+Ambiguous --area target 'Ab' (matches 1 item and 1 area).
 
 ```
 

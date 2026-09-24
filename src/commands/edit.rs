@@ -159,7 +159,10 @@ fn resolve_checklist_items(
         if matches.len() > 1 {
             return (
                 Vec::new(),
-                format!("Ambiguous checklist item prefix: '{token}'"),
+                format!(
+                    "Ambiguous checklist item prefix '{token}' ({} matches).",
+                    matches.len()
+                ),
             );
         }
         let item = matches[0].clone();
@@ -735,7 +738,10 @@ fn build_edit_plan(
                     return Err(format!("Checklist item not found: '{short_id}'"));
                 }
                 if matches.len() > 1 {
-                    return Err(format!("Ambiguous checklist item prefix: '{short_id}'"));
+                    return Err(format!(
+                        "Ambiguous checklist item prefix '{short_id}' ({} matches).",
+                        matches.len()
+                    ));
                 }
                 if removed.contains(&matches[0].uuid) {
                     return Err(format!(
@@ -1805,7 +1811,7 @@ mod tests {
         .expect_err("ambiguous move target");
         assert_eq!(
             err,
-            "Ambiguous --move target 'ABCD1234' (matches an item and an area)."
+            "Ambiguous --move target 'ABCD1234' (matches 1 item and 1 area)."
         );
     }
 

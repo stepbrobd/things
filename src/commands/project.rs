@@ -39,8 +39,10 @@ impl Command for ProjectArgs {
         let today = ctx.today();
         let (task_opt, err, ambiguous) = store.resolve_task_identifier(&self.project_id);
         let Some(project) = task_opt else {
+            // the message counts every match and lists ten at most
             let candidates = ambiguous
                 .iter()
+                .take(10)
                 .map(|task| format!("\n  {}  ({})", shown_title(&task.title), task.uuid))
                 .collect::<String>();
             bail!("{err}{candidates}");

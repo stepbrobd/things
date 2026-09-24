@@ -350,6 +350,24 @@ pub fn kind_with_article(task: &Task) -> String {
     }
 }
 
+/// the message for a target that several items or areas share, None while one at most matches
+///
+/// a resolved item or area counts once
+/// an ambiguous prefix counts every candidate
+pub fn ambiguous_target(flag: &str, target: &str, items: usize, areas: usize) -> Option<String> {
+    let matches = [(items, "item"), (areas, "area")]
+        .into_iter()
+        .filter(|(count, _)| *count > 0)
+        .map(|(count, noun)| counted(count, noun))
+        .collect::<Vec<_>>();
+    (items + areas > 1).then(|| {
+        format!(
+            "Ambiguous {flag} target '{target}' (matches {}).",
+            matches.join(" and ")
+        )
+    })
+}
+
 /// the project or area `target` names for a to-do, or why a to-do cannot go there
 ///
 /// `flag` names the option in messages
@@ -360,22 +378,20 @@ pub fn resolve_container(
 ) -> Result<Container, String> {
     let (item, _, item_candidates) = store.resolve_task_identifier(target);
     let (area, _, area_candidates) = store.resolve_area_identifier(target);
-    if !item_candidates.is_empty() {
-        return Err(format!(
-            "Ambiguous {flag} target '{target}' (matches several items)."
-        ));
-    }
-    if !area_candidates.is_empty() {
-        return Err(format!(
-            "Ambiguous {flag} target '{target}' (matches several areas)."
-        ));
+    let items = if item.is_some() {
+        1
+    } else {
+        item_candidates.len()
+    };
+    let areas = if area.is_some() {
+        1
+    } else {
+        area_candidates.len()
+    };
+    if let Some(message) = ambiguous_target(flag, target, items, areas) {
+        return Err(message);
     }
     let project = match (item, area) {
-        (Some(_), Some(_)) => {
-            return Err(format!(
-                "Ambiguous {flag} target '{target}' (matches an item and an area)."
-            ));
-        }
         // an area that did not replay completely may not be what it shows
         (None, Some(area)) if area.degraded => {
             return Err(format!(
@@ -385,8 +401,8 @@ pub fn resolve_container(
         }
         (None, Some(area)) => return Ok(Container::Area(area.uuid)),
         (None, None) => return Err(format!("Container not found: {target}")),
-        (Some(project), None) if project.is_project() => project,
-        (Some(item), None) => {
+        (Some(project), _) if project.is_project() => project,
+        (Some(item), _) => {
             return Err(format!(
                 "Container is {}: {}",
                 kind_with_article(&item),
@@ -535,7 +551,10 @@ fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> 
         return Ok(prefix[0].clone());
     }
     if prefix.len() > 1 {
-        return Err(format!("Ambiguous tag ID prefix: {token}"));
+        return Err(format!(
+            "Ambiguous tag ID prefix '{token}' ({} matches).",
+            prefix.len()
+        ));
     }
 
     Err(format!("Tag not found: {token}"))

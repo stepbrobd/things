@@ -77,7 +77,10 @@ fn resolve_checklist_items(
         if matches.len() > 1 {
             return (
                 Vec::new(),
-                format!("Ambiguous checklist item prefix: '{token}'"),
+                format!(
+                    "Ambiguous checklist item prefix '{token}' ({} matches).",
+                    matches.len()
+                ),
             );
         }
         let item = matches[0].clone();

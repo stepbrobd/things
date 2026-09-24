@@ -1,0 +1,51 @@
+```trycmd
+$ run.sh things show Pa
+? 1
+Ambiguous item ID prefix 'Pa' (11 matches).
+  Project 1  (Pa11111111111111111111)
+  Project 2  (Pa21111111111111111111)
+  Project 3  (Pa31111111111111111111)
+  Project 4  (Pa41111111111111111111)
+  Project 5  (Pa51111111111111111111)
+  Project 6  (Pa61111111111111111111)
+  Project 7  (Pa71111111111111111111)
+  Project 8  (Pa81111111111111111111)
+  Project 9  (Pa91111111111111111111)
+  Project 10  (PaA1111111111111111111)
+
+```
+
+```trycmd
+$ run.sh things new Filed --in Pa
+? 1
+Ambiguous --in target 'Pa' (matches 11 items and 1 area).
+
+```
+
+```trycmd
+$ run.sh things projects new Sub --area Pa
+? 1
+Ambiguous --area target 'Pa' (matches 11 items and 1 area).
+
+```
+
+```trycmd
+$ run.sh things delete Pa
+? 1
+Ambiguous identifier 'Pa' (matches 11 items and 1 area).
+
+```
+
+```trycmd
+$ run.sh things tags delete Tg
+? 1
+Ambiguous tag ID prefix 'Tg' (2 matches).
+
+```
+
+```trycmd
+$ run.sh things mark Td --check Ck
+? 1
+Ambiguous checklist item prefix 'Ck' (2 matches).
+
+```

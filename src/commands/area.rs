@@ -40,8 +40,10 @@ impl Command for AreaArgs {
         let today = ctx.today();
         let (area_opt, err, ambiguous) = store.resolve_area_identifier(&self.area_id);
         let Some(area) = area_opt else {
+            // the message counts every match and lists ten at most
             let candidates = ambiguous
                 .iter()
+                .take(10)
                 .map(|area| {
                     format!(
                         "\n  {} {}  ({})",

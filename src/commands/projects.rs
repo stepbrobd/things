@@ -9,8 +9,8 @@ use crate::{
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
     common::{
-        DIM, GREEN, ICONS, colored, day_timestamp, kind_with_article, one_line, parse_day,
-        resolve_removable_tag_ids, resolve_tag_ids, shown_title, task6_note,
+        DIM, GREEN, ICONS, ambiguous_target, colored, day_timestamp, kind_with_article, one_line,
+        parse_day, resolve_removable_tag_ids, resolve_tag_ids, shown_title, task6_note,
     },
     ids::ThingsId,
     ui::{
@@ -115,22 +115,22 @@ fn resolve_project_area(
 ) -> std::result::Result<ThingsId, String> {
     let (item, _, item_candidates) = store.resolve_task_identifier(target);
     let (area, _, area_candidates) = store.resolve_area_identifier(target);
-    if !item_candidates.is_empty() {
-        return Err(format!(
-            "Ambiguous {flag} target '{target}' (matches several items)."
-        ));
-    }
-    if !area_candidates.is_empty() {
-        return Err(format!(
-            "Ambiguous {flag} target '{target}' (matches several areas)."
-        ));
+    let items = if item.is_some() {
+        1
+    } else {
+        item_candidates.len()
+    };
+    let areas = if area.is_some() {
+        1
+    } else {
+        area_candidates.len()
+    };
+    if let Some(message) = ambiguous_target(flag, target, items, areas) {
+        return Err(message);
     }
     match (item, area) {
-        (Some(_), Some(_)) => Err(format!(
-            "Ambiguous {flag} target '{target}' (matches an item and an area)."
-        )),
         // a project, heading or to-do is no place for a project, wherever it is
-        (Some(item), None) => Err(format!(
+        (Some(item), _) => Err(format!(
             "Container is {}, and projects go into {places}: {}",
             kind_with_article(&item),
             shown_title(&item.title)

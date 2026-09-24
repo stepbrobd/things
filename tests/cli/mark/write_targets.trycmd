@@ -2,7 +2,7 @@
 $ run.sh things mark T --done
 ? 1
 1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
-Ambiguous item ID prefix (2 matches).
+Ambiguous item ID prefix 'T' (2 matches).
 
 ```
 
@@ -10,7 +10,7 @@ Ambiguous item ID prefix (2 matches).
 $ run.sh things edit T --title Renamed
 ? 1
 1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
-Ambiguous item ID prefix (2 matches).
+Ambiguous item ID prefix 'T' (2 matches).
 
 ```
 
@@ -50,7 +50,7 @@ $ run.sh things project Pn
 $ run.sh things show T
 ? 1
 1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
-Ambiguous item ID prefix (2 matches).
+Ambiguous item ID prefix 'T' (2 matches).
   Plant bulbs  (Ta11111111111111111111)
   Rake leaves  (Tb11111111111111111111)
 

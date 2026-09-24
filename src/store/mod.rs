@@ -781,7 +781,7 @@ impl ThingsStore {
         max_need
     }
 
-    /// one item by full id or unique prefix among `sorted_ids`, looked up through `lookup`, or the message and up to ten candidates when the prefix is ambiguous
+    /// one item by full id or unique prefix among `sorted_ids`, looked up through `lookup`, or the message and every candidate when the prefix is ambiguous
     fn resolve_prefix<'a, T: Clone + 'a>(
         &'a self,
         identifier: &str,
@@ -803,16 +803,13 @@ impl ThingsStore {
         }
 
         if matches.len() > 1 {
-            let out = matches
-                .iter()
-                .take(10)
-                .filter_map(|m| lookup(m).cloned())
-                .collect();
+            let out = matches.iter().filter_map(|m| lookup(m).cloned()).collect();
             return (
                 None,
                 format!(
-                    "Ambiguous {} ID prefix ({} matches).",
+                    "Ambiguous {} ID prefix '{}' ({} matches).",
                     label.to_lowercase(),
+                    identifier,
                     matches.len()
                 ),
                 out,

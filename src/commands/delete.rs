@@ -63,9 +63,21 @@ fn build_delete_plan(
         let area_match = area.is_some() || !area_ambiguous.is_empty();
 
         if task_match && area_match {
+            let items = if task.is_some() {
+                1
+            } else {
+                task_ambiguous.len()
+            };
+            let areas = if area.is_some() {
+                1
+            } else {
+                area_ambiguous.len()
+            };
             return Err(format!(
-                "Ambiguous identifier '{}' (matches an item and an area).",
-                identifier.as_str()
+                "Ambiguous identifier '{}' (matches {} and {}).",
+                identifier.as_str(),
+                counted(items, "item"),
+                counted(areas, "area")
             ));
         }
 

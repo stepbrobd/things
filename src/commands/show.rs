@@ -30,8 +30,10 @@ impl Command for ShowArgs {
         let today = ctx.today();
         let (task, err, ambiguous) = store.resolve_task_identifier(&self.item_id);
         let Some(task) = task else {
+            // the message counts every match and lists ten at most
             let candidates = ambiguous
                 .iter()
+                .take(10)
                 .map(|task| format!("\n  {}  ({})", shown_title(&task.title), task.uuid))
                 .collect::<String>();
             bail!("{err}{candidates}");
