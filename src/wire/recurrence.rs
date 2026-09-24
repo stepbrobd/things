@@ -151,7 +151,7 @@ impl RecurrenceRule {
         };
 
         Ok(format!(
-            "Repeat {unit} after the previous to-do has been completed"
+            "Repeat {unit} after the previous one has been completed"
         ))
     }
 
@@ -604,22 +604,22 @@ mod tests {
             (
                 FrequencyUnit::Daily,
                 1,
-                "Repeat 1 day after the previous to-do has been completed",
+                "Repeat 1 day after the previous one has been completed",
             ),
             (
                 FrequencyUnit::Weekly,
                 2,
-                "Repeat 2 weeks after the previous to-do has been completed",
+                "Repeat 2 weeks after the previous one has been completed",
             ),
             (
                 FrequencyUnit::Monthly,
                 3,
-                "Repeat 3 months after the previous to-do has been completed",
+                "Repeat 3 months after the previous one has been completed",
             ),
             (
                 FrequencyUnit::Yearly,
                 4,
-                "Repeat 4 years after the previous to-do has been completed",
+                "Repeat 4 years after the previous one has been completed",
             ),
         ] {
             let rule = RecurrenceRule {
