@@ -197,7 +197,8 @@ impl ThingsStore {
         }
 
         for (task_uuid, items) in by_task.iter_mut() {
-            items.sort_by_key(|i| i.index);
+            // items of one index keep a fixed order by id
+            items.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
             if let Some(task) = self.tasks_by_uuid.get_mut(task_uuid) {
                 task.checklist_items = items.clone();
             }

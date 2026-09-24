@@ -1,0 +1,17 @@
+```trycmd
+$ run.sh things show Ta
+Pack  Ta11111111111111111111
+Kind: to-do, open
+When: inbox
+Dates: created 2026-03-20, modified 2026-03-20
+Checklist:
+  ○ item a
+  ○ item b
+  ○ item c
+  ○ item d
+  ○ item e
+  ○ item f
+  ○ item g
+  ○ item h
+
+```

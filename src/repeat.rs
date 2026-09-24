@@ -635,15 +635,22 @@ pub struct ChecklistCopy {
 }
 
 /// fresh checklist items for `owner`, one create per copy
+///
+/// `checklist` comes in the order it is shown
+/// copies of items that share an index take distinct ones in that order
+/// the fresh ids would otherwise decide their order
 pub fn checklist_items(
     checklist: &[ChecklistCopy],
     owner: &ThingsId,
     now: f64,
     next_id: &mut dyn FnMut() -> String,
 ) -> Vec<(String, WireObject)> {
+    let mut previous: Option<i32> = None;
     checklist
         .iter()
         .map(|item| {
+            let index = previous.map_or(item.index, |last| item.index.max(last.saturating_add(1)));
+            previous = Some(index);
             (
                 next_id(),
                 WireObject::create(
@@ -652,7 +659,7 @@ pub fn checklist_items(
                         title: item.title.clone(),
                         task_ids: vec![owner.clone()],
                         status: TaskStatus::Incomplete,
-                        sort_index: item.index,
+                        sort_index: index,
                         creation_date: Some(now),
                         modification_date: Some(now),
                         ..Default::default()
@@ -722,6 +729,32 @@ mod tests {
 
     fn day(text: &str) -> NaiveDate {
         NaiveDate::parse_from_str(text, "%Y-%m-%d").expect("date")
+    }
+
+    #[test]
+    fn copied_checklist_items_keep_the_order_they_were_shown_in() {
+        let copies = [
+            ("passport", 0),
+            ("charger", 0),
+            ("keys", 0),
+            ("wallet", 5),
+            ("map", 5),
+        ]
+        .map(|(title, index)| ChecklistCopy {
+            title: title.to_string(),
+            index,
+        });
+        let owner = "Ta11111111111111111111".parse::<ThingsId>().expect("id");
+        // ids that sort against the order shown
+        let mut ids = ["Tz1", "Ty1", "Tx1", "Tw1", "Tv1"]
+            .into_iter()
+            .map(str::to_string);
+        let items = checklist_items(&copies, &owner, 1.0, &mut || ids.next().expect("id"));
+        let indexes = items
+            .iter()
+            .map(|(_, object)| serde_json::to_value(object).expect("json")["p"]["ix"].clone())
+            .collect::<Vec<_>>();
+        assert_eq!(indexes, [0, 1, 2, 5, 6].map(serde_json::Value::from));
     }
 
     fn spec(text: &str) -> RepeatSpec {
