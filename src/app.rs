@@ -30,7 +30,7 @@ use crate::{
 #[command(bin_name = "things")]
 #[command(before_help = concat!("Things ", env!("CARGO_PKG_VERSION")))]
 #[command(disable_help_subcommand = true)]
-#[command(about = "Command-line interface for Things 3 via Cloud API")]
+#[command(about = "Command-line client for Things 3 using the Things Cloud API")]
 #[command(
     after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                One of pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync cache live\n\nExit status:\n  0  Success\n  1  The command failed\n  2  The command line did not parse\n  3  The sync failed and the output comes from the cached state"
 )]
