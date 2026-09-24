@@ -124,10 +124,6 @@ pub struct ChecklistItem {
 }
 
 impl ChecklistItem {
-    pub fn is_incomplete(&self) -> bool {
-        self.status == TaskStatus::Incomplete
-    }
-
     pub fn is_completed(&self) -> bool {
         self.status == TaskStatus::Completed
     }
@@ -196,10 +192,6 @@ impl Task {
     /// a capture of notes alone still counts
     pub fn is_blank(&self) -> bool {
         self.title.trim().is_empty() && self.notes.as_deref().unwrap_or("").trim().is_empty()
-    }
-
-    pub fn is_incomplete(&self) -> bool {
-        self.status == TaskStatus::Incomplete
     }
 
     pub fn is_completed(&self) -> bool {

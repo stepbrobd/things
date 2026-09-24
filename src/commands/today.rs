@@ -9,7 +9,7 @@ use crate::{
     commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
     ui::{
         render_element_to_string,
-        views::{json::today::TodayJsonView, today::TodayView},
+        views::{json::common::build_tasks_json, today::TodayView},
     },
     wire::task::TaskStatus,
 };
@@ -32,7 +32,7 @@ impl Command for TodayArgs {
         let today = ctx.today();
 
         let mut today_items: Vec<_> = store
-            .tasks(Some(TaskStatus::Incomplete), Some(false), None)
+            .tasks(Some(TaskStatus::Incomplete))
             .into_iter()
             .filter(|t| {
                 !t.is_heading()
@@ -54,7 +54,7 @@ impl Command for TodayArgs {
         let json = cli.json;
         if json {
             detailed_json_conflict(json, self.detailed.detailed)?;
-            write_json(out, &TodayJsonView::build(&today_items, &store, &today))?;
+            write_json(out, &build_tasks_json(&today_items, &store, &today))?;
             return Ok(());
         }
 

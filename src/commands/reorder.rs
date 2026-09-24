@@ -322,7 +322,7 @@ impl Command for ReorderArgs {
         let plan = build_reorder_plan(self, &store, ctx.now_timestamp(), ctx.today_timestamp())
             .map_err(anyhow::Error::msg)?;
 
-        ctx.commit_changes(plan.changes, None)
+        ctx.commit_changes(plan.changes)
             .with_context(|| "Failed to reorder item")?;
 
         writeln!(

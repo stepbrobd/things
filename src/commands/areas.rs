@@ -190,7 +190,7 @@ impl Command for AreasArgs {
                 let uuid = ctx.next_id();
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Area3, props));
-                ctx.commit_changes(changes, None)
+                ctx.commit_changes(changes)
                     .with_context(|| "Failed to create area")?;
 
                 writeln!(
@@ -211,7 +211,7 @@ impl Command for AreasArgs {
                     plan.area.uuid.to_string(),
                     WireObject::update(EntityType::Area3, plan.update.clone()),
                 );
-                ctx.commit_changes(changes, None)
+                ctx.commit_changes(changes)
                     .with_context(|| "Failed to edit area")?;
 
                 let title = plan.update.title.as_deref().unwrap_or(&plan.area.title);
@@ -315,7 +315,7 @@ mod tests {
             NOW,
         )
         .expect("title plan");
-        let p = title.update.into_properties();
+        let p = serde_json::to_value(&title.update).expect("patch");
         assert_eq!(p.get("tt"), Some(&json!("New Name")));
         assert_eq!(p.get("md"), Some(&json!(NOW)));
 
@@ -333,7 +333,9 @@ mod tests {
         )
         .expect("remove tag");
         assert_eq!(
-            remove.update.into_properties().get("tg"),
+            serde_json::to_value(&remove.update)
+                .expect("patch")
+                .get("tg"),
             Some(&json!([tag2]))
         );
 

@@ -619,10 +619,6 @@ pub struct TemplateSource {
     pub sort_index: i32,
     pub today_sort_index: i32,
     pub conflict_overrides: Option<Value>,
-    /// the checklist as the to-do has it after the edit
-    ///
-    /// copied with fresh ids onto the template and from there onto every instance
-    pub checklist: Vec<ChecklistCopy>,
 }
 
 /// one checklist item to copy
@@ -1424,7 +1420,6 @@ mod tests {
             sort_index: 0,
             today_sort_index: 0,
             conflict_overrides: None,
-            checklist: Vec::new(),
         };
         let daily = spec("daily");
         for bound in [Bound::Times(1), Bound::Until(today)] {
@@ -1470,7 +1465,6 @@ mod tests {
             sort_index: -844,
             today_sort_index: -520,
             conflict_overrides: None,
-            checklist: Vec::new(),
         };
         let weekly = spec("weekly:mon,thu");
         let made = template(

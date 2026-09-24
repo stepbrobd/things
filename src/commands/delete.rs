@@ -180,7 +180,7 @@ impl Command for DeleteArgs {
         let plan =
             build_delete_plan(self, &store, ctx.now_timestamp()).map_err(anyhow::Error::msg)?;
 
-        ctx.commit_changes(plan.changes, None)
+        ctx.commit_changes(plan.changes)
             .with_context(|| "Failed to delete items")?;
 
         for (uuid, _entity, title, taken) in plan.targets {
@@ -243,15 +243,7 @@ mod tests {
             unreachable!()
         }
 
-        fn current_head_index(&self) -> i64 {
-            unreachable!()
-        }
-
-        fn commit_changes(
-            &mut self,
-            _changes: BTreeMap<String, WireObject>,
-            _ancestor_index: Option<i64>,
-        ) -> Result<i64> {
+        fn commit_changes(&mut self, _changes: BTreeMap<String, WireObject>) -> Result<i64> {
             anyhow::bail!("cloud unavailable")
         }
     }

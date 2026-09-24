@@ -1,9 +1,6 @@
-use std::collections::BTreeMap;
-
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use strum::{Display, EnumString};
 
 use crate::{
     ids::ThingsId,
@@ -409,28 +406,11 @@ impl TaskPatch {
             && self.modification_date.is_none()
             && self.due_date_offset.is_none()
     }
-
-    pub fn into_properties(self) -> BTreeMap<String, Value> {
-        match serde_json::to_value(self) {
-            Ok(Value::Object(map)) => map.into_iter().collect(),
-            _ => BTreeMap::new(),
-        }
-    }
 }
 
 /// task kind used in `tp`
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Display,
-    EnumString,
-    FromPrimitive,
-    IntoPrimitive,
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, FromPrimitive, IntoPrimitive,
 )]
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
@@ -444,7 +424,6 @@ pub enum TaskType {
 
     /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
-    #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
 }
 
@@ -457,17 +436,7 @@ impl Default for TaskType {
 
 /// task status used in `ss`
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Display,
-    EnumString,
-    FromPrimitive,
-    IntoPrimitive,
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, FromPrimitive, IntoPrimitive,
 )]
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
@@ -481,7 +450,6 @@ pub enum TaskStatus {
 
     /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
-    #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
 }
 
@@ -494,17 +462,7 @@ impl Default for TaskStatus {
 
 /// start location used in `st`
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Display,
-    EnumString,
-    FromPrimitive,
-    IntoPrimitive,
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, FromPrimitive, IntoPrimitive,
 )]
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
@@ -518,7 +476,6 @@ pub enum TaskStart {
 
     /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
-    #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
 }
 

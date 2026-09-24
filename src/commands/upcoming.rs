@@ -33,7 +33,7 @@ impl Command for UpcomingArgs {
         let now_ts = today.timestamp();
 
         let mut tasks = Vec::new();
-        for t in store.tasks(Some(TaskStatus::Incomplete), Some(false), None) {
+        for t in store.tasks(Some(TaskStatus::Incomplete)) {
             if t.in_someday() || store.in_closed_container(&t) {
                 continue;
             }

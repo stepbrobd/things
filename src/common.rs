@@ -25,14 +25,8 @@ pub fn now_ts_f64() -> f64 {
 }
 
 pub const RESET: &str = "\x1b[0m";
-pub const BOLD: &str = "\x1b[1m";
 pub const DIM: &str = "\x1b[2m";
-pub const CYAN: &str = "\x1b[36m";
-pub const YELLOW: &str = "\x1b[33m";
 pub const GREEN: &str = "\x1b[32m";
-pub const BLUE: &str = "\x1b[34m";
-pub const MAGENTA: &str = "\x1b[35m";
-pub const RED: &str = "\x1b[31m";
 
 #[derive(Debug, Clone, Copy)]
 pub struct Icons {
@@ -74,10 +68,6 @@ pub struct Icons {
     pub checklist_open: &'static str,
     pub checklist_done: &'static str,
     pub checklist_canceled: &'static str,
-
-    // other glyphs
-    pub separator: &'static str,
-    pub divider: &'static str,
 }
 
 pub const ICONS: Icons = Icons {
@@ -114,9 +104,6 @@ pub const ICONS: Icons = Icons {
     checklist_open: "○",
     checklist_done: "●",
     checklist_canceled: "×",
-
-    separator: "·",
-    divider: "─",
 };
 
 /// a count with its noun, singular for one

@@ -24,10 +24,7 @@ use anyhow::{Result, bail};
 use clap::{Args, Subcommand};
 use serde::Serialize;
 
-use crate::{
-    app::Cli,
-    cmd_ctx::{CmdCtx, DefaultCmdCtx},
-};
+use crate::{app::Cli, cmd_ctx::CmdCtx};
 
 pub trait Command {
     fn run_with_ctx(
@@ -36,11 +33,6 @@ pub trait Command {
         out: &mut dyn std::io::Write,
         ctx: &mut dyn CmdCtx,
     ) -> Result<()>;
-
-    fn run(&self, cli: &Cli, out: &mut dyn std::io::Write) -> Result<()> {
-        let mut ctx = DefaultCmdCtx::from_cli(cli);
-        self.run_with_ctx(cli, out, &mut ctx)
-    }
 }
 
 pub(crate) fn detailed_json_conflict(json: bool, detailed: bool) -> Result<()> {

@@ -1,4 +1,4 @@
-use std::{fmt, str::FromStr};
+use std::str::FromStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdentifierToken(String);
@@ -6,10 +6,6 @@ pub struct IdentifierToken(String);
 impl IdentifierToken {
     pub fn as_str(&self) -> &str {
         &self.0
-    }
-
-    pub fn into_inner(self) -> String {
-        self.0
     }
 }
 
@@ -34,11 +30,5 @@ impl From<String> for IdentifierToken {
 impl From<&str> for IdentifierToken {
     fn from(value: &str) -> Self {
         Self(value.to_string())
-    }
-}
-
-impl fmt::Display for IdentifierToken {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
     }
 }

@@ -358,7 +358,7 @@ impl Command for MarkArgs {
                 build_mark_checklist_plan(self, &task, checklist_raw, ctx.now_timestamp())
                     .map_err(anyhow::Error::msg)?;
 
-            ctx.commit_changes(plan.changes, None)
+            ctx.commit_changes(plan.changes)
                 .with_context(|| "Failed to mark checklist items")?;
 
             let title = match label.as_str() {
@@ -394,7 +394,7 @@ impl Command for MarkArgs {
             bail!("{}", errors.join("\n"));
         }
 
-        ctx.commit_changes(plan.changes, None)
+        ctx.commit_changes(plan.changes)
             .with_context(|| format!("Failed to mark items {action}"))?;
 
         let label = match action {

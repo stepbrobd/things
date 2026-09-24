@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -100,23 +98,4 @@ pub struct ChecklistItemPatch {
     /// `md`, modification timestamp
     #[serde(rename = "md", skip_serializing_if = "Option::is_none")]
     pub modification_date: Option<f64>,
-}
-
-impl ChecklistItemPatch {
-    pub fn is_empty(&self) -> bool {
-        self.title.is_none()
-            && self.status.is_none()
-            && self.stop_date.is_none()
-            && self.task_ids.is_none()
-            && self.sort_index.is_none()
-            && self.creation_date.is_none()
-            && self.modification_date.is_none()
-    }
-
-    pub fn into_properties(self) -> BTreeMap<String, Value> {
-        match serde_json::to_value(self) {
-            Ok(Value::Object(map)) => map.into_iter().collect(),
-            _ => BTreeMap::new(),
-        }
-    }
 }

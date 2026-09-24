@@ -380,7 +380,6 @@ fn apply_schedule(
             sort_index: task.index,
             today_sort_index: task.today_index,
             conflict_overrides: Some(json!({"_t": "oo", "sn": {}})),
-            checklist: checklist.to_vec(),
         };
         let template_uuid = next_id();
         let template_id = ThingsId::from_str(&template_uuid).map_err(|e| e.to_string())?;
@@ -412,7 +411,7 @@ impl Command for EditArgs {
         let plan =
             build_edit_plan(self, &store, now, today, &mut id_gen).map_err(anyhow::Error::msg)?;
 
-        ctx.commit_changes(plan.changes.clone(), None)
+        ctx.commit_changes(plan.changes.clone())
             .with_context(|| "Failed to edit item")?;
 
         let label_str = colored(
@@ -1878,7 +1877,7 @@ mod tests {
             creation_date: Some(NOW),
             modification_date: Some(NOW),
         };
-        let props = patch.into_properties();
+        let props = serde_json::to_value(&patch).expect("patch");
         assert_eq!(props.get("tt"), Some(&json!("Step")));
         assert_eq!(props.get("ss"), Some(&json!(0)));
         assert_eq!(props.get("ix"), Some(&json!(3)));

@@ -8,8 +8,8 @@ use std::{
 
 use chrono::{DateTime, Local, NaiveDate, TimeZone, Utc};
 pub use entities::{
-    Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateObject,
-    StateProperties, Tag, TagStateProps, Task, TaskStateProps,
+    Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateProperties,
+    Tag, TagStateProps, Task, TaskStateProps,
 };
 pub use state::{
     RawState, degraded_checklist_owners, degraded_ids, fold_item, fold_items,
@@ -25,7 +25,7 @@ use crate::{
     },
     repeat::next_occurrence_of_rule,
     wire::{
-        task::{TaskStart, TaskStatus, TaskType},
+        task::{TaskStart, TaskStatus},
         wire_object::EntityType,
     },
 };
@@ -35,7 +35,6 @@ pub struct ThingsStore {
     pub tasks_by_uuid: HashMap<ThingsId, Task>,
     pub areas_by_uuid: HashMap<ThingsId, Area>,
     pub tags_by_uuid: HashMap<ThingsId, Tag>,
-    pub tags_by_title: HashMap<String, ThingsId>,
     pub project_progress_by_uuid: HashMap<ThingsId, ProjectProgress>,
     pub short_ids: HashMap<ThingsId, String>,
     pub markable_ids: HashSet<ThingsId>,
@@ -160,10 +159,6 @@ impl ThingsStore {
                         continue;
                     };
                     let tag = self.parse_tag(uuid, props);
-                    if !tag.title.is_empty() {
-                        self.tags_by_title
-                            .insert(tag.title.clone(), tag.uuid.clone());
-                    }
                     self.tags_by_uuid.insert(uuid.clone(), tag);
                 }
                 Some(
@@ -286,35 +281,15 @@ impl ThingsStore {
         }
     }
 
-    pub fn tasks(
-        &self,
-        status: Option<TaskStatus>,
-        trashed: Option<bool>,
-        item_type: Option<TaskType>,
-    ) -> Vec<Task> {
+    /// the to-dos and projects outside the Trash of `status`, or of every status
+    pub fn tasks(&self, status: Option<TaskStatus>) -> Vec<Task> {
         let mut out: Vec<Task> = self
             .tasks_by_uuid
             .values()
             .filter(|task| {
-                if let Some(expect_trashed) = trashed
-                    && task.trashed != expect_trashed
-                {
-                    return false;
-                }
-                if let Some(expect_status) = status
-                    && task.status != expect_status
-                {
-                    return false;
-                }
-                if let Some(expect_type) = item_type
-                    && task.item_type != expect_type
-                {
-                    return false;
-                }
-                if task.is_heading() {
-                    return false;
-                }
-                true
+                !self.in_trash(task)
+                    && !task.is_heading()
+                    && status.is_none_or(|status| task.status == status)
             })
             .cloned()
             .collect();
@@ -673,12 +648,6 @@ impl ThingsStore {
         uuid.parse::<ThingsId>()
             .ok()
             .and_then(|id| self.areas_by_uuid.get(&id).cloned())
-    }
-
-    pub fn get_tag(&self, uuid: &str) -> Option<Tag> {
-        uuid.parse::<ThingsId>()
-            .ok()
-            .and_then(|id| self.tags_by_uuid.get(&id).cloned())
     }
 
     pub fn resolve_tag_title<T: ToString>(&self, uuid: T) -> String {

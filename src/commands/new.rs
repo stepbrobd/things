@@ -527,7 +527,6 @@ fn build_new_plan(
             sort_index: props.sort_index,
             today_sort_index: props.today_sort_index,
             conflict_overrides: props.conflict_overrides.clone(),
-            checklist: Vec::new(),
         };
         let template = template(&spec, rule, first, source, now)
             .ok_or_else(|| format!("The day after {first} cannot be represented"))?;
@@ -585,7 +584,7 @@ impl Command for NewArgs {
         let plan =
             build_new_plan(self, &store, now, today, &mut id_gen).map_err(anyhow::Error::msg)?;
 
-        ctx.commit_changes(plan.changes, None)
+        ctx.commit_changes(plan.changes)
             .with_context(|| "Failed to create task")?;
 
         let repeat = plan

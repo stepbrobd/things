@@ -66,7 +66,7 @@ impl Command for AreaArgs {
         projects.sort_by_key(|p| p.index);
 
         let mut loose_tasks = store
-            .tasks(status_filter, Some(false), None)
+            .tasks(status_filter)
             .into_iter()
             .filter(|t| {
                 if t.is_recurrence_template() {

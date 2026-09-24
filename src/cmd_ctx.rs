@@ -29,12 +29,7 @@ pub trait CmdCtx {
             .unwrap_or_else(Utc::now)
     }
     fn next_id(&mut self) -> String;
-    fn commit_changes(
-        &mut self,
-        changes: BTreeMap<String, WireObject>,
-        ancestor_index: Option<i64>,
-    ) -> Result<i64>;
-    fn current_head_index(&self) -> i64;
+    fn commit_changes(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64>;
 }
 
 #[derive(Default)]
@@ -105,11 +100,7 @@ impl CmdCtx for DefaultCmdCtx {
         ThingsId::from_u128((u128::from(seed) << 64) | u128::from(self.ids_issued)).to_string()
     }
 
-    fn commit_changes(
-        &mut self,
-        changes: BTreeMap<String, WireObject>,
-        ancestor_index: Option<i64>,
-    ) -> Result<i64> {
+    fn commit_changes(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64> {
         // a write on top of a state that is behind the history would overwrite what the CLI never saw
         for uuid in changes.keys() {
             if uuid
@@ -117,15 +108,11 @@ impl CmdCtx for DefaultCmdCtx {
                 .is_ok_and(|id| self.degraded.borrow().contains(&id))
             {
                 return Err(anyhow!(
-                    "Not writing {uuid}: its history did not replay completely, THINGS_LOG=warn has the reason."
+                    "Not writing {uuid}: its history did not replay completely."
                 ));
             }
         }
-        self.writer_mut()?.commit(changes, ancestor_index)
-    }
-
-    fn current_head_index(&self) -> i64 {
-        self.writer.as_deref().map_or(0, CloudWriter::head_index)
+        self.writer_mut()?.commit(changes)
     }
 }
 
@@ -153,7 +140,7 @@ mod tests {
         };
 
         let refused = ctx
-            .commit_changes(BTreeMap::from([(id.to_string(), patch())]), None)
+            .commit_changes(BTreeMap::from([(id.to_string(), patch())]))
             .expect_err("refused");
         assert!(
             refused
@@ -162,7 +149,7 @@ mod tests {
         );
 
         let other = ThingsId::from_u128(8).to_string();
-        ctx.commit_changes(BTreeMap::from([(other, patch())]), None)
+        ctx.commit_changes(BTreeMap::from([(other, patch())]))
             .expect("another object writes");
     }
 }

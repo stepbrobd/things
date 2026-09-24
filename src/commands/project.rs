@@ -50,7 +50,7 @@ impl Command for ProjectArgs {
         }
 
         let children = store
-            .tasks(None, Some(false), None)
+            .tasks(None)
             .into_iter()
             .filter(|t| {
                 !t.is_recurrence_template()
@@ -116,7 +116,6 @@ impl Command for ProjectArgs {
                         ungrouped: ungrouped.iter().collect::<Vec<_>>(),
                         heading_groups,
                         detailed: self.detailed,
-                        no_color: cli.no_color(),
                     )
                 }
             }

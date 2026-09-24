@@ -235,7 +235,7 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
     for materialized in &due {
         changes.extend(materialized.changes.clone());
     }
-    ctx.commit_changes(changes.clone(), None)
+    ctx.commit_changes(changes.clone())
         .with_context(|| "failed to create due instances of repeating to-dos")?;
     // the committed objects join the run's state
     // the command that follows sees them without another sync

@@ -7,7 +7,6 @@ use chrono::{TimeZone, Utc};
 use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use strum::{Display, EnumString};
 
 /// recurrence rule payload (`rr`) for recurring templates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -459,17 +458,7 @@ fn join_list(values: &[impl AsRef<str>]) -> String {
 
 /// recurrence rule type, `rr.tp`
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Display,
-    EnumString,
-    FromPrimitive,
-    IntoPrimitive,
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, FromPrimitive, IntoPrimitive,
 )]
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
@@ -481,7 +470,6 @@ pub enum RecurrenceType {
 
     /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
-    #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
 }
 
@@ -494,17 +482,7 @@ impl Default for RecurrenceType {
 
 /// recurrence frequency unit, `rr.fu`
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Display,
-    EnumString,
-    FromPrimitive,
-    IntoPrimitive,
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, FromPrimitive, IntoPrimitive,
 )]
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
@@ -520,7 +498,6 @@ pub enum FrequencyUnit {
 
     /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
-    #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
 }
 

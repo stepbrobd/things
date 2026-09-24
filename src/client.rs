@@ -189,16 +189,12 @@ impl ThingsCloudClient {
         )
     }
 
-    pub fn commit(
-        &mut self,
-        changes: BTreeMap<String, WireObject>,
-        ancestor_index: Option<i64>,
-    ) -> Result<i64> {
+    pub fn commit(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64> {
         let history_key = self
             .history_key
             .as_ref()
             .ok_or_else(|| anyhow!("Must authenticate first"))?;
-        let idx = ancestor_index.unwrap_or(self.head_index);
+        let idx = self.head_index;
         let url = format!("{BASE_URL}/history/{history_key}/commit?ancestor-index={idx}&_cnt=1");
 
         let mut payload = BTreeMap::new();

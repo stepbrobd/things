@@ -38,40 +38,6 @@ impl fmt::Display for ThingsId {
     }
 }
 
-impl AsRef<[u8; 16]> for ThingsId {
-    fn as_ref(&self) -> &[u8; 16] {
-        &self.0
-    }
-}
-
-impl From<ThingsId> for String {
-    fn from(id: ThingsId) -> Self {
-        id.to_string()
-    }
-}
-
-impl From<&ThingsId> for String {
-    fn from(id: &ThingsId) -> Self {
-        id.to_string()
-    }
-}
-
-impl TryFrom<String> for ThingsId {
-    type Error = ParseThingsIdError;
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        value.parse::<ThingsId>()
-    }
-}
-
-impl TryFrom<&str> for ThingsId {
-    type Error = ParseThingsIdError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        value.parse::<ThingsId>()
-    }
-}
-
 impl FromStr for ThingsId {
     type Err = ParseThingsIdError;
 
@@ -257,20 +223,6 @@ mod tests {
         let json = serde_json::to_string(&id).unwrap();
         let back: ThingsId = serde_json::from_str(&json).unwrap();
         assert_eq!(id, back);
-    }
-
-    #[test]
-    fn into_string() {
-        let id: ThingsId = COMPACT.parse().unwrap();
-        let s: String = id.clone().into();
-        assert_eq!(s, id.to_string());
-    }
-
-    #[test]
-    fn as_ref_bytes() {
-        let id: ThingsId = COMPACT.parse().unwrap();
-        let r: &[u8; 16] = id.as_ref();
-        assert_eq!(r, id.as_bytes());
     }
 
     #[test]

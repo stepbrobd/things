@@ -46,12 +46,6 @@ pub enum Properties {
     Unknown(BTreeMap<String, Value>),
 }
 
-impl From<BTreeMap<String, Value>> for Properties {
-    fn from(value: BTreeMap<String, Value>) -> Self {
-        Self::Unknown(value)
-    }
-}
-
 macro_rules! impl_properties_from {
     ($($source:ty => $variant:ident),+ $(,)?) => {
         $(
@@ -295,17 +289,7 @@ fn to_map<T: Serialize>(value: &T) -> BTreeMap<String, Value> {
 
 /// operation type for wire field `t`
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    Serialize,
-    Deserialize,
-    PartialEq,
-    Eq,
-    Display,
-    EnumString,
-    FromPrimitive,
-    IntoPrimitive,
+    Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, FromPrimitive, IntoPrimitive,
 )]
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
@@ -323,15 +307,7 @@ pub enum OperationType {
 
     /// unknown operation value preserved for forward compatibility
     #[num_enum(catch_all)]
-    #[strum(disabled, to_string = "{0}")]
     Unknown(i32),
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for OperationType {
-    fn default() -> Self {
-        Self::Create
-    }
 }
 
 /// entity type for wire field `e`

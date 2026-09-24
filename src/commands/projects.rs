@@ -387,7 +387,7 @@ impl Command for ProjectsArgs {
 
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Task7, props));
-                ctx.commit_changes(changes, None)
+                ctx.commit_changes(changes)
                     .with_context(|| "Failed to create project")?;
 
                 writeln!(
@@ -408,7 +408,7 @@ impl Command for ProjectsArgs {
                     plan.project.uuid.to_string(),
                     WireObject::update(EntityType::Task7, plan.update.clone()),
                 );
-                ctx.commit_changes(changes, None)
+                ctx.commit_changes(changes)
                     .with_context(|| "Failed to edit project")?;
 
                 let title = plan.update.title.as_deref().unwrap_or(&plan.project.title);
@@ -534,7 +534,7 @@ mod tests {
             NOW,
         )
         .expect("title plan");
-        let p = title_plan.update.into_properties();
+        let p = serde_json::to_value(&title_plan.update).expect("patch");
         assert_eq!(p.get("tt"), Some(&json!("Roadmap v2")));
         assert_eq!(p.get("md"), Some(&json!(NOW)));
 
@@ -554,7 +554,9 @@ mod tests {
         )
         .expect("clear plan");
         assert_eq!(
-            clear_plan.update.into_properties().get("ar"),
+            serde_json::to_value(&clear_plan.update)
+                .expect("patch")
+                .get("ar"),
             Some(&json!([]))
         );
 
@@ -574,7 +576,9 @@ mod tests {
         )
         .expect("move area plan");
         assert_eq!(
-            move_plan.update.into_properties().get("ar"),
+            serde_json::to_value(&move_plan.update)
+                .expect("patch")
+                .get("ar"),
             Some(&json!([target_area_uuid]))
         );
     }
@@ -605,7 +609,9 @@ mod tests {
         )
         .expect("remove tags");
         assert_eq!(
-            remove_plan.update.into_properties().get("tg"),
+            serde_json::to_value(&remove_plan.update)
+                .expect("patch")
+                .get("tg"),
             Some(&json!([tag2]))
         );
 

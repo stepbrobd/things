@@ -289,7 +289,7 @@ impl Command for TagsArgs {
                 let uuid = ctx.next_id();
                 let mut changes = BTreeMap::new();
                 changes.insert(uuid.clone(), WireObject::create(EntityType::Tag4, props));
-                ctx.commit_changes(changes, None)
+                ctx.commit_changes(changes)
                     .with_context(|| "Failed to create tag")?;
 
                 writeln!(
@@ -310,7 +310,7 @@ impl Command for TagsArgs {
                     plan.tag.uuid.to_string(),
                     WireObject::update(EntityType::Tag4, plan.update.clone()),
                 );
-                ctx.commit_changes(changes, None)
+                ctx.commit_changes(changes)
                     .with_context(|| "Failed to edit tag")?;
 
                 let name = plan.update.title.as_deref().unwrap_or(&plan.tag.title);
@@ -332,7 +332,7 @@ impl Command for TagsArgs {
                 let (tag, changes) =
                     build_tags_delete_plan(&args.tag_id, &store).map_err(anyhow::Error::msg)?;
                 let carriers = changes.len() - 1;
-                ctx.commit_changes(changes, None)
+                ctx.commit_changes(changes)
                     .with_context(|| "Failed to delete tag")?;
 
                 let from = if carriers > 0 {
@@ -481,7 +481,7 @@ mod tests {
             NOW,
         )
         .expect("rename");
-        let p = rename.update.into_properties();
+        let p = serde_json::to_value(&rename.update).expect("patch");
         assert_eq!(p.get("tt"), Some(&json!("Work Stuff")));
         assert_eq!(p.get("md"), Some(&json!(NOW)));
 
@@ -509,7 +509,9 @@ mod tests {
         )
         .expect("reparent");
         assert_eq!(
-            reparent.update.into_properties().get("pn"),
+            serde_json::to_value(&reparent.update)
+                .expect("patch")
+                .get("pn"),
             Some(&json!([TAG_UUID]))
         );
 
@@ -523,7 +525,12 @@ mod tests {
             NOW,
         )
         .expect("clear");
-        assert_eq!(clear.update.into_properties().get("pn"), Some(&json!([])));
+        assert_eq!(
+            serde_json::to_value(&clear.update)
+                .expect("patch")
+                .get("pn"),
+            Some(&json!([]))
+        );
 
         let no_change = build_tags_edit_plan(
             &TagsEditArgs {

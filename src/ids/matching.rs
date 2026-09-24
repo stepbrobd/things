@@ -2,10 +2,6 @@ use std::collections::HashMap;
 
 use crate::ids::{ThingsId, things_id::base58_encode_fixed};
 
-pub fn lcp_len(a: &str, b: &str) -> usize {
-    lcp_len_bytes(a.as_bytes(), b.as_bytes())
-}
-
 /// the shortest unique prefix of every id
 ///
 /// each id is encoded once into a stack buffer

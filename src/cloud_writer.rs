@@ -7,11 +7,7 @@ use tracing::debug;
 use crate::{client::ThingsCloudClient, wire::wire_object::WireObject};
 
 pub trait CloudWriter {
-    fn commit(
-        &mut self,
-        changes: BTreeMap<String, WireObject>,
-        ancestor_index: Option<i64>,
-    ) -> Result<i64>;
+    fn commit(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64>;
 
     fn head_index(&self) -> i64;
 }
@@ -27,17 +23,16 @@ impl LoggingCloudWriter {
 }
 
 impl CloudWriter for LoggingCloudWriter {
-    fn commit(
-        &mut self,
-        changes: BTreeMap<String, WireObject>,
-        ancestor_index: Option<i64>,
-    ) -> Result<i64> {
+    fn commit(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64> {
+        // a commit builds on the client's head
+        // that is the synced head or the one the previous commit returned
+        let ancestor_index = self.inner.head_index();
         let uuids = changes.keys().cloned().collect::<Vec<_>>();
         // the payload is serialized for the log only when that log is on
         let request_json = if tracing::enabled!(target: "things_cli::cloud_commit::request", tracing::Level::DEBUG)
         {
             serde_json::to_string(&json!({
-                "ancestor_index": ancestor_index.unwrap_or(self.inner.head_index()),
+                "ancestor_index": ancestor_index,
                 "changes": &changes,
             }))
             .unwrap_or_else(|error| json!({ "error": error.to_string() }).to_string())
@@ -54,7 +49,7 @@ impl CloudWriter for LoggingCloudWriter {
             "cloud commit request"
         );
 
-        match self.inner.commit(changes, ancestor_index) {
+        match self.inner.commit(changes) {
             Ok(head_index) => {
                 debug!(
                     target: "things_cli::cloud_commit::success",
@@ -112,12 +107,8 @@ impl LiveCloudWriter {
 }
 
 impl CloudWriter for LiveCloudWriter {
-    fn commit(
-        &mut self,
-        changes: BTreeMap<String, WireObject>,
-        ancestor_index: Option<i64>,
-    ) -> Result<i64> {
-        self.client.commit(changes, ancestor_index)
+    fn commit(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64> {
+        self.client.commit(changes)
     }
 
     fn head_index(&self) -> i64 {
@@ -126,11 +117,7 @@ impl CloudWriter for LiveCloudWriter {
 }
 
 impl CloudWriter for DryRunCloudWriter {
-    fn commit(
-        &mut self,
-        _changes: BTreeMap<String, WireObject>,
-        _ancestor_index: Option<i64>,
-    ) -> Result<i64> {
+    fn commit(&mut self, _changes: BTreeMap<String, WireObject>) -> Result<i64> {
         self.head_index += 1;
         Ok(self.head_index)
     }

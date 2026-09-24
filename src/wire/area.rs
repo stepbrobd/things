@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -51,12 +49,5 @@ impl AreaPatch {
             && self.tag_ids.is_none()
             && self.modification_date.is_none()
             && self.sort_index.is_none()
-    }
-
-    pub fn into_properties(self) -> BTreeMap<String, Value> {
-        match serde_json::to_value(self) {
-            Ok(Value::Object(map)) => map.into_iter().collect(),
-            _ => BTreeMap::new(),
-        }
     }
 }

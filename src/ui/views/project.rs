@@ -26,7 +26,6 @@ pub struct ProjectViewProps<'a> {
     pub ungrouped: Vec<&'a Task>,
     pub heading_groups: Vec<ProjectHeadingGroup<'a>>,
     pub detailed: bool,
-    pub no_color: bool,
 }
 
 #[component]
@@ -35,7 +34,6 @@ pub fn ProjectView<'a>(hooks: Hooks, props: &ProjectViewProps<'a>) -> impl Into<
     let Some(project) = props.project else {
         return element! { Text(content: "") }.into_any();
     };
-    let _ = props.no_color;
 
     let mut all_uuids = props
         .ungrouped
