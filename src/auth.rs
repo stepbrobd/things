@@ -30,7 +30,7 @@ fn text_field(value: Option<Value>, field: &str, path: &Path) -> Result<Option<S
         None | Some(Value::Null) => Ok(None),
         Some(Value::String(text)) => Ok(Some(text)),
         Some(_) => Err(anyhow!(
-            "The {field} in {} is not a JSON string, quote it",
+            "The {field} in the auth file at {} is not a JSON string, quote it",
             path.display()
         )),
     }
@@ -91,10 +91,10 @@ fn validate_auth(email: &str, password: &str) -> Result<(String, String)> {
     let password = password.to_string();
 
     if email.is_empty() {
-        return Err(anyhow!("Missing auth email."));
+        return Err(anyhow!("The Things Cloud email is empty."));
     }
     if password.is_empty() {
-        return Err(anyhow!("Missing auth password."));
+        return Err(anyhow!("The Things Cloud password is empty."));
     }
 
     Ok((email, password))
@@ -107,14 +107,14 @@ pub fn load_auth() -> Result<(String, String)> {
 
     let Some(email) = cfg.email else {
         return Err(anyhow!(
-            "Missing auth email. Set THINGS_EMAIL or run `things auth` to create {}.",
+            "Missing Things Cloud email. Set THINGS_EMAIL or run `things auth` to save it in the auth file at {}.",
             path.display()
         ));
     };
 
     let Some(password) = cfg.password else {
         return Err(anyhow!(
-            "Missing auth password. Set THINGS_PASSWORD or run `things auth` to update {}.",
+            "Missing Things Cloud password. Set THINGS_PASSWORD or run `things auth` to save it in the auth file at {}.",
             path.display()
         ));
     };

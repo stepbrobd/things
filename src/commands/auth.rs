@@ -57,7 +57,11 @@ impl Command for AuthArgs {
             client.authenticate()?;
             Ok(())
         })?;
-        writeln!(out, "Saved auth to {}", path.display())?;
+        writeln!(
+            out,
+            "Saved the credentials to the auth file at {}",
+            path.display()
+        )?;
         Ok(())
     }
 }
