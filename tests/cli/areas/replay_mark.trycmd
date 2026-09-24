@@ -1,0 +1,49 @@
+```trycmd
+$ run.sh things --json areas
+[
+  {
+    "id": "Aw11111111111111111111",
+    "short_id": "Aw",
+    "title": "Work",
+    "index": 1,
+    "tags": [],
+    "degraded": true
+  },
+  {
+    "id": "Ah11111111111111111111",
+    "short_id": "Ah",
+    "title": "Home",
+    "index": 2,
+    "tags": [],
+    "degraded": false
+  }
+]
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
+
+```trycmd
+$ run.sh things --json tags
+[
+  {
+    "id": "Ge11111111111111111111",
+    "short_id": "Ge",
+    "title": "Errand",
+    "shortcut": null,
+    "parent": null,
+    "index": 1,
+    "degraded": true
+  },
+  {
+    "id": "Gh11111111111111111111",
+    "short_id": "Gh",
+    "title": "Home",
+    "shortcut": null,
+    "parent": null,
+    "index": 2,
+    "degraded": false
+  }
+]
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```

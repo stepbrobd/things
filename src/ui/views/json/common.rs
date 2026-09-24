@@ -30,6 +30,10 @@ pub struct ResolvedAreaJson {
     pub title: String,
     pub index: i32,
     pub tags: Vec<TagRefJson>,
+    /// the area's history did not replay completely
+    ///
+    /// the CLI shows what it has and puts nothing into it
+    pub degraded: bool,
 }
 
 #[derive(Serialize)]
@@ -40,6 +44,10 @@ pub struct ResolvedTagJson {
     pub shortcut: Option<String>,
     pub parent: Option<LinkRefJson>,
     pub index: i32,
+    /// the tag's history did not replay completely
+    ///
+    /// the CLI shows what it has and puts nothing under it
+    pub degraded: bool,
 }
 
 #[derive(Serialize)]
@@ -370,6 +378,7 @@ fn area_to_json(area: &Area, store: &ThingsStore) -> ResolvedAreaJson {
                 }
             })
             .collect(),
+        degraded: area.degraded,
     }
 }
 
@@ -387,5 +396,6 @@ fn tag_to_json(tag: &Tag, store: &ThingsStore) -> ResolvedTagJson {
             )
         }),
         index: tag.index,
+        degraded: tag.degraded,
     }
 }
