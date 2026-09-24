@@ -133,12 +133,9 @@ fn task_bucket(task: &Task, store: &crate::store::ThingsStore) -> Vec<String> {
                 .unwrap_or_default(),
         ];
     }
+    // an area view shows its to-dos of every start in one order
     if let Some(area_uuid) = store.effective_area_uuid(task) {
-        return vec![
-            "task-area".to_string(),
-            area_uuid.to_string(),
-            i32::from(task.start).to_string(),
-        ];
+        return vec!["task-area".to_string(), area_uuid.to_string()];
     }
     vec!["task-root".to_string(), i32::from(task.start).to_string()]
 }
@@ -152,12 +149,7 @@ fn props_bucket(props: &TaskProps) -> Vec<String> {
         ];
     }
     if let Some(area_uuid) = props.area_ids.first() {
-        let st = i32::from(props.start_location);
-        return vec![
-            "task-area".to_string(),
-            area_uuid.to_string(),
-            st.to_string(),
-        ];
+        return vec!["task-area".to_string(), area_uuid.to_string()];
     }
     let st = i32::from(props.start_location);
     vec!["task-root".to_string(), st.to_string()]
@@ -218,6 +210,25 @@ fn build_new_plan(
             return Err(format!(
                 "Cannot place a to-do next to an item of kind {}",
                 task.entity
+            ));
+        }
+        if let Some(task) = &task
+            && let Some(state) = store.closed_state(task)
+        {
+            return Err(format!("Anchor is {state}: {}", one_line(&task.title)));
+        }
+        if let Some(task) = &task
+            && task.is_heading()
+        {
+            return Err(format!("Anchor is a heading: {}", one_line(&task.title)));
+        }
+        // a repeat template shows in no list
+        if let Some(task) = &task
+            && task.is_recurrence_template()
+        {
+            return Err(format!(
+                "Anchor is a repeat template: {}",
+                one_line(&task.title)
             ));
         }
         anchor = task;
@@ -406,12 +417,20 @@ fn build_new_plan(
 
     let mut index_updates: Vec<(ThingsId, i32)> = Vec::new();
     let mut today_updates: Vec<(ThingsId, i32)> = Vec::new();
+    // a project or area view lists its to-dos of every status
+    // the Inbox, Anytime and Someday list open ones
+    // a repeat template shows in no list
+    let every_status = matches!(
+        target_bucket.first().map(String::as_str),
+        Some("task-project" | "task-area")
+    );
     let mut siblings = store
         .tasks_by_uuid
         .values()
         .filter(|t| {
-            !t.trashed
-                && t.status == TaskStatus::Incomplete
+            !store.in_trash(t)
+                && !t.is_recurrence_template()
+                && (every_status || t.status == TaskStatus::Incomplete)
                 && t.entity.can_upgrade_to_task7()
                 && task_bucket(t, store) == target_bucket
         })
@@ -423,17 +442,10 @@ fn build_new_plan(
     if let Some(anchor) = &anchor
         && task_bucket(anchor, store) == target_bucket
     {
-        let anchor_pos = siblings.iter().position(|t| t.uuid == anchor.uuid);
-        let Some(anchor_pos) = anchor_pos else {
-            let state = if store.in_trash(anchor) {
-                "in the Trash"
-            } else if anchor.status == TaskStatus::Canceled {
-                "canceled"
-            } else {
-                "completed"
-            };
-            return Err(format!("Anchor is {state}: {}", one_line(&anchor.title)));
-        };
+        let anchor_pos = siblings
+            .iter()
+            .position(|t| t.uuid == anchor.uuid)
+            .expect("the anchor is among the rows of its list");
         structural_insert_at = if args.before_id.is_some() {
             anchor_pos
         } else {

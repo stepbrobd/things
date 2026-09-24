@@ -1,14 +1,14 @@
 ```trycmd
 $ run.sh things new x --when today --after Tn
 ? 1
-Cannot place new task relative to an item in a different container/list.
+Anchor is completed: Closed in project today
 
 ```
 
 ```trycmd
 $ run.sh things new x --when today --after Tp
 ? 1
-Cannot place new task relative to an item in a different container/list.
+Anchor is in the Trash: Open in trashed project today
 
 ```
 

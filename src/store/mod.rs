@@ -536,6 +536,19 @@ impl ThingsStore {
                 .any(|area| area.tags.contains(id))
     }
 
+    /// what keeps an item out of the lists, None while it is incomplete and outside the Trash
+    pub fn closed_state(&self, task: &Task) -> Option<&'static str> {
+        if self.in_trash(task) {
+            return Some("in the Trash");
+        }
+        match task.status {
+            TaskStatus::Incomplete => None,
+            TaskStatus::Completed => Some("completed"),
+            TaskStatus::Canceled => Some("canceled"),
+            TaskStatus::Unknown(_) => Some("of an unknown status"),
+        }
+    }
+
     /// in the Trash itself or through a trashed project or heading
     pub fn in_trash(&self, task: &Task) -> bool {
         task.trashed || self.in_trashed_container(task)

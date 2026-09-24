@@ -1,0 +1,51 @@
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder He --after-id Hb
+✓ Reordered Settle  He11111111111111111111 (after=Pack, index=1250)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "He11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 1250,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Pd --after-id Pb
+✓ Reordered Wire  Pd11111111111111111111 (after=Paint, index=1250)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Pd11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 1250,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Rt --after-id Ta
+? 1
+Item is a repeat template: Water plants
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 new x --after Rt
+? 1
+Anchor is a repeat template: Water plants
+
+```

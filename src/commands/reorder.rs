@@ -181,9 +181,31 @@ fn build_reorder_plan(
     if item.uuid == anchor.uuid {
         return Err("Cannot reorder an item relative to itself.".to_string());
     }
+    // an item or anchor that is closed or in the Trash takes no place in a list
+    for (role, task) in [("Item", &item), ("Anchor", &anchor)] {
+        if let Some(state) = store.closed_state(task) {
+            return Err(format!("{role} is {state}: {}", one_line(&task.title)));
+        }
+        // a repeat template shows in no list
+        if task.is_recurrence_template() {
+            return Err(format!(
+                "{role} is a repeat template: {}",
+                one_line(&task.title)
+            ));
+        }
+    }
+    // a heading orders among headings alone
+    if item.is_heading() != anchor.is_heading() {
+        let (role, heading) = if anchor.is_heading() {
+            ("Anchor", &anchor)
+        } else {
+            ("Item", &item)
+        };
+        return Err(format!("{role} is a heading: {}", one_line(&heading.title)));
+    }
 
     // only an open to-do that Today lists is ordered within it
-    // the structural path refuses the others
+    // the others are ordered within their own list
     let is_today_orderable = |task: &crate::store::Task| store.in_today(task, &today);
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
     // a to-do Today lists by its deadline alone has no place in Today's order to put anything next to
@@ -342,11 +364,21 @@ fn build_reorder_plan(
         return Err("Cannot reorder across different containers/lists.".to_string());
     }
 
+    // a project or area view lists its to-dos, headings and projects of every status
+    // the Inbox, Anytime and Someday list open ones
+    // a repeat template shows in no list
+    let every_status = matches!(
+        item_bucket.first().map(String::as_str),
+        Some("task-project" | "task-area" | "heading" | "project")
+    );
     let mut siblings = store
         .tasks_by_uuid
         .values()
         .filter(|t| {
-            !store.in_trash(t) && t.status == TaskStatus::Incomplete && bucket(t) == item_bucket
+            !store.in_trash(t)
+                && !t.is_recurrence_template()
+                && (every_status || t.status == TaskStatus::Incomplete)
+                && bucket(t) == item_bucket
         })
         .cloned()
         .collect::<Vec<_>>();
@@ -354,23 +386,6 @@ fn build_reorder_plan(
         Ordering::Equal => a.uuid.cmp(&b.uuid),
         other => other,
     });
-
-    let by_uuid = siblings
-        .iter()
-        .map(|t| (t.uuid.clone(), t.clone()))
-        .collect::<BTreeMap<_, _>>();
-    for (role, task) in [("Item", &item), ("Anchor", &anchor)] {
-        if !by_uuid.contains_key(&task.uuid) {
-            let state = if store.in_trash(task) {
-                "in the Trash"
-            } else if task.status == TaskStatus::Canceled {
-                "canceled"
-            } else {
-                "completed"
-            };
-            return Err(format!("{role} is {state}: {}", one_line(&task.title)));
-        }
-    }
 
     let structural_label = |index: i32| {
         if args.before_id.is_some() {

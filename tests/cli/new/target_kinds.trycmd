@@ -74,3 +74,17 @@ $ run.sh things reorder Ta --after-id Tz
 Anchor is completed: Buy seeds
 
 ```
+
+```trycmd
+$ run.sh things new x --in Pa --after Ha
+? 1
+Anchor is a heading: Spring
+
+```
+
+```trycmd
+$ run.sh things reorder Ta --after-id Ha
+? 1
+Anchor is a heading: Spring
+
+```

@@ -1,23 +1,24 @@
 ```trycmd
 $ run.sh things project Pd
-◑ Move house (1/3)
+◔ Move house (1/4)
 
   Da ▢ Pack books
   Db ◼ Book van
   Dc ▢ Pack kitchen
+  Dd ▢ Label boxes
 
 ```
 
 ```trycmd
 $ run.sh things --now-ts 1774400000.0 reorder Dc --after-id Da
-✓ Reordered Pack kitchen  Dc11111111111111111111 (after=Pack books, index=1025)
+✓ Reordered Pack kitchen  Dc11111111111111111111 (after=Pack books, index=1536)
 {
   "ancestor_index": 0,
   "changes": {
     "Dc11111111111111111111": {
       "e": "Task7",
       "p": {
-        "ix": 1025,
+        "ix": 1536,
         "md": 1774400000.0
       },
       "t": 1
@@ -135,6 +136,62 @@ $ run.sh things --now-ts 1774400000.0 reorder Kc --after-id Ka
         "md": 1774400000.0
       },
       "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --id-seed 7 --now-ts 1774400000.0 new N --in Pd --after Da
+✓ Created N  11111116AjePwYNteRv
+{
+  "ancestor_index": 0,
+  "changes": {
+    "11111116AjePwYNteRv": {
+      "e": "Task7",
+      "p": {
+        "acrd": null,
+        "agr": [],
+        "ar": [],
+        "ato": null,
+        "cd": 1774400000.0,
+        "dd": null,
+        "dds": null,
+        "dl": [],
+        "do": 0,
+        "icc": 0,
+        "icp": false,
+        "icsd": null,
+        "ix": 1536,
+        "lai": null,
+        "lt": false,
+        "md": 1774400000.0,
+        "nt": null,
+        "pr": [
+          "Pd11111111111111111111"
+        ],
+        "rmd": null,
+        "rp": null,
+        "rr": null,
+        "rt": [],
+        "sb": 0,
+        "sp": null,
+        "sr": null,
+        "ss": 0,
+        "st": 1,
+        "tg": [],
+        "ti": 0,
+        "tir": null,
+        "tp": 0,
+        "tr": false,
+        "tt": "N",
+        "xx": {
+          "_t": "oo",
+          "sn": {}
+        }
+      },
+      "t": 0
     }
   }
 }
