@@ -364,9 +364,17 @@ fn build_new_plan(
         props.deadline = Some(day_timestamp(parsed));
     }
 
+    // only an open to-do that Today lists anchors a place in it
+    // `reorder` holds its anchors to the same rule
     let anchor_is_today = anchor
         .as_ref()
-        .map(|a| a.start == TaskStart::Anytime && a.is_today(&today))
+        .map(|a| {
+            a.start == TaskStart::Anytime
+                && a.is_today(&today)
+                && a.status == TaskStatus::Incomplete
+                && !a.trashed
+                && !store.in_closed_container(a)
+        })
         .unwrap_or(false);
     let new_is_today = props.start_location == TaskStart::Anytime
         && props.scheduled_date.is_some_and(|sr| sr <= today_ts);
@@ -438,6 +446,7 @@ fn build_new_plan(
             .values()
             .filter(|t| {
                 !t.trashed
+                    && !store.in_closed_container(t)
                     && t.status == TaskStatus::Incomplete
                     && t.start == TaskStart::Anytime
                     && t.is_today(&today)

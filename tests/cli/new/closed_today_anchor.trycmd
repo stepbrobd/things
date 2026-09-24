@@ -1,0 +1,20 @@
+```trycmd
+$ run.sh things new x --when today --after Tn
+? 1
+Cannot place new task relative to an item in a different container/list.
+
+```
+
+```trycmd
+$ run.sh things new x --when today --after Tp
+? 1
+Cannot place new task relative to an item in a different container/list.
+
+```
+
+```trycmd
+$ run.sh things new x --when today --after Tq
+? 1
+Cannot place new task relative to an item in a different container/list.
+
+```
