@@ -204,7 +204,7 @@ pub fn run() -> Result<ExitCode> {
     if let Err(error) = std::io::stdout().write_all(out.as_bytes())
         && error.kind() != ErrorKind::BrokenPipe
     {
-        return Err(error.into());
+        return Err(error).context("Failed to write the output");
     }
     result?;
     // output from the cache succeeds as a command
