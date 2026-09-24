@@ -543,15 +543,21 @@ impl ThingsStore {
             || project.is_some_and(|project| project.trashed)
     }
 
-    /// in a trashed container or a project that is no longer open
+    /// in a trashed container or a project or heading that is no longer open
     ///
     /// that keeps a to-do out of the lists and a template out of the repeat pass
     pub fn in_closed_container(&self, task: &Task) -> bool {
+        let closed = |id: &ThingsId| {
+            self.tasks_by_uuid
+                .get(id)
+                .is_some_and(|container| container.status != TaskStatus::Incomplete)
+        };
         self.in_trashed_container(task)
+            || task.action_group.as_ref().is_some_and(closed)
             || self
                 .effective_project_uuid(task)
-                .and_then(|id| self.tasks_by_uuid.get(&id))
-                .is_some_and(|project| project.status != TaskStatus::Incomplete)
+                .as_ref()
+                .is_some_and(closed)
     }
 
     pub fn effective_project_uuid(&self, task: &Task) -> Option<ThingsId> {
