@@ -1,0 +1,20 @@
+```trycmd
+$ run.sh things edit Tw --when today --repeat daily
+? 1
+Container is completed: Spring
+
+```
+
+```trycmd
+$ run.sh things edit Tb --when today --repeat daily
+? 1
+Container is completed: Move house
+
+```
+
+```trycmd
+$ run.sh things edit Tk --when today --repeat daily
+? 1
+Container is an item of unknown kind 9: Odd container
+
+```

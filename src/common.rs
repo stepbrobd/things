@@ -394,38 +394,55 @@ pub fn resolve_container(
             ));
         }
     };
-    // a project of a kind the writes do not know may be closed or in the Trash without showing it
-    if !project.entity.can_upgrade_to_task7() {
-        return Err(format!(
+    if let Some(refusal) = container_refusal(store, &project) {
+        return Err(refusal);
+    }
+    Ok(Container::Project(project.uuid))
+}
+
+/// why a project or heading takes no to-do, None when it takes one
+pub fn container_refusal(store: &ThingsStore, container: &Task) -> Option<String> {
+    // a project or a heading holds to-dos
+    // an item of any other kind holds none
+    if !container.is_project() && !container.is_heading() {
+        return Some(format!(
+            "Container is {}: {}",
+            kind_with_article(container),
+            shown_title(&container.title)
+        ));
+    }
+    // a container of a kind the writes do not know may be closed or in the Trash without showing it
+    if !container.entity.can_upgrade_to_task7() {
+        return Some(format!(
             "Container is of kind {}: {}",
-            project.entity,
-            shown_title(&project.title)
+            container.entity,
+            shown_title(&container.title)
         ));
     }
     // one that did not replay completely may be as well
-    if project.degraded {
-        return Err(format!(
+    if container.degraded {
+        return Some(format!(
             "Container did not replay completely: {}",
-            shown_title(&project.title)
+            shown_title(&container.title)
         ));
     }
-    // a closed project lists no incomplete to-do
+    // a closed container lists no incomplete to-do
     // one placed there would show nowhere
-    if let Some(state) = store.closed_state(&project) {
-        return Err(format!(
+    if let Some(state) = store.closed_state(container) {
+        return Some(format!(
             "Container is {state}: {}",
-            shown_title(&project.title)
+            shown_title(&container.title)
         ));
     }
     // the template of a repeating project shows in no list
     // a to-do placed there would show nowhere either
-    if project.is_recurrence_template() {
-        return Err(format!(
+    if container.is_recurrence_template() {
+        return Some(format!(
             "Container is a repeat template: {}",
-            shown_title(&project.title)
+            shown_title(&container.title)
         ));
     }
-    Ok(Container::Project(project.uuid))
+    None
 }
 
 pub fn resolve_single_tag(store: &ThingsStore, identifier: &str) -> (Option<Tag>, String) {

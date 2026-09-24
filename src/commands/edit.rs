@@ -12,8 +12,8 @@ use crate::{
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs},
     common::{
-        Container, DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day,
-        parse_instant, parse_reminder, resolve_container, resolve_removable_tag_ids,
+        Container, DIM, GREEN, ICONS, colored, container_refusal, day_of, day_timestamp, one_line,
+        parse_day, parse_instant, parse_reminder, resolve_container, resolve_removable_tag_ids,
         resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
@@ -197,6 +197,7 @@ fn unschedule(update: &mut TaskPatch, task: &Task) {
 #[allow(clippy::too_many_arguments)]
 fn apply_schedule(
     args: &EditArgs,
+    store: &crate::store::ThingsStore,
     task: &Task,
     update: &mut TaskPatch,
     changes: &mut BTreeMap<String, WireObject>,
@@ -300,6 +301,23 @@ fn apply_schedule(
     if let Some(rule_text) = &args.repeat {
         if task.is_recurrence_template() || task.is_recurrence_instance() {
             return Err("This to-do already repeats.".to_string());
+        }
+        // the template stays in the to-do's project and heading unless the edit moves it
+        // the pass makes nothing in a closed, trashed or partly replayed container, nor in a repeat template
+        if update.parent_project_ids.is_none() && update.area_ids.is_none() {
+            for id in task
+                .action_group
+                .iter()
+                .cloned()
+                .chain(store.effective_project_uuid(task))
+            {
+                let Some(container) = store.tasks_by_uuid.get(&id) else {
+                    return Err(format!("Container not found: {id}"));
+                };
+                if let Some(refusal) = container_refusal(store, container) {
+                    return Err(refusal);
+                }
+            }
         }
         let spec: RepeatSpec = rule_text.parse()?;
         let bound = bound(args.times, args.until.as_deref())?;
@@ -806,6 +824,7 @@ fn build_edit_plan(
             .collect::<Vec<_>>();
         apply_schedule(
             args,
+            store,
             task,
             &mut update,
             &mut changes,
