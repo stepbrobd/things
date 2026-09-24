@@ -34,12 +34,7 @@ impl Command for TodayArgs {
         let mut today_items: Vec<_> = store
             .tasks(Some(TaskStatus::Incomplete))
             .into_iter()
-            .filter(|t| {
-                !t.is_heading()
-                    && !t.is_blank()
-                    && t.is_today(&today)
-                    && !store.in_closed_container(t)
-            })
+            .filter(|t| store.in_today(t, &today))
             .collect();
 
         today_items.sort_by_key(|task| {

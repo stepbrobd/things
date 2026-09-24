@@ -474,7 +474,7 @@ fn matches(
 
     // each view filter takes what its view lists
     // no view lists a blank or closed to-do or what is in the Trash
-    if (args.inbox || args.today || args.someday)
+    if (args.inbox || args.someday)
         && (task.is_blank() || task.status != TaskStatus::Incomplete || store.in_trash(task))
     {
         return MatchResult::no();
@@ -485,7 +485,7 @@ fn matches(
     if args.inbox && !in_inbox {
         return MatchResult::no();
     }
-    if args.today && (!task.is_today(today) || store.in_closed_container(task)) {
+    if args.today && !store.in_today(task, today) {
         return MatchResult::no();
     }
     // Someday leaves out a to-do inside a project and what is in the Trash

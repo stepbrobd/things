@@ -376,13 +376,7 @@ fn build_new_plan(
     // `reorder` holds its anchors to the same rule
     let anchor_is_today = anchor
         .as_ref()
-        .map(|a| {
-            a.start == TaskStart::Anytime
-                && a.is_today(&today)
-                && a.status == TaskStatus::Incomplete
-                && !a.trashed
-                && !store.in_closed_container(a)
-        })
+        .map(|a| store.in_today(a, &today))
         .unwrap_or(false);
     let new_is_today = props.start_location == TaskStart::Anytime
         && props.scheduled_date.is_some_and(|sr| sr <= today_ts);
@@ -453,12 +447,7 @@ fn build_new_plan(
             .tasks_by_uuid
             .values()
             .filter(|t| {
-                !t.trashed
-                    && !store.in_closed_container(t)
-                    && t.status == TaskStatus::Incomplete
-                    && t.start == TaskStart::Anytime
-                    && t.is_today(&today)
-                    && (if t.evening { 1 } else { 0 }) == section_evening
+                store.in_today(t, &today) && (if t.evening { 1 } else { 0 }) == section_evening
             })
             .cloned()
             .collect::<Vec<_>>();

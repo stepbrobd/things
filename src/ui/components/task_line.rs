@@ -61,6 +61,9 @@ pub fn TaskLine<'a>(hooks: Hooks, props: &TaskLineProps<'a>) -> impl Into<AnyEle
     .into_any()
 }
 
+/// the markers of a to-do that Today lists
+///
+/// a to-do in the Trash or in a closed project or heading carries none
 fn marker_element<'a>(
     store: &ThingsStore,
     task: &Task,
@@ -68,17 +71,14 @@ fn marker_element<'a>(
     show_today_markers: bool,
     show_staged_today_marker: bool,
 ) -> AnyElement<'a> {
-    // a to-do in the Trash carries no marker
-    if store.in_trash(task) {
+    if !store.in_today(task, today) {
         return element!(Fragment).into_any();
     }
     if show_today_markers {
         if task.evening {
             return element! { Text(content: ICONS.evening, color: Color::Blue) }.into_any();
         }
-        if task.is_today(today) {
-            return element! { Text(content: ICONS.today, color: Color::Yellow) }.into_any();
-        }
+        return element! { Text(content: ICONS.today, color: Color::Yellow) }.into_any();
     }
 
     if show_staged_today_marker && task.is_staged_for_today(today) {

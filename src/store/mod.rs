@@ -499,6 +499,17 @@ impl ThingsStore {
             .collect()
     }
 
+    /// in the Today list as the Today view reads it
+    ///
+    /// a to-do that is blank, done or canceled, in the Trash or in a closed project or heading is out of it
+    pub fn in_today(&self, task: &Task, today: &DateTime<Utc>) -> bool {
+        task.status == TaskStatus::Incomplete
+            && task.is_today(today)
+            && !task.is_blank()
+            && !task.trashed
+            && !self.in_closed_container(task)
+    }
+
     /// a to-do, project or area still carries the tag id
     pub fn tag_is_carried(&self, id: &ThingsId) -> bool {
         self.tasks_by_uuid

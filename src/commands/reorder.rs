@@ -14,7 +14,7 @@ use crate::{
     ids::ThingsId,
     ordering::{allocate, today_group},
     wire::{
-        task::{TaskPatch, TaskStart, TaskStatus},
+        task::{TaskPatch, TaskStatus},
         wire_object::{EntityType, WireObject},
     },
 };
@@ -89,13 +89,7 @@ fn build_reorder_plan(
 
     // only an open to-do that Today lists is ordered within it
     // the structural path refuses the others
-    let is_today_orderable = |task: &crate::store::Task| {
-        task.start == TaskStart::Anytime
-            && task.is_today(&today)
-            && task.status == TaskStatus::Incomplete
-            && !task.trashed
-            && !store.in_closed_container(task)
-    };
+    let is_today_orderable = |task: &crate::store::Task| store.in_today(task, &today);
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
 
     if is_today_reorder {

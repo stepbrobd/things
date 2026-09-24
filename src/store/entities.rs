@@ -218,7 +218,9 @@ impl Task {
         self.start == TaskStart::Someday && self.start_date.is_none()
     }
 
-    /// in the Today list
+    /// the day rule of the Today list
+    ///
+    /// `ThingsStore::in_today` completes it
     ///
     /// started on or before today, or undated with a deadline on or before today that nobody took out of Today
     /// templates are excluded
