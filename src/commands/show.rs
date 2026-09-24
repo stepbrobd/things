@@ -60,7 +60,7 @@ impl Command for ShowArgs {
         };
         let mut status = match task.status {
             TaskStatus::Incomplete => "incomplete".to_string(),
-            TaskStatus::Completed => "done".to_string(),
+            TaskStatus::Completed => "completed".to_string(),
             TaskStatus::Canceled => "canceled".to_string(),
             TaskStatus::Unknown(raw) => format!("unknown status {raw}"),
         };

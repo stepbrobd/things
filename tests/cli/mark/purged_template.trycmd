@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --now-ts 1774400000.0 mark Ti --done
-✓ Done Water plants  Ti11111111111111111111
+✓ Completed Water plants  Ti11111111111111111111
 {
   "ancestor_index": 0,
   "changes": {

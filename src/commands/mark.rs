@@ -17,7 +17,7 @@ use crate::{
 };
 
 #[derive(Args)]
-#[command(about = "Mark a task done, incomplete, or canceled")]
+#[command(about = "Mark a task completed, incomplete, or canceled")]
 #[command(group(ArgGroup::new("status").args(["done", "incomplete", "canceled", "check_ids", "uncheck_ids", "check_cancel_ids"]).required(true).multiple(false)))]
 pub struct MarkArgs {
     /// Task ID(s) (or unique ID prefixes)
@@ -32,7 +32,7 @@ pub struct MarkArgs {
     #[arg(
         long = "check",
         short = 'k',
-        help = "Mark checklist items done by comma-separated short IDs"
+        help = "Mark checklist items completed by comma-separated short IDs"
     )]
     pub check_ids: Option<String>,
     #[arg(
@@ -148,7 +148,7 @@ fn validate_mark_target(
     if task.is_recurrence_template() {
         return "A repeat template takes no status, mark one of its instances instead.".to_string();
     }
-    if action == "done" && task.status == TaskStatus::Completed {
+    if action == "completed" && task.status == TaskStatus::Completed {
         return "Item is already completed.".to_string();
     }
     if action == "incomplete" && task.status == TaskStatus::Incomplete {
@@ -176,7 +176,7 @@ fn build_mark_status_plan(
     now: f64,
 ) -> (MarkCommitPlan, Vec<crate::store::Task>, Vec<String>) {
     let action = if args.done {
-        "done"
+        "completed"
     } else if args.incomplete {
         "incomplete"
     } else {
@@ -208,7 +208,7 @@ fn build_mark_status_plan(
             continue;
         }
 
-        let (task_status, stop_date) = if action == "done" {
+        let (task_status, stop_date) = if action == "completed" {
             (TaskStatus::Completed, Some(now))
         } else if action == "incomplete" {
             (TaskStatus::Incomplete, None)
@@ -383,7 +383,7 @@ impl Command for MarkArgs {
         }
 
         let action = if self.done {
-            "done"
+            "completed"
         } else if self.incomplete {
             "incomplete"
         } else {
@@ -401,7 +401,7 @@ impl Command for MarkArgs {
             .with_context(|| format!("Failed to mark items {action}"))?;
 
         let label = match action {
-            "done" => format!("{} Done", ICONS.done),
+            "completed" => format!("{} Completed", ICONS.done),
             "incomplete" => format!("{} Incomplete", ICONS.incomplete),
             _ => format!("{} Canceled", ICONS.canceled),
         };

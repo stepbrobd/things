@@ -14,7 +14,7 @@ Checklist:
 
 ```trycmd
 $ run.sh things --now-ts 1774400000.0 mark Rc --done
-✓ Done Renew passport^JKind: to-do, done^M^[[8mhidden  Rc11111111111111111111
+✓ Completed Renew passport^JKind: to-do, done^M^[[8mhidden  Rc11111111111111111111
 {
   "ancestor_index": 0,
   "changes": {
