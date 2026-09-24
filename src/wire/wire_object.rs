@@ -40,7 +40,7 @@ pub enum Properties {
     TombstoneCreate(TombstoneProps),
     CommandCreate(CommandProps),
     Delete,
-    /// known entity families we intentionally skip materializing in store state
+    /// known entity families the store keeps no typed state for
     Ignored(BTreeMap<String, Value>),
     /// a payload the CLI holds untyped
     ///

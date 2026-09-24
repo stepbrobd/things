@@ -115,7 +115,7 @@ pub struct TaskProps {
     #[serde(rename = "icsd", default)]
     pub instance_creation_start_date: Option<i64>,
 
-    /// `acrd`, after-completion reference date timestamp for recurrence scheduling
+    /// `acrd`, after-completion reference date timestamp for repeat scheduling
     #[serde(rename = "acrd", default)]
     pub after_completion_reference_date: Option<i64>,
 
@@ -296,7 +296,7 @@ pub struct TaskPatch {
     #[serde(rename = "ti", skip_serializing_if = "Option::is_none")]
     pub today_sort_index: Option<i32>,
 
-    /// `rr`, recurrence rule
+    /// `rr`, the repeat rule of a template
     #[serde(
         rename = "rr",
         default,

@@ -5,10 +5,10 @@ use num_enum::{FromPrimitive, IntoPrimitive};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// recurrence rule payload (`rr`) for recurring templates
+/// the repeat rule payload (`rr`) of a repeat template
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct RecurrenceRule {
-    /// `tp`, recurrence rule type
+    /// `tp`, repeat rule type
     #[serde(rename = "tp", default)]
     pub recurrence_type: RecurrenceType,
 
@@ -50,7 +50,7 @@ pub struct RecurrenceRule {
     #[serde(rename = "ts", default)]
     pub time_span_in_days: i32,
 
-    /// `rrv`, recurrence rule version
+    /// `rrv`, repeat rule version
     #[serde(rename = "rrv", default = "default_version")]
     pub version: i32,
 }
@@ -422,7 +422,7 @@ fn join_list(values: &[impl AsRef<str>]) -> String {
     }
 }
 
-/// recurrence rule type, `rr.tp`
+/// repeat rule type, `rr.tp`
 #[derive(
     Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, FromPrimitive, IntoPrimitive,
 )]
@@ -487,7 +487,7 @@ const fn default_recurrence_end_date() -> Option<i64> {
 /// sentinel used when a recurrence has no explicit start date
 const RECURRENCE_START_DATE_SENTINEL: i64 = -62_135_769_600;
 
-/// current observed recurrence rule version (`rrv`)
+/// current observed repeat rule version (`rrv`)
 const fn default_version() -> i32 {
     4
 }

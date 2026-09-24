@@ -155,7 +155,7 @@ fn props_bucket(props: &TaskProps) -> Vec<String> {
     vec!["task-root".to_string(), st.to_string()]
 }
 
-/// the structural index for a newcomer at `insert_at` among `ordered`, and the siblings that move when the run respaces
+/// the structural index for a newcomer at `insert_at` among `ordered`, and the siblings that move when the run is rebalanced
 fn plan_ix_insert(ordered: &[Task], insert_at: usize) -> (i32, Vec<(ThingsId, i32)>) {
     let run: Vec<(ThingsId, i32)> = ordered
         .iter()

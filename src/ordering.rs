@@ -34,7 +34,7 @@ pub fn today_view_order(task: &Task) -> (Reverse<i64>, i32, Reverse<i32>, Things
     )
 }
 
-/// the distance between members of a respaced run
+/// the distance between members of a rebalanced run
 pub const STRIDE: i32 = 1024;
 
 /// an index between two neighbors, before the first, after the last, or 0 in an empty run, None when the neighbors are adjacent or the type has no room left
@@ -52,7 +52,7 @@ pub fn slot_between(prev: Option<i32>, next: Option<i32>) -> Option<i32> {
     }
 }
 
-/// the index of a newcomer at `hole` in `run`, the members in their order with their current indexes, plus the members that move when the run has to be respaced
+/// the index of a newcomer at `hole` in `run`, the members in their order with their current indexes, plus the members that move when the run has to be rebalanced
 pub fn allocate(run: &[(ThingsId, i32)], hole: usize) -> (i32, Vec<(ThingsId, i32)>) {
     let prev = hole
         .checked_sub(1)
