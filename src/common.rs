@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Write as _};
+use std::{collections::HashSet, fmt::Write as _, io::Write as _};
 
 use chrono::{DateTime, Local, NaiveDate, NaiveTime, TimeZone, Timelike, Utc};
 use crc32fast::Hasher;
@@ -105,6 +105,14 @@ pub const ICONS: Icons = Icons {
     checklist_done: "●",
     checklist_canceled: "×",
 };
+
+/// a line of diagnostics on stderr
+///
+/// a reader that closed stderr takes the line with it
+/// no other channel is left to report that
+pub fn eprint_line(text: &str) {
+    let _ = writeln!(std::io::stderr(), "{text}");
+}
 
 /// a count with its noun, singular for one
 pub fn counted(count: usize, noun: &str) -> String {

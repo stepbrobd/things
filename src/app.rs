@@ -16,7 +16,7 @@ use crate::{
     client::ThingsCloudClient,
     cmd_ctx::{CmdCtx, DefaultCmdCtx},
     commands::{Command, Commands},
-    common::{ICONS, counted, one_line, printable, printable_json, printable_plain},
+    common::{ICONS, counted, eprint_line, one_line, printable, printable_json, printable_plain},
     dirs::append_log_dir,
     ids::ThingsId,
     log_cache::{CacheLock, fold_state_from_append_log, get_state_with_append_log},
@@ -97,10 +97,10 @@ impl Cli {
             for id in &degraded {
                 warn!(target: "things::replay", uuid = %id, "did not replay completely, writes to it are refused");
             }
-            eprintln!(
+            eprint_line(&format!(
                 "{} did not replay completely and will not be written, THINGS_LOG=warn lists the ids",
                 counted(degraded.len(), "object")
-            );
+            ));
         }
         *self.degraded.borrow_mut() = degraded.into_iter().collect();
         *self.state_cache.borrow_mut() = Some(state);
@@ -146,10 +146,10 @@ impl Cli {
         match sync_error {
             None => *self.cloud.borrow_mut() = Some(client),
             Some(err) => {
-                eprintln!(
+                eprint_line(&format!(
                     "Sync failed, showing the cached state: {}",
                     printable_plain(&format!("{err:#}"))
-                );
+                ));
                 self.offline.set(true);
             }
         }
@@ -184,7 +184,7 @@ pub fn run() -> Result<ExitCode> {
             // the pass stands in for the Apple clients
             // its failure is reported
             // the command still runs
-            eprintln!("{}", printable_plain(&format!("{err:#}")));
+            eprint_line(&printable_plain(&format!("{err:#}")));
         }
         cli.cache_lock.borrow_mut().take();
     }
@@ -242,13 +242,13 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
         fold_item(changes, state);
     }
     for materialized in due {
-        eprintln!(
+        eprint_line(&format!(
             "{} Created {} for {}  {}",
             ICONS.repeat,
             one_line(&materialized.title),
             materialized.day,
             materialized.instance_id
-        );
+        ));
     }
     Ok(())
 }

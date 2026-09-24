@@ -21,6 +21,7 @@ use tracing::{debug, warn};
 
 use crate::{
     client::{HttpStatus, ThingsCloudClient, now_timestamp},
+    common::eprint_line,
     dirs::create_private_dir,
     store::{RawState, fold_item},
     wire::wire_object::WireItem,
@@ -255,8 +256,8 @@ fn cursor_for_history(cache_dir: &Path, history_key: &str) -> Result<CursorData>
         return Ok(cursor);
     }
     if !cursor.history_key.is_empty() || cache_dir.join(LOG_FILE).exists() {
-        eprintln!(
-            "The sync cache is not bound to this account's history, fetching the history from the start"
+        eprint_line(
+            "The sync cache is not bound to this account's history, fetching the history from the start",
         );
     }
     reset_cache(cache_dir)?;

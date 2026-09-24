@@ -3,6 +3,8 @@ use std::{io::IsTerminal, sync::OnceLock};
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, Layer, prelude::*};
 
+use crate::common::eprint_line;
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum LogFormat {
     #[default]
@@ -50,9 +52,13 @@ pub fn init() {
         // warnings name the objects and repairs behind a notice already printed
         // they wait for THINGS_LOG
         let directive = std::env::var("THINGS_LOG").unwrap_or_default();
-        let filter = EnvFilter::builder()
-            .with_default_directive(LevelFilter::ERROR.into())
-            .parse_lossy(directive);
+        let builder = EnvFilter::builder().with_default_directive(LevelFilter::ERROR.into());
+        // a directive that does not parse is reported through eprint_line
+        // the library's own report would panic on a closed stderr
+        let filter = builder.parse(&directive).unwrap_or_else(|error| {
+            eprint_line(&format!("THINGS_LOG is ignored: {error}"));
+            builder.parse_lossy("")
+        });
 
         tracing_subscriber::registry()
             .with(format.with_filter(filter))

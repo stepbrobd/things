@@ -439,3 +439,50 @@ fn failed_sync_with_a_cache_that_does_not_read() {
     assert!(stderr.contains("Corrupt log entry"), "{stderr}");
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
 }
+
+/// a reader that closed stderr leaves the exit status as it is
+#[test]
+fn closed_stderr() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let (reader, writer) = std::io::pipe().expect("pipe");
+    drop(reader);
+    let status = std::process::Command::new(env!("CARGO_BIN_EXE_things"))
+        .args(["--no-cloud", "--load-journal", "missing.json", "today"])
+        .current_dir(home.path())
+        .env("XDG_CONFIG_HOME", home.path().join("config"))
+        .env("XDG_STATE_HOME", home.path().join("state"))
+        .env_remove("THINGS_LOG")
+        .env_remove("THINGS_LOG_FORMAT")
+        .stdout(std::process::Stdio::null())
+        .stderr(writer)
+        .status()
+        .expect("things runs");
+    assert_eq!(status.code(), Some(1));
+}
+
+/// a log directive that does not parse is reported without touching the exit status
+#[test]
+fn bad_log_directive_with_closed_stderr() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let journal = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("cli")
+        .join("today")
+        .join("basic_list.in")
+        .join("journal.json");
+    let (reader, writer) = std::io::pipe().expect("pipe");
+    drop(reader);
+    let status = std::process::Command::new(env!("CARGO_BIN_EXE_things"))
+        .args(["--no-cloud", "--load-journal"])
+        .arg(&journal)
+        .args(["--today-ts", "1774396800", "today"])
+        .env("XDG_CONFIG_HOME", home.path().join("config"))
+        .env("XDG_STATE_HOME", home.path().join("state"))
+        .env("THINGS_LOG", "things=nope")
+        .env_remove("THINGS_LOG_FORMAT")
+        .stdout(std::process::Stdio::null())
+        .stderr(writer)
+        .status()
+        .expect("things runs");
+    assert_eq!(status.code(), Some(0));
+}
