@@ -33,7 +33,7 @@ impl CloudWriter for LoggingCloudWriter {
         let ancestor_index = self.inner.head_index();
         let uuids = changes.keys().cloned().collect::<Vec<_>>();
         // the payload is serialized for the log only when that log is on
-        let request_json = if tracing::enabled!(target: "things_cli::cloud_commit::request", tracing::Level::DEBUG)
+        let request_json = if tracing::enabled!(target: "things::cloud::commit::request", tracing::Level::DEBUG)
         {
             serde_json::to_string(&json!({
                 "ancestor_index": ancestor_index,
@@ -44,7 +44,7 @@ impl CloudWriter for LoggingCloudWriter {
             String::new()
         };
         debug!(
-            target: "things_cli::cloud_commit::request",
+            target: "things::cloud::commit::request",
             event = "cloud.commit.request",
             ancestor_index,
             change_count = uuids.len(),
@@ -56,7 +56,7 @@ impl CloudWriter for LoggingCloudWriter {
         match self.inner.commit(changes) {
             Ok(head_index) => {
                 debug!(
-                    target: "things_cli::cloud_commit::success",
+                    target: "things::cloud::commit::success",
                     event = "cloud.commit.success",
                     ancestor_index,
                     change_count = uuids.len(),
@@ -70,7 +70,7 @@ impl CloudWriter for LoggingCloudWriter {
             // the event is for a debug log
             Err(err) => {
                 debug!(
-                    target: "things_cli::cloud_commit::error",
+                    target: "things::cloud::commit::error",
                     event = "cloud.commit.error",
                     ancestor_index,
                     change_count = uuids.len(),

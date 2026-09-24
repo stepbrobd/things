@@ -3,7 +3,7 @@ set -euo pipefail
 
 export TZ=UTC
 export NO_COLOR=1
-export THINGS_LOG="off,things_cli::cloud_commit::request=debug"
+export THINGS_LOG="off,things::cloud::commit::request=debug"
 export THINGS_LOG_FORMAT=json
 
 # the runner behind every trycmd case
