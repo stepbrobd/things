@@ -9,6 +9,7 @@ use crate::{
     arg_types::IdentifierToken,
     commands::{Command, detailed_json_conflict, write_json},
     common::{kind_with_article, shown_title},
+    store::Task,
     ui::{
         render_element_to_string,
         views::{
@@ -16,6 +17,7 @@ use crate::{
             project::{ProjectHeadingGroup, ProjectView},
         },
     },
+    wire::task::TaskStatus,
 };
 
 #[derive(Args)]
@@ -99,11 +101,27 @@ impl Command for ProjectArgs {
             ungrouped.push(t);
         }
 
+        // active to-dos come first, then those that have not started, then the closed ones, as in the app
+        // a closed heading goes below the open ones
+        let row_order = |task: &Task| {
+            (
+                task.status != TaskStatus::Incomplete,
+                !task.has_started(&today),
+                task.index,
+                task.uuid.clone(),
+            )
+        };
         let mut sorted_headings = headings.values().collect::<Vec<_>>();
-        sorted_headings.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
-        ungrouped.sort_by_key(|t| t.index);
+        sorted_headings.sort_by_key(|heading| {
+            (
+                heading.status != TaskStatus::Incomplete,
+                heading.index,
+                heading.uuid.clone(),
+            )
+        });
+        ungrouped.sort_by_key(row_order);
         for items in by_heading.values_mut() {
-            items.sort_by_key(|t| t.index);
+            items.sort_by_key(row_order);
         }
 
         // a heading shows whether it holds a to-do or not

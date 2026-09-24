@@ -12,6 +12,7 @@ use crate::{
     common::shown_title,
     ids::ThingsId,
     store::{Task, ThingsStore},
+    wire::task::TaskStatus,
 };
 
 /// the day group a today index counts in, `tir` when a client set it, otherwise the scheduled day, otherwise today
@@ -89,7 +90,7 @@ pub fn allocate(run: &[(ThingsId, i32)], hole: usize) -> (i32, Vec<(ThingsId, i3
 /// every list that shows `row`, each in its own order
 ///
 /// `row` is among the rows when the store holds it
-/// a project view shows the to-dos under each heading at every status
+/// a project view shows the to-dos under each heading in three runs, the started ones, those that have not started and the closed ones
 /// an area view shows its own to-dos at every status and start
 /// Anytime groups its to-dos by container
 /// Someday shows its to-dos in one list
@@ -156,6 +157,12 @@ pub fn lists_showing(store: &ThingsStore, row: &Task, today: &DateTime<Utc>) -> 
             && (project.is_some() || store.effective_area_uuid(task) == area)
     };
     let to_do = |task: &Task| !task.is_project() && !task.is_heading();
+    let run = |task: &Task| {
+        (
+            task.status != TaskStatus::Incomplete,
+            !task.has_started(today),
+        )
+    };
     [
         listed(&|task| store.in_inbox(task)),
         listed(&|task| store.in_anytime(task, today) && same_container(task)),
@@ -166,7 +173,8 @@ pub fn lists_showing(store: &ThingsStore, row: &Task, today: &DateTime<Utc>) -> 
                     shown(task)
                         && to_do(task)
                         && same_container(task)
-                        && (project.is_none() || task.action_group == row.action_group)
+                        && (project.is_none()
+                            || (task.action_group == row.action_group && run(task) == run(row)))
                 })
             })
             .flatten(),

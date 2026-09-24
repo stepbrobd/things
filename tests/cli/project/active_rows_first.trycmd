@@ -1,0 +1,15 @@
+```trycmd
+$ run.sh things project Pa
+◑ Kitchen (2/5)
+
+  Te ▢ Call the plumber
+  Td ◼ Measure the walls
+
+  Hb Tiling
+    Tc ▢ Buy tiles
+    Tb ▢ Grout next month
+
+  Ha Demolition
+    Ta ◼ Remove cabinets
+
+```

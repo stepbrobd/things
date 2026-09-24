@@ -3,28 +3,15 @@ $ run.sh things project Pd
 ◔ Move house (1/4)
 
   Da ▢ Pack books
-  Db ◼ Book van
   Dc ▢ Pack kitchen
   Dd ▢ Label boxes
+  Db ◼ Book van
 
 ```
 
 ```trycmd
 $ run.sh things --now-ts 1774400000.0 reorder Dc --after-id Da
-✓ Reordered Pack kitchen  Dc11111111111111111111 (after=Pack books, index=1536)
-{
-  "ancestor_index": 0,
-  "changes": {
-    "Dc11111111111111111111": {
-      "e": "Task7",
-      "p": {
-        "ix": 1536,
-        "md": 1774400000.0
-      },
-      "t": 1
-    }
-  }
-}
+✓ Already in place Pack kitchen  Dc11111111111111111111 (after=Pack books, index=3072)
 
 ```
 

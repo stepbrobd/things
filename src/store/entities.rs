@@ -241,6 +241,13 @@ impl Task {
         self.start == TaskStart::Someday && self.start_date.is_none()
     }
 
+    /// started, neither in Someday nor scheduled for a later day
+    ///
+    /// a project view lists its started to-dos above those that have not started
+    pub fn has_started(&self, today: &DateTime<Utc>) -> bool {
+        !self.in_someday() && self.start_date.is_none_or(|day| day <= *today)
+    }
+
     /// the day rule of the Today list
     ///
     /// `ThingsStore::in_today` completes it
