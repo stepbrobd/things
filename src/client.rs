@@ -121,7 +121,7 @@ impl ThingsCloudClient {
         if text.trim().is_empty() {
             return Ok(json!({}));
         }
-        serde_json::from_str(&text).with_context(|| format!("invalid json from {label}"))
+        serde_json::from_str(&text).with_context(|| format!("invalid JSON from {label}"))
     }
 
     pub fn authenticate(&mut self) -> Result<String> {
@@ -139,7 +139,7 @@ impl ThingsCloudClient {
         let key = result
             .get("history-key")
             .and_then(Value::as_str)
-            .ok_or_else(|| anyhow!("missing history-key in auth response"))?
+            .ok_or_else(|| anyhow!("Signing in returned no history key."))?
             .to_string();
         self.history_key = Some(key.clone());
         Ok(key)
@@ -149,7 +149,7 @@ impl ThingsCloudClient {
         let history_key = self
             .history_key
             .as_ref()
-            .ok_or_else(|| anyhow!("Must authenticate first"))?;
+            .ok_or_else(|| anyhow!("No history key, sign in first."))?;
         let url = format!("{BASE_URL}/history/{history_key}/items?start-index={start_index}");
         self.request(
             reqwest::Method::GET,
@@ -164,7 +164,7 @@ impl ThingsCloudClient {
         let history_key = self
             .history_key
             .as_ref()
-            .ok_or_else(|| anyhow!("Must authenticate first"))?;
+            .ok_or_else(|| anyhow!("No history key, sign in first."))?;
         let idx = self.head_index;
         let url = format!("{BASE_URL}/history/{history_key}/commit?ancestor-index={idx}&_cnt=1");
 
