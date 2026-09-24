@@ -30,7 +30,7 @@ const LOG_FILE: &str = "things.log";
 const CURSOR_FILE: &str = "cursor.json";
 const STATE_CACHE_FILE: &str = "state_cache.json";
 const LOCK_FILE: &str = "lock";
-const STATE_CACHE_VERSION: u8 = 7;
+const STATE_CACHE_VERSION: u8 = 8;
 
 /// which history the journal holds and how much of it the cursor vouches for
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]

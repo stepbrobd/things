@@ -6,15 +6,14 @@ use serde_json::Value;
 use crate::ids::ThingsId;
 
 /// tombstone properties that mark a deleted object
+///
+/// the deletion time in `dld` is left unread
+/// a tombstone purges what it names whatever that field holds
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TombstoneProps {
     /// `dloid`, deleted object UUID
     #[serde(rename = "dloid")]
     pub deleted_object_id: ThingsId,
-
-    /// `dld`, deletion timestamp
-    #[serde(rename = "dld", default)]
-    pub delete_date: Option<f64>,
 }
 
 /// one-shot command properties

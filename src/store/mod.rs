@@ -11,7 +11,10 @@ pub use entities::{
     Area, AreaStateProps, ChecklistItem, ChecklistItemStateProps, ProjectProgress, StateObject,
     StateProperties, Tag, TagStateProps, Task, TaskStateProps,
 };
-pub use state::{RawState, degraded_checklist_owners, degraded_ids, fold_item, fold_items};
+pub use state::{
+    RawState, degraded_checklist_owners, degraded_ids, fold_item, fold_items,
+    unread_template_instances,
+};
 
 use crate::{
     common::{day_of, day_timestamp},
@@ -164,7 +167,9 @@ impl ThingsStore {
             }
         }
 
-        for owner in degraded_checklist_owners(raw_state) {
+        for owner in
+            degraded_checklist_owners(raw_state).chain(unread_template_instances(raw_state))
+        {
             if let Some(task) = self.tasks_by_uuid.get_mut(&owner) {
                 task.degraded = true;
             }
@@ -185,6 +190,13 @@ impl ThingsStore {
             if let Some(task) = self.tasks_by_uuid.get_mut(task_uuid) {
                 task.checklist_items = items.clone();
             }
+        }
+
+        // an instance outlives a purged template as a plain to-do
+        // a template the state still holds stays linked, whether it reads or not
+        for task in self.tasks_by_uuid.values_mut() {
+            task.recurrence_templates
+                .retain(|id| raw_state.contains_key(id));
         }
     }
 

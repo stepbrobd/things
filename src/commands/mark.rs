@@ -104,14 +104,12 @@ fn validate_recurring_instance(
         );
     }
 
-    let template_uuid = &task.recurrence_templates[0];
-    let Some(template) = store.get_task(&template_uuid.to_string()) else {
+    // the store keeps a template id while the state holds the template
+    // one that did not replay completely is no task
+    let Some(template) = store.get_task(&task.recurrence_templates[0].to_string()) else {
         return (
             false,
-            format!(
-                "Recurring instance template {} is missing from current state.",
-                template_uuid
-            ),
+            "The template of this repeating item did not replay completely.".to_string(),
         );
     };
 
@@ -524,6 +522,24 @@ mod tests {
     }
 
     #[test]
+    fn an_instance_whose_template_did_not_replay_is_refused() {
+        // an object without a kind is held and read as no task
+        let template: WireObject =
+            serde_json::from_str(r#"{"t":0,"p":{"tt":"Water plants"}}"#).expect("template");
+        let store = build_store(vec![
+            (TPL_A.to_string(), template),
+            task_with_props(TASK_A, "Water plants", None, vec![TPL_A]),
+        ]);
+        let task = store.get_task(TASK_A).expect("instance");
+        let (valid, message) = validate_recurring_instance(&task, &store);
+        assert!(!valid);
+        assert_eq!(
+            message,
+            "The template of this repeating item did not replay completely."
+        );
+    }
+
+    #[test]
     fn mark_status_payloads() {
         let done_store = build_store(vec![task(TASK_A, "Alpha", 0)]);
         let (done_plan, _, errs) = build_mark_status_plan(
@@ -771,12 +787,24 @@ mod tests {
             );
         }
 
-        let store = build_store(vec![task_with_props(
-            TASK_A,
-            "Recurring instance",
-            None,
-            vec![TPL_A, TPL_B],
-        )]);
+        // both templates exist
+        // an instance of two is malformed
+        let template = |uuid| {
+            task_with_props(
+                uuid,
+                "Recurring template",
+                Some(RecurrenceRule {
+                    recurrence_type: RecurrenceType::FixedSchedule,
+                    ..Default::default()
+                }),
+                vec![],
+            )
+        };
+        let store = build_store(vec![
+            template(TPL_A),
+            template(TPL_B),
+            task_with_props(TASK_A, "Recurring instance", None, vec![TPL_A, TPL_B]),
+        ]);
         for done in [true, false] {
             let (_, _, errs) = build_mark_status_plan(&status(done), &store, NOW);
             assert_eq!(

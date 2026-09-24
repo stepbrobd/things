@@ -210,7 +210,7 @@ fn wire_object_properties(obj: &WireObject) -> StateProperties {
     }
 }
 
-/// an object of a stored kind whose payload did not parse keeps the fields that do and is marked, as is one an update reaches before any create, a task whose note cannot be read and a task of a kind this CLI does not read
+/// an object of a stored kind whose payload did not parse keeps the fields that do and is marked, as is one an update reaches before any create, a task whose note cannot be read, a task of a kind this CLI does not read and a tombstone whose payload does not parse
 fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
     let stored = obj.entity_type.as_ref().is_some_and(EntityType::is_stored);
     let unparsed = stored && matches!(obj.payload, Properties::Unknown(_));
@@ -230,7 +230,11 @@ fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
         .entity_type
         .as_ref()
         .is_some_and(|entity| entity.is_task_family() && !stored);
-    let degraded = unparsed || create_less || unreadable_note || future;
+    // a tombstone whose payload does not parse names nothing to purge
+    // its own mark reports it as not replayed
+    let unread_tombstone = matches!(obj.entity_type, Some(EntityType::Tombstone2))
+        && matches!(obj.payload, Properties::Unknown(_));
+    let degraded = unparsed || create_less || unreadable_note || future || unread_tombstone;
     if unparsed {
         warn!(target: "things::replay", uuid = %uuid, "the object's payload did not parse, the fields that do are kept");
     } else if unreadable_note {
@@ -239,6 +243,8 @@ fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
         warn!(target: "things::replay", uuid = %uuid, "an update reached the object before any create, it is kept partial");
     } else if future {
         warn!(target: "things::replay", uuid = %uuid, "a task of a kind this CLI does not read, it is kept opaque");
+    } else if unread_tombstone {
+        warn!(target: "things::replay", uuid = %uuid, "the tombstone's payload did not parse, nothing is purged");
     }
     state.insert(
         uuid.clone(),
@@ -299,6 +305,9 @@ fn apply_update_payload(
 }
 
 pub fn fold_item(item: WireItem, state: &mut RawState) {
+    // the objects of a commit fold in key order
+    // its purges apply last, after any move out of what they purge
+    let mut purged = Vec::new();
     for (key, obj) in item {
         let Ok(uuid) = key.parse::<ThingsId>() else {
             warn!(target: "things::replay", %key, "an object whose id is not base58 is skipped");
@@ -306,6 +315,10 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
         };
         match obj.operation_type {
             OperationType::Create => {
+                if let Properties::TombstoneCreate(tombstone) = &obj.payload {
+                    purged.push(tombstone.deleted_object_id.clone());
+                    continue;
+                }
                 insert_state_object(state, &uuid, obj);
             }
             OperationType::Update => {
@@ -337,6 +350,32 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
             }
         }
     }
+    for target in &purged {
+        purge(state, target);
+    }
+}
+
+/// a `Tombstone2` names an object an Apple client deleted for good, emptying the Trash for instance
+///
+/// the object goes with what only exists through it, the checklist of a to-do and the to-dos and headings of a project or heading
+/// those would otherwise come back as open items without their container
+/// an area or a tag goes alone
+/// a to-do in an area is not a part of it
+fn purge(state: &mut RawState, target: &ThingsId) {
+    let mut gone = vec![target.clone()];
+    while let Some(id) = gone.pop() {
+        state.remove(&id);
+        gone.extend(state.iter().filter_map(|(child, object)| {
+            let held = match &object.properties {
+                StateProperties::Task(task) => {
+                    task.parent_project_ids.contains(&id) || task.action_group_ids.contains(&id)
+                }
+                StateProperties::ChecklistItem(item) => item.task_ids.contains(&id),
+                _ => false,
+            };
+            held.then(|| child.clone())
+        }));
+    }
 }
 
 /// the objects whose replay did not complete, which no command may write through
@@ -347,6 +386,7 @@ pub fn degraded_ids(state: &RawState) -> Vec<ThingsId> {
         .map(|(uuid, _)| uuid.clone())
         .collect();
     ids.extend(degraded_checklist_owners(state));
+    ids.extend(unread_template_instances(state));
     ids.sort();
     ids.dedup();
     ids
@@ -362,6 +402,23 @@ pub fn degraded_checklist_owners(state: &RawState) -> impl Iterator<Item = Thing
             _ => None,
         })
         .flatten()
+}
+
+/// the to-dos whose repeat template the state holds as no readable task
+///
+/// without their template they would read as plain to-dos
+pub fn unread_template_instances(state: &RawState) -> impl Iterator<Item = ThingsId> + '_ {
+    state
+        .iter()
+        .filter(|(_, object)| match &object.properties {
+            StateProperties::Task(task) => task.recurrence_template_ids.iter().any(|id| {
+                state.get(id).is_some_and(|template| {
+                    !matches!(template.properties, StateProperties::Task(_))
+                })
+            }),
+            _ => false,
+        })
+        .map(|(uuid, _)| uuid.clone())
 }
 
 pub fn fold_items(items: impl IntoIterator<Item = WireItem>) -> RawState {
@@ -409,6 +466,109 @@ mod tests {
         let store =
             ThingsStore::from_raw_state(&fold_items([wire_item(&due), wire_item(&suppressed)]));
         assert!(!store.get_task(TASK_ID).expect("to-do").is_today(&today));
+    }
+
+    #[test]
+    fn a_tombstone_removes_what_it_names_and_what_only_exists_through_it() {
+        let items = [
+            r#"{"Pj11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Kitchen","tp":1,"st":1,"tr":true}}}"#,
+            r#"{"Hd11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Tiles","tp":2,"st":1,"pr":["Pj11111111111111111111"]}}}"#,
+            r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Measure","st":1,"pr":["Pj11111111111111111111"]}}}"#,
+            r#"{"Tb11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Order","st":1,"agr":["Hd11111111111111111111"]}}}"#,
+            r#"{"Ck11111111111111111111":{"t":0,"e":"ChecklistItem3","p":{"tt":"Tape","ts":["Ta11111111111111111111"],"ss":0,"ix":1}}}"#,
+            r#"{"Tc11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Trashed alone","st":1,"tr":true}}}"#,
+            r#"{"Ar11111111111111111111":{"t":0,"e":"Area3","p":{"tt":"Home"}}}"#,
+            r#"{"Td11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"In the area","st":1,"ar":["Ar11111111111111111111"]}}}"#,
+            r#"{"Tm11111111111111111111":{"t":0,"e":"Tombstone2","p":{"dloid":"Pj11111111111111111111","dld":1774396800}}}"#,
+            r#"{"Tn11111111111111111111":{"t":0,"e":"Tombstone2","p":{"dloid":"Ar11111111111111111111","dld":1774396800}}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        let present = |id: &str| state.contains_key(&id.parse::<ThingsId>().expect("id"));
+        for purged in [
+            "Pj11111111111111111111",
+            "Hd11111111111111111111",
+            "Ta11111111111111111111",
+            "Tb11111111111111111111",
+            "Ck11111111111111111111",
+            "Ar11111111111111111111",
+            "Tm11111111111111111111",
+            "Tn11111111111111111111",
+        ] {
+            assert!(!present(purged), "{purged} stayed");
+        }
+        assert!(
+            present("Tc11111111111111111111"),
+            "a trashed to-do stays in the Trash"
+        );
+        assert!(
+            present("Td11111111111111111111"),
+            "a to-do outlives its area"
+        );
+    }
+
+    #[test]
+    fn a_tombstone_that_does_not_parse_is_marked_and_purges_nothing() {
+        let items = [
+            r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Order tiles","st":1,"tr":true}}}"#,
+            r#"{"Tm11111111111111111111":{"t":0,"e":"Tombstone2","p":{"dloid":5,"dld":1774396800}}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        let tombstone = "Tm11111111111111111111".parse::<ThingsId>().expect("id");
+        assert!(
+            state.contains_key(&"Ta11111111111111111111".parse::<ThingsId>().expect("id")),
+            "the to-do stays"
+        );
+        assert_eq!(degraded_ids(&state), vec![tombstone]);
+    }
+
+    #[test]
+    fn an_instance_keeps_a_template_the_state_holds_and_is_marked_while_it_does_not_read() {
+        // an object without a kind is held and read as no task
+        let items = [
+            r#"{"Tt11111111111111111111":{"t":0,"p":{"tt":"Water plants"}}}"#,
+            r#"{"Ti11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Water plants","st":1,"rt":["Tt11111111111111111111"]}}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        let store = ThingsStore::from_raw_state(&state);
+        let instance = store.get_task("Ti11111111111111111111").expect("instance");
+        assert!(instance.is_recurrence_instance());
+        assert!(instance.degraded);
+        assert_eq!(
+            degraded_ids(&state),
+            vec!["Ti11111111111111111111".parse::<ThingsId>().expect("id")]
+        );
+    }
+
+    #[test]
+    fn a_tombstone_purges_what_it_names_whatever_its_deletion_time_holds() {
+        let items = [
+            r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Order tiles","st":1,"tr":true}}}"#,
+            r#"{"Tm11111111111111111111":{"t":0,"e":"Tombstone2","p":{"dloid":"Ta11111111111111111111","dld":"1774396800"}}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        assert!(state.is_empty(), "{state:?}");
+    }
+
+    #[test]
+    fn a_purge_waits_for_the_rest_of_its_commit() {
+        let items = [
+            r#"{"Pk11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Garden","tp":1,"st":1}}}"#,
+            r#"{"Hd11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Spring","tp":2,"st":1,"pr":["Pk11111111111111111111"]}}}"#,
+            r#"{"Tc11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Plant bulbs","st":1,"agr":["Hd11111111111111111111"]}}}"#,
+            // the tombstone's key sorts before the to-do the same commit moves out of the heading
+            r#"{"A111111111111111111111":{"t":0,"e":"Tombstone2","p":{"dloid":"Hd11111111111111111111","dld":1774396800}},"Tc11111111111111111111":{"t":1,"e":"Task7","p":{"agr":[],"pr":["Pk11111111111111111111"]}}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        let heading = "Hd11111111111111111111".parse::<ThingsId>().expect("id");
+        assert!(!state.contains_key(&heading));
+        let moved = state
+            .get(&"Tc11111111111111111111".parse::<ThingsId>().expect("id"))
+            .expect("the moved to-do outlives the heading");
+        assert!(!moved.degraded);
+        let StateProperties::Task(task) = &moved.properties else {
+            panic!("the to-do keeps its task state");
+        };
+        assert_eq!(task.title, "Plant bulbs");
     }
 
     fn task6_create() -> WireItem {
