@@ -17,6 +17,7 @@ pub use state::{
 };
 
 use crate::{
+    common::one_line,
     common::{day_of, day_timestamp},
     ids::{
         ThingsId,
@@ -805,7 +806,7 @@ impl ThingsStore {
     }
 
     pub fn resolve_mark_identifier(&self, identifier: &str) -> (Option<Task>, String, Vec<Task>) {
-        self.resolve_prefix(
+        let resolved = self.resolve_prefix(
             identifier,
             |id| {
                 self.markable_ids
@@ -815,7 +816,20 @@ impl ThingsStore {
             },
             &self.markable_ids_sorted,
             "Item",
-        )
+        );
+        // an item in the Trash takes no writes and is named as such rather than as missing
+        if resolved.0.is_none()
+            && resolved.2.is_empty()
+            && let (Some(task), _, _) = self.resolve_task_identifier(identifier)
+            && self.in_trash(&task)
+        {
+            return (
+                None,
+                format!("Item is in the Trash: {}", one_line(&task.title)),
+                Vec::new(),
+            );
+        }
+        resolved
     }
 
     pub fn resolve_area_identifier(&self, identifier: &str) -> (Option<Area>, String, Vec<Area>) {

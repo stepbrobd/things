@@ -27,7 +27,7 @@ Dates: created 2026-03-20, modified 2026-03-22
 ```trycmd
 $ run.sh things mark Tc --done
 ? 1
-Item not found: Tc
+Item is in the Trash: Plant bulbs
 
 ```
 

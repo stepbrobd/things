@@ -254,6 +254,14 @@ fn build_new_plan(
         } else if let Some(area_uuid) = area_uuid {
             props.area_ids = vec![area_uuid];
             props.start_location = TaskStart::Anytime;
+        } else if let (Some(task), _, _) = store.resolve_task_identifier(in_target)
+            && store.in_trash(&task)
+        {
+            return Err(if task.is_project() {
+                format!("Container is in the Trash: {}", one_line(&task.title))
+            } else {
+                "--in target must be inbox, a project ID, or an area ID.".to_string()
+            });
         } else {
             return Err(format!("Container not found: {}", in_target));
         }

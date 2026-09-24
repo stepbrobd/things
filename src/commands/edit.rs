@@ -549,6 +549,14 @@ fn build_edit_plan(
                 shared_update.action_group_ids = Some(vec![]);
                 move_from_inbox_st = Some(TaskStart::Anytime);
                 labels.push(format!("move={move_raw}"));
+            } else if let (Some(task), _, _) = store.resolve_task_identifier(&move_raw)
+                && store.in_trash(&task)
+            {
+                return Err(if task.is_project() {
+                    format!("Container is in the Trash: {}", one_line(&task.title))
+                } else {
+                    "--move target must be Inbox, clear, a project ID, or an area ID.".to_string()
+                });
             } else {
                 return Err(format!("Container not found: {move_raw}"));
             }
