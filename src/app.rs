@@ -32,7 +32,7 @@ use crate::{
 #[command(disable_help_subcommand = true)]
 #[command(about = "Command-line interface for Things 3 via Cloud API")]
 #[command(
-    after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync log live\n\nExit status:\n  0  Success\n  1  The command failed\n  2  The arguments were invalid\n  3  The sync failed and the output comes from the cached state"
+    after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync log live\n\nExit status:\n  0  Success\n  1  The command failed\n  2  The command line did not parse\n  3  The sync failed and the output comes from the cached state"
 )]
 pub struct Cli {
     /// Output JSON when supported by the selected command
