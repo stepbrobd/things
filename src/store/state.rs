@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use tracing::warn;
 
 use crate::{
+    common::one_line,
     ids::ThingsId,
     store::entities::{
         AreaStateProps, ChecklistItemStateProps, StateObject, StateProperties, TagStateProps,
@@ -314,7 +315,7 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
     let mut purged = Vec::new();
     for (key, obj) in item {
         let Ok(uuid) = key.parse::<ThingsId>() else {
-            warn!(target: "things::replay", %key, "an object whose id is not base58 is skipped");
+            warn!(target: "things::replay", key = %one_line(&key), "an object whose id is not base58 is skipped");
             continue;
         };
         match obj.operation_type {

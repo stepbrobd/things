@@ -21,7 +21,7 @@ use tracing::{debug, warn};
 
 use crate::{
     client::{HttpStatus, ThingsCloudClient, now_timestamp},
-    common::eprint_line,
+    common::{eprint_line, printable_plain},
     dirs::create_private_dir,
     store::{RawState, fold_item},
     wire::wire_object::WireItem,
@@ -393,7 +393,7 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
     repair_log(cache_dir, &mut cursor)?;
     let mut page = match client.get_items_page(cursor.next_start_index) {
         Err(error) if reused.is_some() && error.downcast_ref::<HttpStatus>().is_some() => {
-            warn!(target: "things::sync", "the stored history key was answered with an error, signing in: {error:#}");
+            warn!(target: "things::sync", "the stored history key was answered with an error, signing in: {}", printable_plain(&format!("{error:#}")));
             cursor = sign_in(client, cache_dir)?;
             repair_log(cache_dir, &mut cursor)?;
             client.get_items_page(cursor.next_start_index)?

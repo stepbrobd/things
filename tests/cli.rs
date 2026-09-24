@@ -531,3 +531,44 @@ fn unread_log_settings_are_reported() {
     );
     assert_eq!(unparsed.lines().count(), 1, "{unparsed}");
 }
+
+/// log fields carry cloud text escaped
+///
+/// the terminal output carries it escaped too
+#[test]
+fn logs_escape_cloud_text() {
+    let home = tempfile::tempdir().expect("tempdir");
+    let journal = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests")
+        .join("cli")
+        .join("logs")
+        .join("hostile_journal.json");
+    let output = std::process::Command::new(env!("CARGO_BIN_EXE_things"))
+        .args(["--no-cloud", "--load-journal"])
+        .arg(&journal)
+        .args([
+            "--id-seed",
+            "7",
+            "--today-ts",
+            "1774396800",
+            "--now-ts",
+            "1774400000.0",
+            "today",
+        ])
+        .env("XDG_CONFIG_HOME", home.path().join("config"))
+        .env("XDG_STATE_HOME", home.path().join("state"))
+        .env("THINGS_LOG", "debug")
+        .env_remove("THINGS_LOG_FORMAT")
+        .output()
+        .expect("things runs");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("not base58"), "{stderr}");
+    assert!(stderr.contains("cloud commit request"), "{stderr}");
+    let raw = stderr
+        .chars()
+        .filter(|&c| {
+            (c.is_control() && c != '\n' && c != '\t') || ('\u{202a}'..='\u{202e}').contains(&c)
+        })
+        .collect::<String>();
+    assert!(raw.is_empty(), "{raw:?} in {stderr}");
+}

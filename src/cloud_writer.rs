@@ -4,7 +4,11 @@ use anyhow::Result;
 use serde_json::json;
 use tracing::debug;
 
-use crate::{client::ThingsCloudClient, wire::wire_object::WireObject};
+use crate::{
+    client::ThingsCloudClient,
+    common::{printable_json, printable_plain},
+    wire::wire_object::WireObject,
+};
 
 pub trait CloudWriter {
     fn commit(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64>;
@@ -45,7 +49,7 @@ impl CloudWriter for LoggingCloudWriter {
             ancestor_index,
             change_count = uuids.len(),
             uuids = ?uuids,
-            request_json = %request_json,
+            request_json = %printable_json(&request_json),
             "cloud commit request"
         );
 
@@ -71,7 +75,7 @@ impl CloudWriter for LoggingCloudWriter {
                     ancestor_index,
                     change_count = uuids.len(),
                     uuids = ?uuids,
-                    error = %err,
+                    error = %printable_plain(&format!("{err:#}")),
                     "cloud commit failed"
                 );
                 Err(err)
