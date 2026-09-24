@@ -1,7 +1,4 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    fmt,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 use chrono::{TimeZone, Utc};
 use num_enum::{FromPrimitive, IntoPrimitive};
@@ -75,7 +72,7 @@ impl Default for RecurrenceRule {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RecurrenceDescriptionError {
     InvalidFrequencyAmount(i32),
     InvalidRepeatCount(i32),
@@ -86,37 +83,6 @@ pub enum RecurrenceDescriptionError {
     InvalidEndDate(i64),
     ConflictingEndConditions,
 }
-
-impl fmt::Display for RecurrenceDescriptionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidFrequencyAmount(amount) => {
-                write!(f, "invalid recurrence frequency amount: {amount}")
-            }
-            Self::InvalidRepeatCount(count) => {
-                write!(f, "invalid recurrence repeat count: {count}")
-            }
-            Self::UnknownRecurrenceType(value) => {
-                write!(f, "unknown recurrence type: {value}")
-            }
-            Self::UnknownFrequencyUnit(value) => {
-                write!(f, "unknown recurrence frequency unit: {value}")
-            }
-            Self::InvalidOffset(index) => write!(f, "invalid recurrence offset at index {index}"),
-            Self::InvalidStartDate(timestamp) => {
-                write!(f, "invalid recurrence start date: {timestamp}")
-            }
-            Self::InvalidEndDate(timestamp) => {
-                write!(f, "invalid recurrence end date: {timestamp}")
-            }
-            Self::ConflictingEndConditions => {
-                write!(f, "recurrence has both an end date and a repeat count")
-            }
-        }
-    }
-}
-
-impl std::error::Error for RecurrenceDescriptionError {}
 
 impl RecurrenceRule {
     /// the rule in the english phrasing Things uses
@@ -499,13 +465,6 @@ pub enum FrequencyUnit {
     /// unknown value preserved for forward compatibility
     #[num_enum(catch_all)]
     Unknown(i32),
-}
-
-#[allow(clippy::derivable_impls)]
-impl Default for FrequencyUnit {
-    fn default() -> Self {
-        Self::Weekly
-    }
 }
 
 /// the default frequency unit, `rr.fu`, is weekly

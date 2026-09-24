@@ -3,14 +3,14 @@ use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum TaskNotes {
     Structured(StructuredTaskNotes),
     Unknown(Value),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructuredTaskNotes {
     #[serde(rename = "_t", default)]
     pub object_type: Option<String>,
@@ -26,7 +26,7 @@ pub struct StructuredTaskNotes {
     pub unknown_fields: BTreeMap<String, Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructuredTaskNotePatch {
     #[serde(rename = "p")]
     pub position: usize,
@@ -40,7 +40,7 @@ pub struct StructuredTaskNotePatch {
     pub unknown_fields: BTreeMap<String, Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum TaskNotesApplyError {
     UnsupportedFormat(i32),
     UnknownFormat,

@@ -45,23 +45,12 @@ impl HttpStatus {
     }
 }
 
-#[derive(Clone)]
 pub struct ThingsCloudClient {
     pub email: String,
     pub password: String,
     pub history_key: Option<String>,
     pub head_index: i64,
     http: Client,
-}
-
-impl fmt::Debug for ThingsCloudClient {
-    // the password and the history key stay out of every dump
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("ThingsCloudClient")
-            .field("email", &self.email)
-            .field("head_index", &self.head_index)
-            .finish_non_exhaustive()
-    }
 }
 
 impl ThingsCloudClient {

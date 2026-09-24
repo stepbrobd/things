@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Create a new to-do")]
 pub struct NewArgs {
     /// To-do title
@@ -164,7 +164,7 @@ fn plan_ix_insert(ordered: &[Task], insert_at: usize) -> (i32, Vec<(ThingsId, i3
     allocate(&run, insert_at)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct NewPlan {
     new_uuid: String,
     changes: BTreeMap<String, WireObject>,

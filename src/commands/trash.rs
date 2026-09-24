@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Show the Trash")]
 pub struct TrashArgs {
     #[command(flatten)]

@@ -7,7 +7,7 @@ use crate::{
     wire::task::{TaskStart, TaskStatus, TaskType},
 };
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct ResolvedTaskJson {
     #[serde(flatten)]
     core: TaskCoreJson,
@@ -23,7 +23,7 @@ pub struct ResolvedTaskJson {
     progress: Option<TaskProgressJson>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct ResolvedAreaJson {
     pub id: String,
     pub short_id: String,
@@ -32,7 +32,7 @@ pub struct ResolvedAreaJson {
     pub tags: Vec<TagRefJson>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct ResolvedTagJson {
     pub id: String,
     pub short_id: String,
@@ -42,13 +42,13 @@ pub struct ResolvedTagJson {
     pub index: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 struct TaskProgressJson {
     done: i32,
     total: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TaskCoreJson {
     pub id: String,
     pub short_id: String,
@@ -58,7 +58,7 @@ pub struct TaskCoreJson {
     pub start: TaskStartJson,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TaskLinksJson {
     pub project: Option<LinkRefJson>,
     pub area: Option<LinkRefJson>,
@@ -66,7 +66,7 @@ pub struct TaskLinksJson {
     pub tags: Vec<TagRefJson>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TaskStartJson {
     pub bucket: JsonStartBucket,
     pub scheduled_at: Option<String>,
@@ -75,7 +75,7 @@ pub struct TaskStartJson {
     pub evening: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TaskDatesJson {
     pub deadline_at: Option<String>,
     pub created_at: Option<String>,
@@ -83,7 +83,7 @@ pub struct TaskDatesJson {
     pub completed_at: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TaskRecurrenceJson {
     pub is_template: bool,
     pub is_instance: bool,
@@ -91,7 +91,7 @@ pub struct TaskRecurrenceJson {
     pub template_ids: Vec<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TaskFlagsJson {
     pub trashed: bool,
     pub is_new: bool,
@@ -103,20 +103,20 @@ pub struct TaskFlagsJson {
     pub degraded: bool,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TaskIndexesJson {
     pub sort_index: i32,
     pub today_sort_index: i32,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct LinkRefJson {
     pub id: String,
     pub short_id: String,
     pub title: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct TagRefJson {
     pub id: String,
     pub short_id: String,
@@ -124,7 +124,7 @@ pub struct TagRefJson {
     pub shortcut: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Serialize)]
 pub struct ResolvedChecklistItemJson {
     pub id: String,
     pub short_id: String,
@@ -140,7 +140,6 @@ fn serialize_unknown<S: Serializer>(raw: i32, serializer: S) -> Result<S::Ok, S:
     serializer.serialize_str(&format!("unknown:{raw}"))
 }
 
-#[derive(Debug, Clone, Copy)]
 pub enum JsonTaskStatus {
     Incomplete,
     Completed,
@@ -159,7 +158,6 @@ impl Serialize for JsonTaskStatus {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
 pub enum JsonStartBucket {
     Inbox,
     Anytime,
@@ -178,7 +176,6 @@ impl Serialize for JsonStartBucket {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
 pub enum JsonItemType {
     Todo,
     Project,

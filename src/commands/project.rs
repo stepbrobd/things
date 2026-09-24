@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Show all tasks in a project")]
 pub struct ProjectArgs {
     /// Project ID (or unique ID prefix)

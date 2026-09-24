@@ -31,7 +31,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct ThingsStore {
     pub tasks_by_uuid: HashMap<ThingsId, Task>,
     pub areas_by_uuid: HashMap<ThingsId, Area>,

@@ -14,7 +14,7 @@ use crate::{
     wire::task::TaskStatus,
 };
 
-#[derive(Debug, Default, Args)]
+#[derive(Args)]
 #[command(about = "Show tasks scheduled for the future")]
 pub struct UpcomingArgs {
     #[command(flatten)]

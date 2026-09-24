@@ -1,6 +1,6 @@
 use std::{ops::Deref, str::FromStr};
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone)]
 pub struct IdentifierToken(String);
 
 impl IdentifierToken {

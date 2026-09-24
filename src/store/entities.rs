@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct StateObject {
     pub entity_type: Option<EntityType>,
     pub properties: StateProperties,
@@ -25,7 +25,7 @@ pub struct StateObject {
     pub degraded: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub enum StateProperties {
     Task(Box<TaskStateProps>),
     ChecklistItem(ChecklistItemStateProps),
@@ -34,7 +34,7 @@ pub enum StateProperties {
     Other,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct TaskStateProps {
     pub title: String,
     pub notes: Option<String>,
@@ -73,7 +73,7 @@ pub struct TaskStateProps {
     pub modification_date: Option<f64>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct ChecklistItemStateProps {
     pub title: String,
     pub status: TaskStatus,
@@ -82,14 +82,14 @@ pub struct ChecklistItemStateProps {
     pub sort_index: i32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct AreaStateProps {
     pub title: String,
     pub tag_ids: Vec<ThingsId>,
     pub sort_index: i32,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[derive(Debug, PartialEq, Serialize, Deserialize, Default)]
 pub struct TagStateProps {
     pub title: String,
     pub shortcut: Option<String>,
@@ -97,7 +97,7 @@ pub struct TagStateProps {
     pub parent_ids: Vec<ThingsId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Tag {
     pub uuid: ThingsId,
     pub title: String,
@@ -106,7 +106,7 @@ pub struct Tag {
     pub parent_uuid: Option<ThingsId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub struct Area {
     pub uuid: ThingsId,
     pub title: String,
@@ -114,7 +114,7 @@ pub struct Area {
     pub index: i32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct ChecklistItem {
     pub uuid: ThingsId,
     pub title: String,
@@ -133,13 +133,13 @@ impl ChecklistItem {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Clone, Default)]
 pub struct ProjectProgress {
     pub total: i32,
     pub done: i32,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct Task {
     pub uuid: ThingsId,
     pub title: String,

@@ -28,7 +28,6 @@ pub const RESET: &str = "\x1b[0m";
 pub const DIM: &str = "\x1b[2m";
 pub const GREEN: &str = "\x1b[32m";
 
-#[derive(Debug, Clone, Copy)]
 pub struct Icons {
     // sidebar and view icons
     pub inbox: &'static str,

@@ -4,7 +4,7 @@ use serde_json::Value;
 use crate::ids::ThingsId;
 
 /// area wire properties
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AreaProps {
     /// `tt`, area title
     #[serde(rename = "tt", default)]
@@ -24,7 +24,7 @@ pub struct AreaProps {
 }
 
 /// sparse patch fields for area `t=1` updates
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AreaPatch {
     /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]

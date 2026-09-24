@@ -66,7 +66,7 @@ impl CursorData {
 /// the CRC32 of those bytes is `checksum`
 /// the state comes with the hash of every line folded
 /// the hashes make a line the journal repeats fold once
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Deserialize)]
 struct StateCacheData {
     #[serde(default)]
     version: u8,
@@ -100,7 +100,6 @@ fn line_hash(line: &str) -> u64 {
 /// held by every reader and writer of the cache directory
 ///
 /// the lock keeps two processes from interleaving appends, cursor moves and state cache writes
-#[derive(Debug)]
 pub struct CacheLock {
     _file: File,
 }

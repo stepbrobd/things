@@ -13,7 +13,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Default, Args)]
+#[derive(Args)]
 #[command(about = "Show the Someday view")]
 pub struct SomedayArgs {
     #[command(flatten)]

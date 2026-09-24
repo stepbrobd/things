@@ -48,14 +48,14 @@ pub(crate) fn write_json<T: Serialize>(out: &mut dyn std::io::Write, value: &T) 
     Ok(())
 }
 
-#[derive(Debug, Default, Clone, Args)]
+#[derive(Default, Args)]
 pub struct DetailedArgs {
     /// Show notes and checklists beneath each task
     #[arg(long, short = 'd')]
     pub detailed: bool,
 }
 
-#[derive(Debug, Default, Clone, Args)]
+#[derive(Args)]
 pub struct TagDeltaArgs {
     #[arg(
         long = "add-tags",
@@ -71,7 +71,7 @@ pub struct TagDeltaArgs {
     pub remove_tags: Option<String>,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Subcommand)]
 pub enum Commands {
     Inbox(inbox::InboxArgs),
     Today(today::TodayArgs),

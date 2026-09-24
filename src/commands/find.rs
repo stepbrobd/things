@@ -22,7 +22,6 @@ use crate::{
     wire::task::TaskStatus,
 };
 
-#[derive(Debug, Clone, Copy)]
 struct MatchResult {
     matched: bool,
     checklist_only: bool,
@@ -104,7 +103,7 @@ impl Prepared {
     }
 }
 
-#[derive(Debug, Default, Args)]
+#[derive(Args)]
 #[command(about = "Search and filter tasks")]
 #[command(
     after_help = "Date filter syntax:  --deadline OP DATE\n  OP is one of: >  <  >=  <=  =\n  DATE is YYYY-MM-DD or a keyword: today, tomorrow, yesterday\n\n  Examples:\n    --deadline \"<today\"          Overdue tasks\n    --deadline \">=2026-01-01\"    Deadline on or after date\n    --created \">=2026-01-01\" --created \"<=2026-03-31\"   Date range"

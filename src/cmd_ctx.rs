@@ -32,7 +32,6 @@ pub trait CmdCtx {
     fn commit_changes(&mut self, changes: BTreeMap<String, WireObject>) -> Result<i64>;
 }
 
-#[derive(Default)]
 pub struct DefaultCmdCtx {
     no_cloud: bool,
     today_ts_override: Option<i64>,

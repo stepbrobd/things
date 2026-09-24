@@ -9,7 +9,7 @@ use crate::ids::ThingsId;
 ///
 /// the deletion time in `dld` is left unread
 /// a tombstone purges what it names whatever that field holds
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TombstoneProps {
     /// `dloid`, the id of the deleted object
     #[serde(rename = "dloid")]
@@ -17,7 +17,7 @@ pub struct TombstoneProps {
 }
 
 /// one-shot command properties
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommandProps {
     /// `tp`, command type
     #[serde(rename = "tp", default)]

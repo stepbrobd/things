@@ -16,7 +16,7 @@ use crate::{
     wire::task::TaskStatus,
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Show projects and tasks in an area")]
 pub struct AreaArgs {
     /// Area ID (or unique ID prefix)

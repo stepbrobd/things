@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Reorder item relative to another item")]
 #[command(group(ArgGroup::new("anchor").args(["before_id", "after_id"]).required(true).multiple(false)))]
 pub struct ReorderArgs {
@@ -132,7 +132,7 @@ fn lists_showing(
 /// every patch of a reorder in one commit
 ///
 /// a rebalance lands whole or not at all
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct ReorderPlan {
     item: crate::store::Task,
     changes: BTreeMap<String, WireObject>,

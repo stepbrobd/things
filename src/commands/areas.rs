@@ -20,7 +20,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Subcommand)]
+#[derive(Subcommand)]
 pub enum AreasSubcommand {
     #[command(about = "Show all areas")]
     List(AreasListArgs),
@@ -30,17 +30,17 @@ pub enum AreasSubcommand {
     Edit(AreasEditArgs),
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Show, create, or edit areas")]
 pub struct AreasArgs {
     #[command(subcommand)]
     pub command: Option<AreasSubcommand>,
 }
 
-#[derive(Debug, Default, Args)]
+#[derive(Default, Args)]
 pub struct AreasListArgs {}
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 pub struct AreasNewArgs {
     /// Area title
     pub title: String,
@@ -52,7 +52,7 @@ pub struct AreasNewArgs {
     pub tags: Option<String>,
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 pub struct AreasEditArgs {
     /// Area ID (or unique ID prefix)
     pub area_id: IdentifierToken,
@@ -62,7 +62,7 @@ pub struct AreasEditArgs {
     pub tag_delta: TagDeltaArgs,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct AreasEditPlan {
     area: crate::store::Area,
     update: AreaPatch,

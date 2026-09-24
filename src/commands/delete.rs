@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Move to-dos, projects, and headings to the Trash, or delete an area")]
 pub struct DeleteArgs {
     /// Item or area ID(s) (or unique ID prefixes)
@@ -36,7 +36,7 @@ fn trash(now: f64) -> WireObject {
     )
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct DeletePlan {
     targets: Vec<(String, EntityType, String, usize)>,
     changes: BTreeMap<String, WireObject>,

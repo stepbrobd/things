@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Default, Args)]
+#[derive(Args)]
 #[command(about = "Show the Logbook")]
 pub struct LogbookArgs {
     #[command(flatten)]

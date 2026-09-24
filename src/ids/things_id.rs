@@ -82,7 +82,7 @@ impl<'de> Deserialize<'de> for ThingsId {
 }
 
 /// a string that is no [`ThingsId`]
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug)]
 pub struct ParseThingsIdError(String);
 
 impl fmt::Display for ParseThingsIdError {
@@ -90,8 +90,6 @@ impl fmt::Display for ParseThingsIdError {
         write!(f, "invalid Things ID: {:?}", self.0)
     }
 }
-
-impl std::error::Error for ParseThingsIdError {}
 
 const BASE58_ALPHABET: &[u8; 58] = b"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 

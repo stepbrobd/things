@@ -3,7 +3,6 @@ fn cases(case_glob: &str) {
 
     trycmd::TestCases::new()
         .env("TRYCMD_BIN_THINGS", things_bin.display().to_string())
-        .register_bin("things", &things_bin)
         .register_bin(
             "run.sh",
             std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

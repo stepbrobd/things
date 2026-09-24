@@ -20,14 +20,14 @@ pub type WireItem = BTreeMap<String, WireObject>;
 /// one wire object of a history item
 ///
 /// keyed by its id there
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct WireObject {
     pub operation_type: OperationType,
     pub entity_type: Option<EntityType>,
     pub payload: Properties,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum Properties {
     TaskCreate(Box<TaskProps>),
     TaskUpdate(Box<TaskPatch>),
@@ -79,8 +79,7 @@ impl_properties_from!(
     TagPatch => TagUpdate,
     AreaProps => AreaCreate,
     AreaPatch => AreaUpdate,
-    TombstoneProps => TombstoneCreate,
-    CommandProps => CommandCreate,
+
 );
 
 impl WireObject {
@@ -216,7 +215,7 @@ impl WireObject {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Deserialize)]
 struct RawWireObject {
     #[serde(rename = "t")]
     operation_type: OperationType,

@@ -10,7 +10,6 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
 pub struct FindRow<'a> {
     pub task: &'a Task,
     pub force_detailed: bool,

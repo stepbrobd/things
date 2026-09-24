@@ -10,7 +10,6 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
 pub enum TaskGroupHeader {
     Area {
         area_uuid: ThingsId,

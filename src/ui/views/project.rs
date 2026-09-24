@@ -14,7 +14,6 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
 pub struct ProjectHeadingGroup<'a> {
     pub title: String,
     pub items: Vec<&'a Task>,

@@ -23,7 +23,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Subcommand)]
+#[derive(Subcommand)]
 pub enum TagsSubcommand {
     #[command(about = "Show all tags")]
     List(TagsListArgs),
@@ -35,17 +35,17 @@ pub enum TagsSubcommand {
     Delete(TagsDeleteArgs),
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Show, create, edit, or delete tags")]
 pub struct TagsArgs {
     #[command(subcommand)]
     pub command: Option<TagsSubcommand>,
 }
 
-#[derive(Debug, Default, Args)]
+#[derive(Default, Args)]
 pub struct TagsListArgs {}
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 pub struct TagsNewArgs {
     /// Tag title
     pub name: String,
@@ -53,7 +53,7 @@ pub struct TagsNewArgs {
     pub parent: Option<IdentifierToken>,
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 pub struct TagsEditArgs {
     /// Tag title or ID or prefix
     pub tag_id: IdentifierToken,
@@ -63,13 +63,13 @@ pub struct TagsEditArgs {
     pub move_target: Option<IdentifierToken>,
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 pub struct TagsDeleteArgs {
     /// Tag title or ID or prefix
     pub tag_id: IdentifierToken,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct TagsEditPlan {
     tag: crate::store::Tag,
     update: TagPatch,

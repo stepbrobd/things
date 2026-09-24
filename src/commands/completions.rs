@@ -5,7 +5,7 @@ use clap_complete_nushell::Nushell;
 
 use crate::{app::Cli, commands::Command};
 
-#[derive(Debug, Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy, ValueEnum)]
 pub enum CompletionShell {
     Bash,
     Elvish,
@@ -15,7 +15,7 @@ pub enum CompletionShell {
     Zsh,
 }
 
-#[derive(Debug, Clone, Args)]
+#[derive(Args)]
 #[command(about = "Generate shell completion scripts")]
 pub struct CompletionsArgs {
     #[arg(value_enum)]

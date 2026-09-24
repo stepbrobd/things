@@ -27,7 +27,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Subcommand)]
+#[derive(Subcommand)]
 pub enum ProjectsSubcommand {
     #[command(about = "Show all active projects")]
     List(ProjectsListArgs),
@@ -37,7 +37,7 @@ pub enum ProjectsSubcommand {
     Edit(ProjectsEditArgs),
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Show, create, or edit projects")]
 pub struct ProjectsArgs {
     /// Show notes for each project
@@ -47,14 +47,14 @@ pub struct ProjectsArgs {
     pub command: Option<ProjectsSubcommand>,
 }
 
-#[derive(Debug, Default, Args)]
+#[derive(Args)]
 pub struct ProjectsListArgs {
     /// Show notes for each project
     #[arg(long, short = 'd')]
     pub detailed: bool,
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 pub struct ProjectsNewArgs {
     /// Project title
     pub title: String,
@@ -78,7 +78,7 @@ pub struct ProjectsNewArgs {
     pub deadline_date: Option<String>,
 }
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 pub struct ProjectsEditArgs {
     /// Project ID (or unique ID prefix)
     pub project_id: IdentifierToken,
@@ -96,7 +96,7 @@ pub struct ProjectsEditArgs {
     pub tag_delta: TagDeltaArgs,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct ProjectsEditPlan {
     project: crate::store::Task,
     update: TaskPatch,

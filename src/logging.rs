@@ -5,9 +5,7 @@ use tracing_subscriber::{EnvFilter, Layer, prelude::*};
 
 use crate::common::eprint_line;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Default)]
 pub enum LogFormat {
-    #[default]
     Auto,
     Pretty,
     Simplified,

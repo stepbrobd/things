@@ -21,13 +21,13 @@ use crate::{
 };
 
 /// a repeat rule as typed on the command line, such as `daily`, `weekly:mon,thu`, `monthly:15`, `monthly:last`, `yearly:12-31` or `after:2w`, with `/N` on the fixed cadences for every N units
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct RepeatSpec {
     pub cadence: Cadence,
     pub every: i32,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Cadence {
     Daily,
     /// weekdays counted from sunday as 0, empty for the first day's weekday
@@ -39,7 +39,6 @@ pub enum Cadence {
     AfterCompletion(FrequencyUnit),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bound {
     Never,
     Until(NaiveDate),
@@ -644,7 +643,6 @@ pub struct TemplateSource {
 /// one checklist item to copy
 ///
 /// every copy starts open
-#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChecklistCopy {
     pub title: String,
     pub index: i32,

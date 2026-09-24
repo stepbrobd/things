@@ -28,7 +28,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(
     about = "Edit the title, notes, container, tags, checklist, when, deadline, reminder, or repeat of a to-do"
 )]
@@ -171,7 +171,7 @@ fn resolve_checklist_items(
     (resolved, String::new())
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct EditPlan {
     tasks: Vec<crate::store::Task>,
     changes: BTreeMap<String, WireObject>,

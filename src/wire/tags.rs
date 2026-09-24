@@ -4,7 +4,7 @@ use serde_json::Value;
 use crate::{ids::ThingsId, wire::deserialize_optional_field};
 
 /// tag wire properties
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TagProps {
     /// `tt`, tag title
     #[serde(rename = "tt", default)]
@@ -30,7 +30,7 @@ pub struct TagProps {
 }
 
 /// sparse patch fields for tag `t=1` updates
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TagPatch {
     /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]

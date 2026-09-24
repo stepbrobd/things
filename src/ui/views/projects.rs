@@ -11,7 +11,6 @@ use crate::{
     },
 };
 
-#[derive(Clone)]
 pub struct ProjectsAreaGroup {
     pub area_uuid: ThingsId,
     pub area_title: String,

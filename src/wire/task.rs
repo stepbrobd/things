@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// task wire properties (`p` fields for task entities through `Task7`)
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TaskProps {
     /// `tt`, title
     #[serde(rename = "tt", default)]
@@ -179,7 +179,7 @@ pub struct TaskProps {
 }
 
 /// sparse patch fields for task `t=1` updates
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TaskPatch {
     /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]

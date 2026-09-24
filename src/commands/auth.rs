@@ -5,7 +5,7 @@ use clap::Args;
 
 use crate::{app::Cli, auth::write_verified_auth, client::ThingsCloudClient, commands::Command};
 
-#[derive(Debug, Default, Args)]
+#[derive(Args)]
 #[command(about = "Configure Things Cloud credentials")]
 pub struct AuthArgs {}
 

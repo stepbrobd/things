@@ -25,7 +25,7 @@ use crate::{
     wire::wire_object::WireItem,
 };
 
-#[derive(Debug, Parser)]
+#[derive(Parser)]
 #[command(name = "things")]
 #[command(bin_name = "things")]
 #[command(before_help = concat!("Things ", env!("CARGO_PKG_VERSION")))]

@@ -14,7 +14,7 @@ fn is_false(v: &bool) -> bool {
 }
 
 /// checklist item wire properties
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChecklistItemProps {
     /// `tt`, checklist item title
     #[serde(rename = "tt", default)]
@@ -59,7 +59,7 @@ pub struct ChecklistItemProps {
 }
 
 /// sparse patch fields for checklist item `t=1` updates
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct ChecklistItemPatch {
     /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]

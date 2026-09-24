@@ -16,7 +16,7 @@ use crate::{
     },
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Mark a task done, incomplete, or canceled")]
 #[command(group(ArgGroup::new("status").args(["done", "incomplete", "canceled", "check_ids", "uncheck_ids", "check_cancel_ids"]).required(true).multiple(false)))]
 pub struct MarkArgs {
@@ -166,7 +166,6 @@ fn validate_mark_target(
     String::new()
 }
 
-#[derive(Debug, Clone)]
 struct MarkCommitPlan {
     changes: BTreeMap<String, WireObject>,
 }

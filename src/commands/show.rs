@@ -12,7 +12,7 @@ use crate::{
     wire::task::{TaskStart, TaskStatus, TaskType},
 };
 
-#[derive(Debug, Args)]
+#[derive(Args)]
 #[command(about = "Show one task or project in full")]
 pub struct ShowArgs {
     /// Task or project ID (or unique ID prefix)

@@ -15,7 +15,7 @@ use crate::{
     wire::task::TaskStatus,
 };
 
-#[derive(Debug, Default, Args)]
+#[derive(Default, Args)]
 #[command(about = "Show the Today view (default)")]
 pub struct TodayArgs {
     #[command(flatten)]
