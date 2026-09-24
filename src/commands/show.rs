@@ -45,12 +45,13 @@ impl Command for ShowArgs {
 
         let no_color = cli.no_color();
         let field = |name: &str| colored(format!("{name}:"), &[DIM], no_color);
-        writeln!(
-            out,
-            "{}  {}",
-            one_line(&task.title),
-            colored(&task.uuid, &[DIM], no_color)
-        )?;
+        // an item without a title is shown as the lists show it
+        let title = if task.title.trim().is_empty() {
+            "(untitled)".to_string()
+        } else {
+            one_line(&task.title)
+        };
+        writeln!(out, "{title}  {}", colored(&task.uuid, &[DIM], no_color))?;
         let kind = match task.item_type {
             TaskType::Todo => "to-do".to_string(),
             TaskType::Project => "project".to_string(),
@@ -71,18 +72,20 @@ impl Command for ShowArgs {
         }
         writeln!(out, "{} {kind}, {status}", field("Kind"))?;
 
-        let mut when = match (task.start, task.start_date) {
-            // a start this CLI does not know still shows the day it carries
-            (TaskStart::Unknown(raw), Some(day)) if day.date_naive() == today.date_naive() => {
-                format!("unknown start {raw}, today")
+        // the day follows whatever start the item has
+        let day = task.start_date.map(|day| {
+            if day.date_naive() == today.date_naive() {
+                "today".to_string()
+            } else {
+                day.format("%Y-%m-%d").to_string()
             }
-            (TaskStart::Unknown(raw), Some(day)) => {
-                format!("unknown start {raw}, {}", day.format("%Y-%m-%d"))
-            }
+        });
+        let mut when = match (task.start, day) {
+            (TaskStart::Unknown(raw), Some(day)) => format!("unknown start {raw}, {day}"),
             (TaskStart::Unknown(raw), None) => format!("unknown start {raw}"),
-            (TaskStart::Inbox, _) => "inbox".to_string(),
-            (_, Some(day)) if day.date_naive() == today.date_naive() => "today".to_string(),
-            (_, Some(day)) => day.format("%Y-%m-%d").to_string(),
+            (TaskStart::Inbox, Some(day)) => format!("inbox, {day}"),
+            (TaskStart::Inbox, None) => "inbox".to_string(),
+            (_, Some(day)) => day,
             (TaskStart::Someday, None) => "someday".to_string(),
             (TaskStart::Anytime, None) => "anytime".to_string(),
         };

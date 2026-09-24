@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things show Tr
+Rescheduled  Tr11111111111111111111
+Kind: to-do, incomplete, did not replay completely
+When: inbox, 2026-03-26
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
+
+```trycmd
+$ run.sh things show Tn
+(untitled)  Tn11111111111111111111
+Kind: to-do, incomplete, did not replay completely
+When: inbox
+Dates: modified 2026-03-23
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
