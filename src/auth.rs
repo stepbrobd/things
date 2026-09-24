@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsString,
     fs,
     io::{ErrorKind, Write},
     path::Path,
@@ -50,7 +51,10 @@ fn text_field(value: Option<Value>, field: &str, path: &Path) -> Result<Option<S
 /// the auth file under `THINGS_EMAIL` and `THINGS_PASSWORD`
 ///
 /// each variable stands in for the file's field when `var` yields it, as the text it holds
-fn load_auth_config(path: &Path, var: impl Fn(&str) -> Option<String>) -> Result<AuthConfig> {
+/// an empty variable counts as unset
+/// every other variable the program reads counts that way too
+/// a variable that is not UTF-8 is refused rather than taken as unset
+fn load_auth_config(path: &Path, var: impl Fn(&str) -> Option<OsString>) -> Result<AuthConfig> {
     let file = match fs::read_to_string(path) {
         Ok(raw) => serde_json::from_str::<AuthFile>(&raw)
             .with_context(|| format!("Failed reading auth config at {}", path.display()))?,
@@ -60,11 +64,21 @@ fn load_auth_config(path: &Path, var: impl Fn(&str) -> Option<String>) -> Result
                 .with_context(|| format!("Failed reading auth config at {}", path.display()));
         }
     };
-    let email = match var("THINGS_EMAIL") {
+    let text_var = |name: &str| {
+        var(name)
+            .filter(|value| !value.is_empty())
+            .map(|value| {
+                value
+                    .into_string()
+                    .map_err(|_| anyhow!("{name} is not valid UTF-8."))
+            })
+            .transpose()
+    };
+    let email = match text_var("THINGS_EMAIL")? {
         Some(text) => Some(text),
         None => text_field(file.email, "email", path)?,
     };
-    let password = match var("THINGS_PASSWORD") {
+    let password = match text_var("THINGS_PASSWORD")? {
         Some(text) => Some(text),
         None => text_field(file.password, "password", path)?,
     };
@@ -88,7 +102,7 @@ fn validate_auth(email: &str, password: &str) -> Result<(String, String)> {
 pub fn load_auth() -> Result<(String, String)> {
     let path = auth_file_path()?;
 
-    let cfg = load_auth_config(&path, |name| std::env::var(name).ok())?;
+    let cfg = load_auth_config(&path, |name| std::env::var_os(name))?;
 
     let Some(email) = cfg.email else {
         return Err(anyhow!(
@@ -256,7 +270,7 @@ mod tests {
         assert_eq!(config.password.as_deref(), Some("27182818"));
 
         let config = load_auth_config(&path, |name| {
-            (name == "THINGS_PASSWORD").then(|| "0031415".to_string())
+            (name == "THINGS_PASSWORD").then(|| "0031415".into())
         })
         .expect("config");
         assert_eq!(config.email.as_deref(), Some("user@example.com"));
@@ -274,6 +288,41 @@ mod tests {
         let text = format!("{error:#}");
         assert!(text.contains("password"), "{text}");
         assert!(!text.contains("31415926"), "{text}");
+    }
+
+    #[test]
+    fn an_empty_variable_counts_as_unset() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        fs::write(
+            &path,
+            r#"{"email":"user@example.com","password":"hunter2"}"#,
+        )
+        .expect("seed");
+        let config = load_auth_config(&path, |_| Some(OsString::new())).expect("config");
+        assert_eq!(config.email.as_deref(), Some("user@example.com"));
+        assert_eq!(config.password.as_deref(), Some("hunter2"));
+    }
+
+    #[test]
+    fn a_variable_that_is_not_utf8_is_refused_rather_than_taken_as_unset() {
+        use std::os::unix::ffi::OsStringExt;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        fs::write(
+            &path,
+            r#"{"email":"user@example.com","password":"hunter2"}"#,
+        )
+        .expect("seed");
+        let Err(error) = load_auth_config(&path, |name| {
+            (name == "THINGS_PASSWORD").then(|| OsString::from_vec(vec![0xff]))
+        }) else {
+            panic!("the file's password stood in");
+        };
+        assert!(
+            format!("{error:#}").contains("THINGS_PASSWORD"),
+            "{error:#}"
+        );
     }
 
     #[test]
