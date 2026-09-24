@@ -1,0 +1,20 @@
+```trycmd
+$ run.sh things reorder Tk --after-id Tc
+? 1
+Cannot reorder item in the selected list.
+
+```
+
+```trycmd
+$ run.sh things reorder Tm --after-id Tc
+? 1
+Cannot reorder item in the selected list.
+
+```
+
+```trycmd
+$ run.sh things reorder Tc --after-id Tq
+? 1
+Cannot reorder across different containers/lists.
+
+```

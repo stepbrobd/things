@@ -85,8 +85,15 @@ fn build_reorder_plan(
         return Err("Cannot reorder an item relative to itself.".to_string());
     }
 
-    let is_today_orderable =
-        |task: &crate::store::Task| task.start == TaskStart::Anytime && task.is_today(&today);
+    // only an open to-do that Today lists is ordered within it
+    // the structural path refuses the others
+    let is_today_orderable = |task: &crate::store::Task| {
+        task.start == TaskStart::Anytime
+            && task.is_today(&today)
+            && task.status == TaskStatus::Incomplete
+            && !task.trashed
+            && !store.in_closed_container(task)
+    };
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
 
     if is_today_reorder {
@@ -97,8 +104,6 @@ fn build_reorder_plan(
             .values()
             .filter(|task| {
                 task.uuid != item.uuid
-                    && !task.trashed
-                    && task.status == TaskStatus::Incomplete
                     && is_today_orderable(task)
                     && today_group(task, today_ts) == anchor_tir
             })
