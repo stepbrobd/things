@@ -30,23 +30,13 @@ impl Command for UpcomingArgs {
     ) -> Result<()> {
         let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
-        let now_ts = today.timestamp();
 
-        let mut tasks = Vec::new();
-        for t in store.tasks(Some(TaskStatus::Incomplete)) {
-            // a template shows through its projection alone
-            // Upcoming leaves out a blank row
-            // Today, the Inbox, Anytime, Someday and the Logbook leave it out too
-            if t.is_blank() || t.is_recurrence_template() || store.in_closed_container(&t) {
-                continue;
-            }
-            let Some(start_date) = t.start_date else {
-                continue;
-            };
-            if start_date.timestamp() > now_ts {
-                tasks.push(t);
-            }
-        }
+        // a template shows through its projection alone
+        let mut tasks: Vec<_> = store
+            .tasks(Some(TaskStatus::Incomplete))
+            .into_iter()
+            .filter(|t| store.in_upcoming(t, &today))
+            .collect();
         tasks.extend(store.projected_repeats(today.date_naive()));
         tasks.sort_by(|a, b| {
             (a.start_date, a.index, &a.uuid).cmp(&(b.start_date, b.index, &b.uuid))

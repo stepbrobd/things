@@ -4,7 +4,7 @@ use std::{
 };
 
 use anyhow::{Context as _, Result};
-use chrono::{DateTime, TimeZone, Utc};
+use chrono::{TimeZone, Utc};
 use clap::{ArgGroup, Args};
 
 use crate::{
@@ -13,7 +13,9 @@ use crate::{
     commands::Command,
     common::{DIM, GREEN, ICONS, colored, one_line, shown_title},
     ids::ThingsId,
-    ordering::{allocate, in_today_order, today_group, today_view_order},
+    ordering::{
+        allocate, in_today_order, lists_showing, place_next_to, today_group, today_view_order,
+    },
     wire::{
         task::{TaskPatch, TaskStatus},
         wire_object::{EntityType, WireObject},
@@ -59,74 +61,6 @@ fn already_in_place(
         return positions(own).is_some_and(adjacent);
     }
     both.into_iter().all(adjacent)
-}
-
-/// every list that shows `item`, each in its own order
-///
-/// a project view shows the to-dos under each heading at every status
-/// an area view shows its own to-dos at every status and start
-/// Anytime groups its to-dos by container
-/// Someday shows its to-dos in one list
-/// a repeat template and what is in the Trash show in no list
-fn lists_showing(
-    store: &crate::store::ThingsStore,
-    item: &crate::store::Task,
-    today: &DateTime<Utc>,
-) -> Vec<Vec<crate::store::Task>> {
-    let shown = |task: &crate::store::Task| !store.in_trash(task) && !task.is_recurrence_template();
-    let project = store.effective_project_uuid(item);
-    let area = store.effective_area_uuid(item);
-    let same_container = |task: &crate::store::Task| {
-        store.effective_project_uuid(task) == project
-            && (project.is_some() || store.effective_area_uuid(task) == area)
-    };
-    let rows = |keep: &dyn Fn(&crate::store::Task) -> bool| {
-        let mut rows: Vec<crate::store::Task> = store
-            .tasks_by_uuid
-            .values()
-            .filter(|task| shown(task) && keep(task))
-            .cloned()
-            .collect();
-        rows.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
-        rows
-    };
-    if item.is_heading() {
-        return vec![rows(&|task| {
-            task.is_heading() && task.project == item.project
-        })];
-    }
-    if item.is_project() {
-        return vec![
-            rows(&|task| task.is_project() && task.area == item.area),
-            store
-                .someday()
-                .into_iter()
-                .filter(|task| task.is_project())
-                .collect(),
-        ];
-    }
-    let to_do = |task: &crate::store::Task| !task.is_project() && !task.is_heading();
-    let mut lists = vec![
-        store.inbox(),
-        store
-            .anytime(today)
-            .into_iter()
-            .filter(|task| same_container(task))
-            .collect(),
-        store
-            .someday()
-            .into_iter()
-            .filter(|task| to_do(task))
-            .collect(),
-    ];
-    if project.is_some() || area.is_some() {
-        lists.push(rows(&|task| {
-            to_do(task)
-                && same_container(task)
-                && (project.is_none() || task.action_group == item.action_group)
-        }));
-    }
-    lists
 }
 
 /// every patch of a reorder in one commit
@@ -447,26 +381,23 @@ fn build_reorder_plan(
         });
     }
 
-    let mut order = siblings
-        .into_iter()
-        .filter(|t| t.uuid != item.uuid)
-        .collect::<Vec<_>>();
-    let anchor_pos = order.iter().position(|t| t.uuid == anchor.uuid);
-    let Some(anchor_pos) = anchor_pos else {
-        return Err("Anchor not found in reorder list.".to_string());
+    // the item takes a slot next to the anchor in its own list and in every other list that shows both
+    let without_item = |rows: Vec<crate::store::Task>| {
+        rows.into_iter()
+            .filter(|task| task.uuid != item.uuid)
+            .collect::<Vec<_>>()
     };
-    let insert_at = if args.before_id.is_some() {
-        anchor_pos
-    } else {
-        anchor_pos + 1
-    };
-    order.insert(insert_at, item.clone());
-    let run: Vec<(ThingsId, i32)> = order
-        .iter()
-        .filter(|task| task.uuid != item.uuid)
-        .map(|task| (task.uuid.clone(), task.index))
-        .collect();
-    let (new_index, moved) = allocate(&run, insert_at);
+    let order = without_item(siblings);
+    let others: Vec<Vec<crate::store::Task>> = shown.into_iter().map(without_item).collect();
+    let (new_index, moved) = place_next_to(
+        store,
+        &today,
+        &order,
+        &others,
+        &anchor,
+        Some(&item.uuid),
+        args.before_id.is_some(),
+    )?;
     if !moved.is_empty()
         && let Some(task) = order
             .iter()
@@ -498,20 +429,6 @@ fn build_reorder_plan(
                 },
             ),
         );
-    }
-
-    // a plan that writes nothing leaves the item where it sits in its own list
-    // another list that shows both still has rows between them
-    if changes.is_empty() {
-        return Err(format!(
-            "Item already sits {} the anchor in its own list, while another list shows rows between them: {}",
-            if args.before_id.is_some() {
-                "before"
-            } else {
-                "after"
-            },
-            one_line(&item.title)
-        ));
     }
 
     Ok(ReorderPlan {

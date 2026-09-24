@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, str::FromStr};
 
 use anyhow::{Context as _, Result};
-use chrono::{TimeZone, Utc};
+use chrono::{DateTime, TimeZone, Utc};
 use clap::Args;
 use serde_json::json;
 
@@ -14,7 +14,9 @@ use crate::{
         parse_reminder, resolve_container, resolve_tag_ids, shown_title, task6_note,
     },
     ids::ThingsId,
-    ordering::{allocate, in_today_order, today_group, today_view_order},
+    ordering::{
+        allocate, in_today_order, lists_showing, place_next_to, today_group, today_view_order,
+    },
     repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
     store::Task,
     wire::{
@@ -402,22 +404,34 @@ fn build_new_plan(
         .collect::<Vec<_>>();
     siblings.sort_by_key(|t| (t.index, t.uuid.clone()));
 
-    let mut structural_insert_at = 0usize;
-    if let Some(anchor) = &anchor
-        && task_bucket(anchor, store) == target_bucket
-    {
-        let anchor_pos = siblings
-            .iter()
-            .position(|t| t.uuid == anchor.uuid)
-            .expect("the anchor is among the rows of its list");
-        structural_insert_at = if args.before_id.is_some() {
-            anchor_pos
-        } else {
-            anchor_pos + 1
-        };
-    }
-
-    let (structural_ix, structural_updates) = plan_ix_insert(&siblings, structural_insert_at);
+    let new_uuid = next_id();
+    // next to an anchor in its list the newcomer takes a slot there and in every other list that shows both
+    // otherwise it goes first in its list
+    let (structural_ix, structural_updates) = match &anchor {
+        Some(anchor) if task_bucket(anchor, store) == target_bucket => {
+            // the new to-do as the lists read it
+            // it shares the anchor's container and differs in its title, start and day
+            let row = Task {
+                uuid: ThingsId::from_str(&new_uuid).map_err(|e| e.to_string())?,
+                title: props.title.clone(),
+                start: props.start_location,
+                start_date: props
+                    .scheduled_date
+                    .and_then(|day| DateTime::from_timestamp(day, 0)),
+                ..anchor.clone()
+            };
+            place_next_to(
+                store,
+                &today,
+                &siblings,
+                &lists_showing(store, &row, &today),
+                anchor,
+                None,
+                args.before_id.is_some(),
+            )?
+        }
+        _ => plan_ix_insert(&siblings, 0),
+    };
     // rows of a kind the writes do not know count in the order
     // a placement that moves rows is refused while one of them is in the list
     if !structural_updates.is_empty()
@@ -505,8 +519,6 @@ fn build_new_plan(
         props.today_sort_index = today_index;
         today_updates = moved;
     }
-
-    let new_uuid = next_id();
 
     let mut repeat_label = None;
     let mut template_change = None;

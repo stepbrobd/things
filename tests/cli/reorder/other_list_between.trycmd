@@ -12,7 +12,19 @@ $ run.sh things anytime
 
 ```trycmd
 $ run.sh things --now-ts 1774400000.0 reorder Ti --after-id Ta
-? 1
-Item already sits after the anchor in its own list, while another list shows rows between them: Mulch beds
+✓ Reordered Mulch beds  Ti11111111111111111111 (after=Weed beds, index=1500)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Ti11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "ix": 1500,
+        "md": 1774400000.0
+      },
+      "t": 1
+    }
+  }
+}
 
 ```

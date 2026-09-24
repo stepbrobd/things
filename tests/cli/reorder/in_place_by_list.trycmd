@@ -95,14 +95,14 @@ $ run.sh things --now-ts 1774400000.0 reorder Sb --after-id Sa
 
 ```trycmd
 $ run.sh things --now-ts 1774400000.0 reorder Sy --after-id Sx
-✓ Reordered Learn sailing  Sy11111111111111111111 (after=Learn knots, index=20481)
+✓ Reordered Learn sailing  Sy11111111111111111111 (after=Learn knots, index=20992)
 {
   "ancestor_index": 0,
   "changes": {
     "Sy11111111111111111111": {
       "e": "Task7",
       "p": {
-        "ix": 20481,
+        "ix": 20992,
         "md": 1774400000.0
       },
       "t": 1

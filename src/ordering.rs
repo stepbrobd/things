@@ -1,4 +1,4 @@
-//! the Today view's order and the sort index allocation shared by new, edit and reorder, for the structural index within a container and the today index within a day's group
+//! the Today view's order, the lists that show a row and the sort index allocation shared by new, edit and reorder, for the structural index within a container and the today index within a day's group
 //!
 //! a slot between two neighbors when the gap allows one
 //! otherwise the run is rebalanced
@@ -6,7 +6,13 @@
 
 use std::cmp::Reverse;
 
-use crate::{ids::ThingsId, store::Task};
+use chrono::{DateTime, Utc};
+
+use crate::{
+    common::one_line,
+    ids::ThingsId,
+    store::{Task, ThingsStore},
+};
 
 /// the day group a today index counts in, `tir` when a client set it, otherwise the scheduled day, otherwise today
 pub fn today_group(task: &Task, today_ts: i64) -> i64 {
@@ -78,6 +84,175 @@ pub fn allocate(run: &[(ThingsId, i32)], hole: usize) -> (i32, Vec<(ThingsId, i3
         })
         .collect();
     (target(hole), moved)
+}
+
+/// every list that shows `row`, each in its own order
+///
+/// `row` is among the rows when the store holds it
+/// a project view shows the to-dos under each heading at every status
+/// an area view shows its own to-dos at every status and start
+/// Anytime groups its to-dos by container
+/// Someday shows its to-dos in one list
+/// Upcoming shows the to-dos and projects of a day in one list
+/// the projected repeats of that day are among them
+/// a repeat template and what is in the Trash show in no list
+pub fn lists_showing(store: &ThingsStore, row: &Task, today: &DateTime<Utc>) -> Vec<Vec<Task>> {
+    let sorted = |mut rows: Vec<Task>| {
+        rows.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
+        rows
+    };
+    let listed = |keep: &dyn Fn(&Task) -> bool| {
+        keep(row).then(|| {
+            sorted(
+                store
+                    .tasks_by_uuid
+                    .values()
+                    .filter(|task| keep(task))
+                    .cloned()
+                    .collect(),
+            )
+        })
+    };
+    let shown = |task: &Task| !store.in_trash(task) && !task.is_recurrence_template();
+    let day = |task: &Task| task.start_date.map(|start| start.date_naive());
+    let upcoming = store.in_upcoming(row, today).then(|| {
+        sorted(
+            store
+                .tasks_by_uuid
+                .values()
+                .filter(|task| store.in_upcoming(task, today) && day(task) == day(row))
+                .cloned()
+                .chain(
+                    store
+                        .projected_repeats(today.date_naive())
+                        .into_iter()
+                        .filter(|task| day(task) == day(row)),
+                )
+                .collect(),
+        )
+    });
+    if row.is_heading() {
+        return [listed(&|task| {
+            shown(task) && task.is_heading() && task.project == row.project
+        })]
+        .into_iter()
+        .flatten()
+        .collect();
+    }
+    if row.is_project() {
+        return [
+            listed(&|task| shown(task) && task.is_project() && task.area == row.area),
+            listed(&|task| store.in_someday(task) && task.is_project()),
+            upcoming,
+        ]
+        .into_iter()
+        .flatten()
+        .collect();
+    }
+    let project = store.effective_project_uuid(row);
+    let area = store.effective_area_uuid(row);
+    let same_container = |task: &Task| {
+        store.effective_project_uuid(task) == project
+            && (project.is_some() || store.effective_area_uuid(task) == area)
+    };
+    let to_do = |task: &Task| !task.is_project() && !task.is_heading();
+    [
+        listed(&|task| store.in_inbox(task)),
+        listed(&|task| store.in_anytime(task, today) && same_container(task)),
+        listed(&|task| store.in_someday(task) && to_do(task)),
+        (project.is_some() || area.is_some())
+            .then(|| {
+                listed(&|task| {
+                    shown(task)
+                        && to_do(task)
+                        && same_container(task)
+                        && (project.is_none() || task.action_group == row.action_group)
+                })
+            })
+            .flatten(),
+        upcoming,
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
+}
+
+/// the index that puts a row right before or after `anchor` in its own list `own` and in every list of `lists` that holds the anchor, and the rows a rebalance moves
+///
+/// `own` and `lists` leave out the row being placed
+/// a slot between the anchor and its nearest neighbor in all of them moves nothing
+/// without one, `own` is rebalanced when it holds every row of those lists
+/// the rebalance keeps their order then
+/// otherwise the placement is refused
+/// it is refused as well when another list that shows a row the rebalance moves holds a row outside `own`
+/// `placed` names the row being placed when the store holds it
+pub fn place_next_to(
+    store: &ThingsStore,
+    today: &DateTime<Utc>,
+    own: &[Task],
+    lists: &[Vec<Task>],
+    anchor: &Task,
+    placed: Option<&ThingsId>,
+    before: bool,
+) -> Result<(i32, Vec<(ThingsId, i32)>), String> {
+    let at = |list: &[Task]| list.iter().position(|task| task.uuid == anchor.uuid);
+    let own_at = at(own).expect("the anchor is among the rows of its list");
+    let holding: Vec<&[Task]> = lists
+        .iter()
+        .map(Vec::as_slice)
+        .filter(|list| at(list).is_some())
+        .collect();
+    let neighbor = |list: &[Task]| {
+        let at = at(list)?;
+        if before {
+            at.checked_sub(1).map(|prev| list[prev].index)
+        } else {
+            list.get(at + 1).map(|next| next.index)
+        }
+    };
+    let neighbors = std::iter::once(own)
+        .chain(holding.iter().copied())
+        .filter_map(neighbor);
+    let slot = if before {
+        slot_between(neighbors.max(), Some(anchor.index))
+    } else {
+        slot_between(Some(anchor.index), neighbors.min())
+    };
+    if let Some(slot) = slot {
+        return Ok((slot, Vec::new()));
+    }
+    let in_own = |task: &Task| own.iter().any(|row| row.uuid == task.uuid);
+    let run: Vec<(ThingsId, i32)> = own
+        .iter()
+        .map(|task| (task.uuid.clone(), task.index))
+        .collect();
+    let (index, moved) = allocate(&run, if before { own_at } else { own_at + 1 });
+    // a moved row keeps its place in another list only while that list holds nothing outside `own`
+    // Today breaks a tie of day group and today index by `ix`
+    let outside = |task: &Task| !in_own(task) && Some(&task.uuid) != placed;
+    let today_ts = today.timestamp();
+    let reorders = moved
+        .iter()
+        .filter_map(|(id, _)| own.iter().find(|task| task.uuid == *id))
+        .any(|row| {
+            lists_showing(store, row, today)
+                .iter()
+                .any(|list| list.iter().any(outside))
+                || (store.in_today(row, today)
+                    && store.tasks_by_uuid.values().any(|other| {
+                        outside(other)
+                            && store.in_today(other, today)
+                            && today_group(other, today_ts) == today_group(row, today_ts)
+                            && other.today_index == row.today_index
+                    }))
+        });
+    if holding.iter().any(|list| !list.iter().all(in_own)) || reorders {
+        return Err(format!(
+            "Cannot rebalance next to the anchor without reordering another list: {}",
+            one_line(&anchor.title)
+        ));
+    }
+    Ok((index, moved))
 }
 
 #[cfg(test)]

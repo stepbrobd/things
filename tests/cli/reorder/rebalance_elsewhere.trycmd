@@ -1,0 +1,22 @@
+```trycmd
+$ run.sh things someday
+⬚ Someday  (2 items)
+
+  S ⬚ Area someday
+  R ⬚ Root someday
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Xc --after-id Xa
+? 1
+Cannot rebalance next to the anchor without reordering another list: First
+
+```
+
+```trycmd
+$ run.sh things --id-seed 7 --now-ts 1774400000.0 new N --in Ah --after Xa
+? 1
+Cannot rebalance next to the anchor without reordering another list: First
+
+```

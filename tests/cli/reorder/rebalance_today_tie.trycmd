@@ -1,0 +1,17 @@
+```trycmd
+$ run.sh things today
+⭑ Today  (2 tasks)
+
+  Ta ▢ Root today
+
+  Ah ◆ Home
+    Xb ▢ Area today
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Xc --after-id Xa
+? 1
+Cannot rebalance next to the anchor without reordering another list: First
+
+```

@@ -345,41 +345,10 @@ impl ThingsStore {
     }
 
     pub fn anytime(&self, today: &DateTime<Utc>) -> Vec<Task> {
-        let project_visible = |task: &Task, store: &ThingsStore| {
-            if store.in_closed_container(task) {
-                return false;
-            }
-            let Some(project_uuid) = store.effective_project_uuid(task) else {
-                return true;
-            };
-            let Some(project) = store.tasks_by_uuid.get(&project_uuid) else {
-                return true;
-            };
-            if project.start == TaskStart::Someday {
-                return false;
-            }
-            if let Some(start_date) = project.start_date
-                && start_date > *today
-            {
-                return false;
-            }
-            true
-        };
-
         let mut out: Vec<Task> = self
             .tasks_by_uuid
             .values()
-            .filter(|t| {
-                !t.trashed
-                    && t.status == TaskStatus::Incomplete
-                    && t.start == TaskStart::Anytime
-                    && !t.is_project()
-                    && !t.is_heading()
-                    && !t.is_blank()
-                    && !t.is_recurrence_template()
-                    && (t.start_date.is_none() || t.start_date <= Some(*today))
-                    && project_visible(t, self)
-            })
+            .filter(|t| self.in_anytime(t, today))
             .cloned()
             .collect();
         out.sort_by(|a, b| (a.index, &a.uuid).cmp(&(b.index, &b.uuid)));
@@ -514,6 +483,59 @@ impl ThingsStore {
             && !task.is_recurrence_template()
             && !self.in_trash(task)
             && (task.is_project() || self.effective_project_uuid(task).is_none())
+    }
+
+    /// in the Anytime list as the Anytime view reads it
+    ///
+    /// an incomplete to-do that has started, neither blank nor a repeat template
+    /// one in a closed container or in a project that waits for someday or a later day is out of it
+    pub fn in_anytime(&self, task: &Task, today: &DateTime<Utc>) -> bool {
+        let project_visible = || {
+            if self.in_closed_container(task) {
+                return false;
+            }
+            let Some(project_uuid) = self.effective_project_uuid(task) else {
+                return true;
+            };
+            let Some(project) = self.tasks_by_uuid.get(&project_uuid) else {
+                return true;
+            };
+            if project.start == TaskStart::Someday {
+                return false;
+            }
+            if let Some(start_date) = project.start_date
+                && start_date > *today
+            {
+                return false;
+            }
+            true
+        };
+        !task.trashed
+            && task.status == TaskStatus::Incomplete
+            && task.start == TaskStart::Anytime
+            && !task.is_project()
+            && !task.is_heading()
+            && !task.is_blank()
+            && !task.is_recurrence_template()
+            && (task.start_date.is_none() || task.start_date <= Some(*today))
+            && project_visible()
+    }
+
+    /// in the Upcoming list as the Upcoming view reads it
+    ///
+    /// an incomplete to-do or project scheduled after today, outside the Trash and a closed container
+    /// a blank row and a repeat template are out of it
+    /// a template shows there through its projection
+    pub fn in_upcoming(&self, task: &Task, today: &DateTime<Utc>) -> bool {
+        task.status == TaskStatus::Incomplete
+            && !self.in_trash(task)
+            && !task.is_heading()
+            && !task.is_blank()
+            && !task.is_recurrence_template()
+            && !self.in_closed_container(task)
+            && task
+                .start_date
+                .is_some_and(|start_date| start_date > *today)
     }
 
     /// in the Today list as the Today view reads it
