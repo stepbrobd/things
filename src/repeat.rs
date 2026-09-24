@@ -512,6 +512,11 @@ pub fn due_instances(
                 // a template with a deadline is left to the Apple clients
                 // the app keeps an instance's deadline as an offset no capture has shown written
                 && template.deadline.is_none()
+                // a repeating project is left to the Apple clients too
+                // its instance carries the project's to-dos
+                // no capture has shown those written
+                // a template of a kind this CLI does not know is left to them as well
+                && template.is_todo()
                 && template.due_date_offset == 0
         })
         .collect();
