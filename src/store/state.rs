@@ -346,6 +346,24 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
                 warn!(target: "things::replay", uuid = %uuid, operation, "an operation this CLI does not read reached the object");
                 if let Some(existing) = state.get_mut(&uuid) {
                     existing.degraded = true;
+                } else {
+                    // an object the fold has not seen keeps the fields that parse as an update of its kind
+                    // its mark reports it as not replayed
+                    let update = WireObject {
+                        operation_type: OperationType::Update,
+                        ..obj
+                    };
+                    let properties = update
+                        .readable_properties()
+                        .map_or(StateProperties::Other, Into::into);
+                    state.insert(
+                        uuid,
+                        StateObject {
+                            entity_type: update.entity_type,
+                            properties,
+                            degraded: true,
+                        },
+                    );
                 }
             }
         }
@@ -504,6 +522,27 @@ mod tests {
             present("Td11111111111111111111"),
             "a to-do outlives its area"
         );
+    }
+
+    #[test]
+    fn an_operation_this_cli_does_not_read_marks_an_object_it_has_not_seen() {
+        let items = [
+            r#"{"Ta11111111111111111111":{"t":3,"e":"Task7","p":{"tt":"Order tiles"}}}"#,
+            r#"{"Tc11111111111111111111":{"t":0,"e":"Task7","p":"garbled"}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        assert_eq!(
+            degraded_ids(&state),
+            vec![
+                "Ta11111111111111111111".parse::<ThingsId>().expect("id"),
+                "Tc11111111111111111111".parse::<ThingsId>().expect("id"),
+            ]
+        );
+        // the fields that parse keep the object listed as a marked row
+        let store = ThingsStore::from_raw_state(&state);
+        let task = store.get_task("Ta11111111111111111111").expect("listed");
+        assert_eq!(task.title, "Order tiles");
+        assert!(task.degraded);
     }
 
     #[test]
