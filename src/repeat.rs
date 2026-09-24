@@ -30,7 +30,7 @@ pub struct RepeatSpec {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Cadence {
     Daily,
-    /// weekdays counted from Sunday as 0, empty for the first day's weekday
+    /// weekdays counted from sunday as 0, empty for the first day's weekday
     Weekly(Vec<u32>),
     /// 1 to 31, -1 for the last day, None for the first day's day
     Monthly(Option<i32>),
@@ -48,7 +48,9 @@ pub enum Bound {
 
 const WEEKDAYS: [&str; 7] = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
 
-/// the largest interval accepted from the command line or the wire, which keeps every date step representable
+/// the largest interval accepted from the command line or the wire
+///
+/// that bound keeps every date step representable
 pub const MAX_EVERY: i32 = 999;
 
 fn parse_every(text: &str) -> Option<i32> {
@@ -138,7 +140,8 @@ fn parse_month_and_day(date: &str) -> Result<(u32, u32), String> {
     let (month, day) = date.split_once('-').ok_or_else(invalid)?;
     let month = month.parse::<u32>().map_err(|_| invalid())?;
     let day = day.parse::<u32>().map_err(|_| invalid())?;
-    // 2024 is a leap year, which lets february 29 pass
+    // 2024 is a leap year
+    // that lets february 29 pass
     NaiveDate::from_ymd_opt(2024, month, day).ok_or_else(invalid)?;
     Ok((month, day))
 }
@@ -183,7 +186,10 @@ fn week_start(day: NaiveDate) -> NaiveDate {
     day - Days::new(u64::from(weekday_index(day)))
 }
 
-/// the day of the month, -1 for the last, clamped to the month's length, None outside the representable years
+/// the day of the month, -1 for the last
+///
+/// clamped to the month's length
+/// None outside the representable years
 fn day_in_month(year: i32, month: u32, day: i32) -> Option<NaiveDate> {
     let last = NaiveDate::from_ymd_opt(year, month, 1)?
         .checked_add_months(Months::new(1))?
@@ -232,7 +238,11 @@ impl RepeatSpec {
         found.unwrap_or(from)
     }
 
-    /// the occurrence after `after`, counting intervals from `anchor`, which need not be an occurrence itself, None after completion or past the representable years
+    /// the occurrence after `after`
+    ///
+    /// it counts intervals from `anchor`
+    /// `anchor` need not be an occurrence itself
+    /// None after completion or past the representable years
     pub fn next_occurrence(&self, anchor: NaiveDate, after: NaiveDate) -> Option<NaiveDate> {
         let every = i64::from(self.every);
         match &self.cadence {
@@ -293,7 +303,8 @@ impl RepeatSpec {
     /// the spec and anchor behind a fixed schedule rule from the wire
     ///
     /// None for after completion and for every offset shape other than the ones the app was seen to write
-    /// a rule the CLI cannot evaluate exactly is shown and never projected or materialized, since a guess would put instances on the wrong days
+    /// a rule the CLI cannot evaluate exactly is shown and never projected or materialized
+    /// a guess would put instances on the wrong days
     pub fn from_rule(rule: &RecurrenceRule) -> Option<(Self, NaiveDate)> {
         if rule.recurrence_type != RecurrenceType::FixedSchedule
             || !(1..=MAX_EVERY).contains(&rule.frequency_amount)
@@ -361,7 +372,9 @@ impl RepeatSpec {
             cadence,
             every: rule.frequency_amount,
         };
-        // an interval counts from its anchor, which has to be an occurrence, otherwise the phase of the rule is unknown
+        // an interval counts from its anchor
+        // the anchor has to be an occurrence
+        // otherwise the phase of the rule is unknown
         if spec.every > 1 && spec.first_occurrence(anchor) != anchor {
             return None;
         }
@@ -440,7 +453,9 @@ impl RepeatSpec {
     }
 }
 
-/// the next occurrence of a wire rule after `after`, honoring the end day and the repeat count against the instances made so far
+/// the next occurrence of a wire rule after `after`
+///
+/// it honors the end day and the repeat count against the instances made so far
 pub fn next_occurrence_of_rule(
     rule: &RecurrenceRule,
     after: NaiveDate,
@@ -469,7 +484,8 @@ pub struct Materialized {
 ///
 /// `icsd` on a template is the day the search for the next instance starts from, not the day the next instance is due
 /// the app sets it to the next occurrence when it makes the template and to the day after each instance it creates
-/// the due day is therefore the first occurrence on or after it, bounded by the rule's end day and count
+/// the due day is therefore the first occurrence on or after it
+/// bounded by the rule's end day and count
 /// a template past its end is never due
 pub fn due_instances(
     store: &ThingsStore,
@@ -487,11 +503,14 @@ pub fn due_instances(
                 && !template.instance_creation_paused
                 // a template whose replay failed is never written through
                 && !template.degraded
-                // a repeater is left to the Apple clients, as the commands leave it
+                // a repeater is left to the Apple clients
+                // the commands leave it to them too
                 && !template.has_repeater()
-                // a template in a closed or trashed project or heading makes nothing, as its to-dos show nowhere
+                // a template in a closed or trashed project or heading makes nothing
+                // its to-dos show nowhere
                 && !store.in_closed_container(template)
-                // a template with a deadline is left to the Apple clients, the app keeps an instance's deadline as an offset no capture has shown written
+                // a template with a deadline is left to the Apple clients
+                // the app keeps an instance's deadline as an offset no capture has shown written
                 && template.deadline.is_none()
                 && template.due_date_offset == 0
         })
@@ -510,7 +529,8 @@ pub fn due_instances(
             if due > today {
                 return None;
             }
-            // the app keeps tir on the day of the instance it will create next, a template whose tir names another day is read differently by the app and left to it
+            // the app keeps tir on the day of the instance it will create next
+            // a template whose tir names another day is read differently by the app and left to it
             if let Some(shown) = template.today_index_reference.and_then(day_of)
                 && shown != due
             {
@@ -521,7 +541,8 @@ pub fn due_instances(
                 warn!(target: "things::replay", uuid = %template.uuid, "the instance count cannot advance, the template is left alone");
                 return None;
             };
-            // the search resumes tomorrow, which makes a missed stretch yield this one instance and not one per missed day
+            // the search resumes tomorrow
+            // that makes a missed stretch yield this one instance and not one per missed day
             let resume = today.succ_opt()?;
             let following = next_occurrence_of_rule(rule, today, created);
             let instance_id = next_id();
@@ -598,11 +619,15 @@ pub struct TemplateSource {
     pub sort_index: i32,
     pub today_sort_index: i32,
     pub conflict_overrides: Option<Value>,
-    /// the checklist as the to-do has it after the edit, copied with fresh ids onto the template and from there onto every instance
+    /// the checklist as the to-do has it after the edit
+    ///
+    /// copied with fresh ids onto the template and from there onto every instance
     pub checklist: Vec<ChecklistCopy>,
 }
 
-/// one checklist item to copy, every copy starts open
+/// one checklist item to copy
+///
+/// every copy starts open
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ChecklistCopy {
     pub title: String,
@@ -640,7 +665,9 @@ pub fn checklist_items(
 
 /// the hidden template behind a repeating to-do whose first instance is on `first`
 ///
-/// `icsd` points at the occurrence after the first, as the app writes it, or at the day after the first when the count or the end day allows only the one instance
+/// `icsd` points at the occurrence after the first
+/// the app writes it that way
+/// it points at the day after the first instead when the count or the end day allows only the one instance
 /// `tir` is that occurrence or nothing
 pub fn template(
     spec: &RepeatSpec,
@@ -705,7 +732,8 @@ mod tests {
         serde_json::from_str(json).expect("rule")
     }
 
-    // a yearly rule on september 17 that ends on 2027-09-17, as the app wrote it
+    // a yearly rule on september 17 that ends on 2027-09-17
+    // the app wrote it that way
     const YEARLY_SEP_17: &str = r#"{"ed":1821139200,"fa":1,"fu":4,"ia":1789603200,"of":[{"dy":16,"mo":8}],"rc":0,"rrv":4,"sr":1789603200,"tp":0,"ts":0}"#;
     // a daily rule anchored on 2026-03-16 that ends on 2026-03-25
     const DAILY_UNTIL_MAR_25: &str = r#"{"ed":1774396800,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
@@ -1041,7 +1069,8 @@ mod tests {
         assert!(!evaluates(
             r#"{"fa":1,"fu":8,"ia":1789603200,"of":[{"wd":5,"wdo":-1}],"rc":0,"sr":1789603200,"tp":0}"#
         ));
-        // two days a month, which a single day selector cannot carry
+        // two days a month
+        // a single day selector cannot carry that
         assert!(!evaluates(
             r#"{"fa":1,"fu":8,"ia":1789603200,"of":[{"dy":0},{"dy":14}],"rc":0,"sr":1789603200,"tp":0}"#
         ));
@@ -1130,7 +1159,8 @@ mod tests {
     #[test]
     fn a_rescheduled_instance_does_not_hold_the_template_back() {
         let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
-        // the user moved the instance of 2026-03-24 to 2026-03-27, the search still starts on 03-25
+        // the user moved the instance of 2026-03-24 to 2026-03-27
+        // the search still starts on 03-25
         let store = store_of(vec![
             template_object(daily, "2026-03-25", 2),
             instance_object(INSTANCE, "2026-03-27"),
@@ -1177,13 +1207,15 @@ mod tests {
                 .map(|task| task.start_date.expect("day").date_naive())
                 .collect::<Vec<_>>()
         };
-        // today's instance moved five days out holds nothing back, the template makes tomorrow's
+        // today's instance moved five days out holds nothing back
+        // the template makes tomorrow's
         let moved = store_of(vec![
             template_object(daily, "2026-03-26", 1),
             instance_object("Ji11111111111111111111", "2026-03-30"),
         ]);
         assert_eq!(projected(&moved), vec![day("2026-03-26")]);
-        // an instance due today and not yet made belongs to today, the row shows the next one
+        // an instance due today and not yet made belongs to today
+        // the row shows the next one
         let due = store_of(vec![template_object(daily, "2026-03-25", 0)]);
         assert_eq!(projected(&due), vec![day("2026-03-26")]);
     }
@@ -1247,7 +1279,8 @@ mod tests {
 
     #[test]
     fn an_interval_rule_counts_from_an_anchor_that_is_an_occurrence() {
-        // every two weeks on monday, anchored on a thursday, the phase is unknown
+        // every two weeks on monday, anchored on a thursday
+        // the phase is unknown
         assert!(
             RepeatSpec::from_rule(&rule(
                 r#"{"fa":2,"fu":256,"ia":1789603200,"of":[{"wd":1}],"rc":0,"sr":1789603200,"tp":0}"#

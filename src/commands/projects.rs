@@ -228,7 +228,8 @@ impl Command for ProjectsArgs {
         out: &mut dyn std::io::Write,
         ctx: &mut dyn crate::cmd_ctx::CmdCtx,
     ) -> Result<()> {
-        // `projects --detailed` and `projects list --detailed` show details, `projects --detailed list` does not
+        // `projects --detailed` and `projects list --detailed` show details
+        // `projects --detailed list` does not
         // the subcommand's own flag wins over the one before it
         let effective_detailed = match self.command.as_ref() {
             None => self.detailed,
@@ -350,7 +351,8 @@ impl Command for ProjectsArgs {
                             }
                         };
                         let ts = day_timestamp(day);
-                        // a day that has come puts the project in anytime, as the app does
+                        // a day that has come puts the project in Anytime
+                        // the app does the same
                         props.start_location = if ts <= ctx.today_timestamp() {
                             TaskStart::Anytime
                         } else {

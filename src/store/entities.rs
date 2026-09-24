@@ -18,7 +18,9 @@ use crate::{
 pub struct StateObject {
     pub entity_type: Option<EntityType>,
     pub properties: StateProperties,
-    /// an update to this object could not be applied, or its create did not parse, and what is shown may be behind the history
+    /// an update to this object could not be applied, or its create did not parse
+    ///
+    /// what is shown may be behind the history
     #[serde(default)]
     pub degraded: bool,
 }
@@ -43,7 +45,9 @@ pub struct TaskStateProps {
     pub scheduled_date: Option<f64>,
     pub today_index_reference: Option<i64>,
     pub deadline: Option<f64>,
-    /// `dds` is set, the due deadline was taken out of Today
+    /// `dds` is set
+    ///
+    /// the due deadline was taken out of Today
     #[serde(default)]
     pub deadline_suppressed: bool,
     pub parent_project_ids: Vec<ThingsId>,
@@ -173,7 +177,10 @@ pub struct Task {
     pub recurrence_templates: Vec<ThingsId>,
     /// `do`, the deadline of a repeat's instances as days after their day
     pub due_date_offset: i32,
-    /// the object's replay did not complete, what is shown may be behind the history and no write goes through it
+    /// the object's replay did not complete
+    ///
+    /// what is shown may be behind the history
+    /// no write goes through it
     pub degraded: bool,
     pub checklist_items: Vec<ChecklistItem>,
 }
@@ -184,7 +191,9 @@ impl Task {
             .map(|secs| format!("{:02}:{:02}", secs / 3600, secs % 3600 / 60))
     }
 
-    /// a blank row without title or notes, where a capture of notes alone still counts
+    /// a blank row without title or notes
+    ///
+    /// a capture of notes alone still counts
     pub fn is_blank(&self) -> bool {
         self.title.trim().is_empty() && self.notes.as_deref().unwrap_or("").trim().is_empty()
     }
@@ -217,7 +226,10 @@ impl Task {
         self.start == TaskStart::Someday && self.start_date.is_none()
     }
 
-    /// in the Today list, started on or before today or without a day and past a deadline nobody took out of Today, templates excluded
+    /// in the Today list
+    ///
+    /// started on or before today, or undated with a deadline on or before today that nobody took out of Today
+    /// templates are excluded
     pub fn is_today(&self, today: &DateTime<Utc>) -> bool {
         if self.is_recurrence_template() {
             return false;

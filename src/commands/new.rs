@@ -284,7 +284,8 @@ fn build_new_plan(
                 Err(err) => return Err(err),
             };
             let day_ts = day_timestamp(parsed);
-            // a day that has come starts in anytime, as the app files a to-do dated today
+            // a day that has come starts in Anytime
+            // the app files a to-do dated today that way
             props.start_location = if day_ts <= today_ts {
                 TaskStart::Anytime
             } else {
@@ -325,7 +326,8 @@ fn build_new_plan(
             let first_ts = day_timestamp(first);
             props.scheduled_date = Some(first_ts);
             props.today_index_reference = Some(first_ts);
-            // this evening is today's, a later first day has none
+            // this evening is today's
+            // a later first day has none
             props.evening_bit = 0;
             props.start_location = if first_ts <= today_ts {
                 TaskStart::Anytime
@@ -370,7 +372,8 @@ fn build_new_plan(
         && props.scheduled_date.is_some_and(|sr| sr <= today_ts);
     let target_bucket = props_bucket(&props);
 
-    // Today is one list across containers, the anchor's container matters when either is outside it
+    // Today is one list across containers
+    // the anchor's container matters when either is outside it
     if let Some(anchor) = &anchor
         && !(anchor_is_today && new_is_today)
         && task_bucket(anchor, store) != target_bucket
@@ -526,7 +529,8 @@ fn build_new_plan(
         );
     }
 
-    // a sibling may move in both runs, it gets one patch
+    // a sibling may move in both runs
+    // it gets one patch
     let mut patches: BTreeMap<ThingsId, TaskPatch> = BTreeMap::new();
     for (task_uuid, task_index) in index_updates {
         patches.entry(task_uuid).or_default().sort_index = Some(task_index);
@@ -901,7 +905,8 @@ mod tests {
     #[test]
     fn adjacent_today_indexes_respace_the_day_group() {
         let mut id_gen = || NEW_UUID.to_string();
-        // the day stamps are midnights, as the app writes them
+        // the day stamps are midnights
+        // the app writes them that way
         let day = 1_699_920_000;
         let store = build_store(vec![
             task(INBOX_ANCHOR_UUID, "First", 1, 100, Some(day), Some(day), 5),
@@ -933,7 +938,8 @@ mod tests {
         assert_eq!(changes[NEW_UUID]["p"]["tir"], json!(day));
         assert_eq!(changes[INBOX_ANCHOR_UUID]["p"]["ti"], json!(1024));
         assert_eq!(changes[INBOX_OTHER_UUID]["p"]["ti"], json!(3072));
-        // the structural run had room and no sort index moved
+        // the structural run had room
+        // no sort index moved
         assert!(changes[INBOX_ANCHOR_UUID]["p"].get("ix").is_none());
     }
 

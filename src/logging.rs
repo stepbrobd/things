@@ -12,7 +12,9 @@ pub enum LogFormat {
     Json,
 }
 
-/// THINGS_LOG holds a filter directive, THINGS_LOG_FORMAT one of pretty, simplified or json
+/// THINGS_LOG holds a filter directive
+///
+/// THINGS_LOG_FORMAT holds one of pretty, simplified or json
 pub fn init() {
     static INIT: OnceLock<()> = OnceLock::new();
     let _ = INIT.get_or_init(|| {
@@ -43,7 +45,8 @@ pub fn init() {
                 .boxed(),
         };
 
-        // warnings name the objects and repairs behind a notice already printed, they wait for THINGS_LOG
+        // warnings name the objects and repairs behind a notice already printed
+        // they wait for THINGS_LOG
         let directive = std::env::var("THINGS_LOG").unwrap_or_default();
         let filter = EnvFilter::builder()
             .with_default_directive(LevelFilter::ERROR.into())

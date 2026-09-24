@@ -137,7 +137,8 @@ impl Command for ShowArgs {
                     .unwrap_or_else(|_| "a repeat".to_string())
             )?;
         }
-        // instants show under their local day, the deadline above is a day stamp
+        // instants show under their local day
+        // the deadline above is a day stamp
         let mut dates = vec![format!("created {}", fmt_date_local(task.creation_date))];
         if task.modification_date.is_some() {
             dates.push(format!(

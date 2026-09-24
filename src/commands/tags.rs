@@ -84,7 +84,8 @@ fn build_tags_delete_plan(
     let Some(tag) = tag else {
         return Err(err);
     };
-    // the app's handling of child tags is not captured, they are left to the user
+    // the app's handling of child tags is not captured
+    // child tags are left to the user
     if store
         .tags_by_uuid
         .values()
@@ -156,7 +157,8 @@ fn build_tags_edit_plan(
         if name.is_empty() {
             return Err("Tag name cannot be empty.".to_string());
         }
-        // a title is how a tag is named on the command line, two that differ in case alone name neither
+        // a title is how a tag is named on the command line
+        // two that differ in case alone name neither
         if store
             .tags_by_uuid
             .values()
@@ -547,7 +549,8 @@ mod tests {
         .expect_err("self parent");
         assert_eq!(self_parent, "A tag cannot be its own parent.");
 
-        // Meetings is below Work, which keeps Work from going under Meetings
+        // Meetings is below Work
+        // that keeps Work from going under Meetings
         let cycle = build_tags_edit_plan(
             &TagsEditArgs {
                 tag_id: TAG_UUID.to_string(),

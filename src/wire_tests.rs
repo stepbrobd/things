@@ -38,7 +38,8 @@ mod tests {
         assert_eq!(odd[ID_A].operation_type, OperationType::Unknown(-1));
         let state = fold_items([serde_json::from_str(&create).expect("create"), odd]);
         assert!(state[&id(ID_A)].degraded);
-        // a checklist patch names its task as one id or many, as a create does
+        // a checklist patch names its task as one id or many
+        // a create does too
         let patch: ChecklistItemPatch =
             serde_json::from_str(&format!(r#"{{"ts":"{ID_C}"}}"#)).expect("one task id");
         assert_eq!(patch.task_ids, Some(vec![id(ID_C)]));

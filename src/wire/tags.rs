@@ -20,7 +20,9 @@ pub struct TagProps {
     #[serde(rename = "ix", default)]
     pub sort_index: i32,
 
-    /// `pn`, parent tag IDs (supports nesting)
+    /// `pn`, parent tag ids
+    ///
+    /// supports nesting
     #[serde(rename = "pn", default)]
     pub parent_ids: Vec<ThingsId>,
 
@@ -29,14 +31,14 @@ pub struct TagProps {
     pub conflict_overrides: Option<Value>,
 }
 
-/// sparse patch fields for Tag `t=1` updates
+/// sparse patch fields for tag `t=1` updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TagPatch {
     /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
-    /// `pn`, parent tag IDs
+    /// `pn`, parent tag ids
     #[serde(rename = "pn", skip_serializing_if = "Option::is_none")]
     pub parent_ids: Option<Vec<ThingsId>>,
 

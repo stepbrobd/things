@@ -89,7 +89,9 @@ fn resolve_checklist_items(
     (resolved, String::new())
 }
 
-/// a status change of a repeat's instance, which the app follows with template bookkeeping for after completion rules
+/// a status change of a repeat's instance
+///
+/// the app follows it with template bookkeeping for after completion rules
 fn validate_recurring_instance(
     task: &crate::store::Task,
     store: &crate::store::ThingsStore,
@@ -218,7 +220,8 @@ fn build_mark_status_plan(
             (TaskStatus::Canceled, Some(now))
         };
 
-        // a project closes with its open to-dos, which take its status as in the app once it asks
+        // a project closes with its open to-dos
+        // those to-dos take its status as in the app once it asks
         if task.is_project() && action != "incomplete" {
             let mut open = store
                 .tasks_by_uuid
@@ -301,7 +304,8 @@ fn build_mark_checklist_plan(
                 one_line(&item.title)
             ));
         }
-        // a closed item carries the moment it closed, as a to-do does
+        // a closed item carries the moment it closed
+        // a to-do does too
         let stop_date = (status != TaskStatus::Incomplete).then_some(now);
         changes.insert(
             item.uuid.to_string(),
@@ -384,7 +388,8 @@ impl Command for MarkArgs {
         };
 
         let (plan, successes, errors) = build_mark_status_plan(self, &store, ctx.now_timestamp());
-        // every target is checked before any is written, a batch lands whole or not at all
+        // every target is checked before any is written
+        // a batch lands whole or not at all
         if !errors.is_empty() {
             bail!("{}", errors.join("\n"));
         }
@@ -750,7 +755,8 @@ mod tests {
         expected.sort();
         assert_eq!(keys, expected);
         assert_eq!(plan.changes[UNDER].properties_map()["ss"], json!(2));
-        // reopening a project leaves its to-dos as they are, as the app does
+        // reopening a project leaves its to-dos as they are
+        // the app does the same
         let (plan, _, errors) =
             build_mark_status_plan(&status(false, true), &store(TaskStatus::Completed), NOW);
         assert!(errors.is_empty(), "{errors:?}");

@@ -60,7 +60,8 @@ set +e
 status=$?
 set -e
 
-# commit request log events become their pretty printed payload, every other stderr line passes through in place
+# commit request log events become their pretty printed payload
+# every other stderr line passes through in place
 jq -RrS '(fromjson? | objects | select(.event == "cloud.commit.request") | .request_json | fromjson) // .' <"$stderr_file" 1>&2
 
 exit "$status"

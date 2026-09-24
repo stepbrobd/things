@@ -55,19 +55,27 @@ pub struct Cli {
     pub load_journal: Option<PathBuf>,
     #[command(subcommand)]
     pub command: Option<Commands>,
-    /// the state loaded by this run, which spares the command after the materialization pass a second sync
+    /// the state loaded by this run
+    ///
+    /// it spares the command after the repeat pass a second sync
     #[arg(skip)]
     pub state_cache: RefCell<Option<RawState>>,
     /// set when the sync failed and the cached state is in use
     #[arg(skip)]
     pub offline: Cell<bool>,
-    /// the client that synchronized this run's state, writes commit against its history and head
+    /// the client that synchronized this run's state
+    ///
+    /// writes commit against its history and head
     #[arg(skip)]
     pub cloud: Rc<RefCell<Option<ThingsCloudClient>>>,
-    /// the objects whose replay did not complete, which the writer refuses to touch
+    /// the objects whose replay did not complete
+    ///
+    /// the writer refuses to touch them
     #[arg(skip)]
     pub degraded: Rc<RefCell<HashSet<ThingsId>>>,
-    /// the sync cache stays locked through the materialization pass, another run sees its instances rather than making them again
+    /// the sync cache stays locked through the repeat pass
+    ///
+    /// another run sees its instances rather than making them again
     #[arg(skip)]
     pub cache_lock: RefCell<Option<CacheLock>>,
 }
@@ -100,7 +108,9 @@ impl Cli {
         Ok(())
     }
 
-    /// the run's state, borrowed rather than copied
+    /// the run's state
+    ///
+    /// borrowed rather than copied
     pub fn with_state<R>(&self, read: impl FnOnce(&RawState) -> R) -> Result<R> {
         self.ensure_state()?;
         let cache = self.state_cache.borrow();
@@ -160,7 +170,8 @@ pub const EXIT_SYNC_FAILED: u8 = 3;
 pub fn run() -> Result<ExitCode> {
     let mut cli = Cli::parse();
     logging::init();
-    // the test hooks fix ids and days, a seed used twice would overwrite what the first run created
+    // the test hooks fix ids and days
+    // a seed used twice would overwrite what the first run created
     if !cli.no_cloud && (cli.today_ts.is_some() || cli.now_ts.is_some() || cli.id_seed.is_some()) {
         anyhow::bail!("--today-ts, --now-ts and --id-seed are test hooks and need --no-cloud.");
     }
@@ -173,7 +184,9 @@ pub fn run() -> Result<ExitCode> {
         // a state that does not load fails the run here, once, before the pass and the command ask for it
         cli.ensure_state()?;
         if let Err(err) = materialize_due(&cli, &mut ctx) {
-            // the pass stands in for the Apple clients, its failure is reported and the command still runs
+            // the pass stands in for the Apple clients
+            // its failure is reported
+            // the command still runs
             eprintln!("{}", printable_plain(&format!("{err:#}")));
         }
         cli.cache_lock.borrow_mut().take();
@@ -195,7 +208,8 @@ pub fn run() -> Result<ExitCode> {
         return Err(error.into());
     }
     result?;
-    // output from the cache succeeds as a command, a caller that needs the account as it stands reads the status
+    // output from the cache succeeds as a command
+    // a caller that needs the account as it stands reads the status
     Ok(if cli.offline.get() {
         ExitCode::from(EXIT_SYNC_FAILED)
     } else {
@@ -203,7 +217,9 @@ pub fn run() -> Result<ExitCode> {
     })
 }
 
-/// create the instances repeating templates are due for, the way the Apple clients do on their day
+/// create the instances repeating templates are due for
+///
+/// the Apple clients do the same on their day
 fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
     cli.ensure_state()?;
     if cli.offline.get() {
@@ -223,7 +239,8 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
     }
     ctx.commit_changes(changes.clone(), None)
         .with_context(|| "failed to create due instances of repeating to-dos")?;
-    // the committed objects join the run's state, the command that follows sees them without another sync
+    // the committed objects join the run's state
+    // the command that follows sees them without another sync
     if let Some(state) = cli.state_cache.borrow_mut().as_mut() {
         fold_item(changes, state);
     }

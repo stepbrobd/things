@@ -42,7 +42,8 @@ pub fn render_element_to_string<E: ElementExt>(element: &mut E, no_color: bool) 
 
     let s = String::from_utf8(bytes).expect("iocraft output should be UTF-8");
     let s = s.replace("\u{1b}[K", "");
-    // the ANSI writer ends a row with \r\n as for a terminal in raw mode, a \r left over shows as ^M
+    // the ANSI writer ends a row with \r\n as for a terminal in raw mode
+    // a \r left over shows as ^M
     let mut lines = s
         .split('\n')
         .map(|line| line.trim_end_matches(['\r', ' ']).to_string())

@@ -97,7 +97,9 @@ pub struct TaskFlagsJson {
     pub is_new: bool,
     pub instance_creation_paused: bool,
     pub leaves_tombstone: bool,
-    /// the object's history did not replay completely, the CLI shows what it has and refuses to write it
+    /// the object's history did not replay completely
+    ///
+    /// the CLI shows what it has and refuses to write it
     pub degraded: bool,
 }
 
@@ -131,7 +133,9 @@ pub struct ResolvedChecklistItemJson {
     pub index: i32,
 }
 
-/// a wire value the CLI does not know, kept as `unknown:<raw>` rather than passed off as a known one
+/// a wire value the CLI does not know
+///
+/// kept as `unknown:<raw>` rather than passed off as a known one
 fn serialize_unknown<S: Serializer>(raw: i32, serializer: S) -> Result<S::Ok, S::Error> {
     serializer.serialize_str(&format!("unknown:{raw}"))
 }

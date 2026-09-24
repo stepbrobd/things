@@ -50,7 +50,9 @@ pub fn auth_file_path() -> Result<PathBuf> {
 
 /// create `dir` and narrow it to its owner
 ///
-/// the config directory holds the Things Cloud password and the state directory a journal with every title and note, which the default 0755 leaves readable to every local user
+/// the config directory holds the Things Cloud password
+/// the state directory holds a journal with every title and note
+/// the default 0755 leaves them readable to every local user
 pub fn create_private_dir(dir: &Path) -> std::io::Result<()> {
     fs::create_dir_all(dir)?;
     #[cfg(unix)]

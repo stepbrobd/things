@@ -20,7 +20,9 @@ pub struct TaskProps {
     #[serde(rename = "tt", default)]
     pub title: String,
 
-    /// `nt`, notes payload as a structured text object, the plain XML string of older histories is not read
+    /// `nt`, notes payload as a structured text object
+    ///
+    /// the plain XML string of older histories is not read
     #[serde(rename = "nt", default)]
     pub notes: Option<TaskNotes>,
 
@@ -56,19 +58,19 @@ pub struct TaskProps {
     #[serde(rename = "dds", default)]
     pub deadline_suppressed_date: Option<Value>,
 
-    /// `pr`, parent project IDs (typically 0 or 1)
+    /// `pr`, parent project ids (typically 0 or 1)
     #[serde(rename = "pr", default)]
     pub parent_project_ids: Vec<ThingsId>,
 
-    /// `ar`, area IDs (typically 0 or 1)
+    /// `ar`, area ids (typically 0 or 1)
     #[serde(rename = "ar", default)]
     pub area_ids: Vec<ThingsId>,
 
-    /// `agr`, heading/action-group IDs (typically 0 or 1)
+    /// `agr`, heading/action-group ids (typically 0 or 1)
     #[serde(rename = "agr", default)]
     pub action_group_ids: Vec<ThingsId>,
 
-    /// `tg`, applied tag IDs
+    /// `tg`, applied tag ids
     #[serde(rename = "tg", default)]
     pub tag_ids: Vec<ThingsId>,
 
@@ -84,7 +86,9 @@ pub struct TaskProps {
     )]
     pub today_sort_index: i32,
 
-    /// `do`, due date offset (observed as `0` in typical payloads)
+    /// `do`, due date offset
+    ///
+    /// observed as `0` in typical payloads
     #[serde(
         rename = "do",
         default,
@@ -96,7 +100,9 @@ pub struct TaskProps {
     #[serde(rename = "rr", default)]
     pub recurrence_rule: Option<RecurrenceRule>,
 
-    /// `rmd`, reminder metadata (observed as null for normal task/project creates)
+    /// `rmd`, reminder metadata
+    ///
+    /// observed as null for normal task/project creates
     #[serde(rename = "rmd", default)]
     pub reminder_metadata: Option<Value>,
 
@@ -156,7 +162,9 @@ pub struct TaskProps {
     #[serde(rename = "tr", default)]
     pub trashed: bool,
 
-    /// `dl`, deadline list metadata (rarely used, often empty)
+    /// `dl`, deadline list metadata
+    ///
+    /// rarely used, often empty
     #[serde(rename = "dl", default)]
     pub deadline_list: Vec<Value>,
 
@@ -173,7 +181,7 @@ pub struct TaskProps {
     pub modification_date: Option<f64>,
 }
 
-/// sparse patch fields for Task `t=1` updates
+/// sparse patch fields for task `t=1` updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TaskPatch {
     /// `tt`, title
@@ -188,7 +196,9 @@ pub struct TaskPatch {
     #[serde(rename = "st", skip_serializing_if = "Option::is_none")]
     pub start_location: Option<TaskStart>,
 
-    /// `sr`, scheduled day timestamp (`null` clears date)
+    /// `sr`, scheduled day timestamp
+    ///
+    /// `null` clears date
     #[serde(
         rename = "sr",
         default,
@@ -197,7 +207,9 @@ pub struct TaskPatch {
     )]
     pub scheduled_date: Option<Option<i64>>,
 
-    /// `tir`, today reference day timestamp (`null` clears today placement)
+    /// `tir`, today reference day timestamp
+    ///
+    /// `null` clears today placement
     #[serde(
         rename = "tir",
         default,
@@ -206,19 +218,19 @@ pub struct TaskPatch {
     )]
     pub today_index_reference: Option<Option<i64>>,
 
-    /// `pr`, parent project IDs
+    /// `pr`, parent project ids
     #[serde(rename = "pr", skip_serializing_if = "Option::is_none")]
     pub parent_project_ids: Option<Vec<ThingsId>>,
 
-    /// `ar`, area IDs
+    /// `ar`, area ids
     #[serde(rename = "ar", skip_serializing_if = "Option::is_none")]
     pub area_ids: Option<Vec<ThingsId>>,
 
-    /// `agr`, heading/action-group IDs
+    /// `agr`, heading/action-group ids
     #[serde(rename = "agr", skip_serializing_if = "Option::is_none")]
     pub action_group_ids: Option<Vec<ThingsId>>,
 
-    /// `tg`, tag IDs
+    /// `tg`, tag ids
     #[serde(rename = "tg", skip_serializing_if = "Option::is_none")]
     pub tag_ids: Option<Vec<ThingsId>>,
 
@@ -226,7 +238,9 @@ pub struct TaskPatch {
     #[serde(rename = "sb", skip_serializing_if = "Option::is_none")]
     pub evening_bit: Option<i32>,
 
-    /// `ato`, alarm time offset in seconds from day start (`null` clears the reminder)
+    /// `ato`, alarm time offset in seconds from day start
+    ///
+    /// `null` clears the reminder
     #[serde(
         rename = "ato",
         default,
@@ -294,7 +308,9 @@ pub struct TaskPatch {
     )]
     pub recurrence_rule: Option<Option<RecurrenceRule>>,
 
-    /// `rp`, Task7 repeater payload (`null` clears the repeater)
+    /// `rp`, Task7 repeater payload
+    ///
+    /// `null` clears the repeater
     #[serde(
         rename = "rp",
         default,
@@ -303,7 +319,7 @@ pub struct TaskPatch {
     )]
     pub repeater: Option<Option<Value>>,
 
-    /// `rt`, recurrence template IDs
+    /// `rt`, the template an instance belongs to
     #[serde(rename = "rt", skip_serializing_if = "Option::is_none")]
     pub recurrence_template_ids: Option<Vec<ThingsId>>,
 

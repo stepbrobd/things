@@ -44,7 +44,9 @@ impl MatchResult {
     }
 }
 
-/// a container filter as typed and lowercased once, matching an id prefix or a title substring
+/// a container filter as typed and lowercased once
+///
+/// it matches an id prefix or a title substring
 struct ContainerFilter {
     token: String,
     lowered: String,
@@ -63,7 +65,9 @@ impl ContainerFilter {
     }
 }
 
-/// what the filters need, computed once for the whole search rather than per task
+/// what the filters need
+///
+/// computed once for the whole search rather than per task
 struct Prepared {
     query: Option<String>,
     statuses: Option<Vec<TaskStatus>>,
@@ -324,7 +328,11 @@ fn parse_date_expr(
     Ok((op, date))
 }
 
-/// compare a field to a day, a day stamp by the day it names and an instant by its local day, as the logbook files it
+/// compare a field to a day
+///
+/// compare a day stamp by the day it names
+/// compare an instant by its local day
+/// the Logbook files it that way
 fn date_matches(
     field: Option<DateTime<Utc>>,
     instant: bool,
@@ -490,7 +498,8 @@ fn matches(
         return MatchResult::no();
     }
 
-    // deadline and scheduled day are day stamps, creation and completion are instants
+    // deadline and scheduled day are day stamps
+    // creation and completion are instants
     let date_filters = [
         (task.deadline, false, &prepared.deadline),
         (task.start_date, false, &prepared.scheduled),
@@ -527,7 +536,7 @@ mod tests {
         assert!(date_matches(Some(instant), true, "=", threshold));
         assert!(date_matches(Some(instant), true, ">=", threshold));
         assert!(!date_matches(Some(instant), true, "<", threshold));
-        // a day stamp is utc midnight of its day
+        // a day stamp is UTC midnight of its day
         assert!(date_matches(Some(threshold), false, "=", threshold));
         assert!(!date_matches(None, false, "=", threshold));
     }

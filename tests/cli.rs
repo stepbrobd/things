@@ -109,7 +109,9 @@ fn show() {
     cases("tests/cli/show/**/*.trycmd");
 }
 
-/// the proxy refuses the connection, the sync fails without a request leaving the machine
+/// the proxy refuses the connection
+///
+/// the sync fails without a request leaving the machine
 #[test]
 fn failed_sync() {
     let home = tempfile::tempdir().expect("tempdir");

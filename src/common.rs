@@ -165,7 +165,8 @@ pub fn day_of(timestamp: i64) -> Option<NaiveDate> {
 
 /// a YYYY-MM-DD flag as the calendar day it names
 ///
-/// no time zone takes part, the day goes on the wire at UTC midnight through `day_timestamp`
+/// no time zone takes part
+/// the day goes on the wire at UTC midnight through `day_timestamp`
 /// the local offset of today or of that day cannot move it to the day before
 pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<NaiveDate>, String> {
     let Some(day) = day else {
@@ -178,7 +179,8 @@ pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<NaiveDate>, St
 
 /// an RFC 3339 instant, or a YYYY-MM-DD day taken at local midnight, the instant that day began where the command runs, as a wire timestamp
 ///
-/// an instant, unlike a day stamp, is shown under its local day, where a day given for one has to fall
+/// an instant, unlike a day stamp, is shown under its local day
+/// a day given for one has to fall there
 pub fn parse_instant(text: &str, label: &str) -> Result<f64, String> {
     if let Ok(instant) = DateTime::parse_from_rfc3339(text) {
         return Ok(instant.timestamp_millis() as f64 / 1000.0);

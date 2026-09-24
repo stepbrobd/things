@@ -17,7 +17,9 @@ use crate::wire::{
 
 pub type WireItem = BTreeMap<String, WireObject>;
 
-/// one wire object of a history item, keyed by its id there
+/// one wire object of a history item
+///
+/// keyed by its id there
 #[derive(Debug, Clone, PartialEq)]
 pub struct WireObject {
     pub operation_type: OperationType,
@@ -245,7 +247,8 @@ impl Serialize for WireObject {
 impl<'de> Deserialize<'de> for WireObject {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         let value = Value::deserialize(deserializer)?;
-        // an envelope this CLI cannot read is an operation it does not know, which marks its object rather than failing the whole line
+        // an envelope this CLI cannot read is an operation it does not know
+        // that marks its object rather than failing the whole line
         let Ok(raw) = serde_json::from_value::<RawWireObject>(value) else {
             return Ok(Self {
                 operation_type: OperationType::Unknown(-1),
@@ -259,7 +262,8 @@ impl<'de> Deserialize<'de> for WireObject {
             raw.entity_type.as_ref(),
             properties.clone(),
         );
-        // a payload of a known kind that does not parse is kept opaque, the fold marks its object rather than failing whole
+        // a payload of a known kind that does not parse is kept opaque
+        // the fold marks its object rather than failing whole
         let payload = match parsed {
             Ok(payload) => payload,
             Err(_) => Properties::Unknown(properties),
@@ -306,9 +310,13 @@ fn to_map<T: Serialize>(value: &T) -> BTreeMap<String, Value> {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum OperationType {
-    /// full snapshot/create (replace current object state for UUID)
+    /// full snapshot/create
+    ///
+    /// replace current object state for UUID
     Create = 0,
-    /// partial update (merge `p` into existing properties)
+    /// partial update
+    ///
+    /// merge `p` into existing properties
     Update = 1,
     /// deletion event
     Delete = 2,
@@ -326,7 +334,9 @@ impl Default for OperationType {
     }
 }
 
-/// entity type for wire field `e`, versioned by Things, `Task6` or `Area3` for instance
+/// entity type for wire field `e`
+///
+/// versioned by Things, `Task6` or `Area3` for instance
 ///
 /// the kinds of histories from before base58 ids, `Task3`, `Task4`, `Area2` and the first `Tombstone`, are not read and parse as unknown
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Display, EnumString)]
@@ -372,7 +382,9 @@ impl EntityType {
         matches!(self, Self::Task6 | Self::Task7)
     }
 
-    /// the kinds the store keeps as typed objects, whose payloads must parse for the object to be whole
+    /// the kinds the store keeps as typed objects
+    ///
+    /// their payloads must parse for the object to be whole
     pub fn is_stored(&self) -> bool {
         matches!(
             self,

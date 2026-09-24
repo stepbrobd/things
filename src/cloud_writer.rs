@@ -67,7 +67,8 @@ impl CloudWriter for LoggingCloudWriter {
                 );
                 Ok(head_index)
             }
-            // the command returns the error, the event is for a debug log
+            // the command returns the error
+            // the event is for a debug log
             Err(err) => {
                 debug!(
                     target: "things_cli::cloud_commit::error",

@@ -177,7 +177,9 @@ struct EditPlan {
     labels: Vec<String>,
 }
 
-/// the transition to an undated to-do, which clears the day, the place in Today, the evening flag and the reminder, whether a move to the Inbox or a when of anytime or someday brought it about
+/// the transition to an undated to-do
+///
+/// it clears the day, the place in Today, the evening flag and the reminder, whether a move to the Inbox or a when of anytime or someday brought it about
 fn unschedule(update: &mut TaskPatch, task: &Task) {
     update.scheduled_date = Some(None);
     update.today_index_reference = Some(None);
@@ -189,7 +191,8 @@ fn unschedule(update: &mut TaskPatch, task: &Task) {
 
 /// when, deadline, reminder and repeat, the fields the app's popovers edit
 ///
-/// `checklist` is the to-do's checklist as this edit leaves it, which a new template copies
+/// `checklist` is the to-do's checklist as this edit leaves it
+/// a new template copies it
 #[allow(clippy::too_many_arguments)]
 fn apply_schedule(
     args: &EditArgs,
@@ -286,7 +289,8 @@ fn apply_schedule(
             Some(day) => day.is_some(),
             None => task.start_date.is_some(),
         };
-        // a template's reminder goes to its instances, which carry the day
+        // a template's reminder goes to its instances
+        // the instances carry the day
         if !dated && !task.is_recurrence_template() {
             return Err(
                 "--reminder requires a scheduled day, set --when today or YYYY-MM-DD".to_string(),
@@ -594,7 +598,8 @@ fn build_edit_plan(
     for task in &tasks {
         let mut update = shared_update.clone();
 
-        // the instances carry the schedule, the template keeps the rule's bookkeeping
+        // the instances carry the schedule
+        // the template keeps the rule's bookkeeping
         if task.is_recurrence_template()
             && (args.when.is_some()
                 || args.deadline_date.is_some()
@@ -677,7 +682,8 @@ fn build_edit_plan(
             update.tag_ids = Some(current);
         }
 
-        // the checklist as this edit leaves it, kept alongside the changes for a template to copy
+        // the checklist as this edit leaves it
+        // kept alongside the changes for a template to copy
         let mut checklist = task
             .checklist_items
             .iter()
@@ -745,7 +751,8 @@ fn build_edit_plan(
         }
 
         if !args.add_checklist.is_empty() {
-            // the new items take the slots after the last one, the items already there move only when the run has to be respaced
+            // the new items take the slots after the last one
+            // the items already there move only when the run has to be rebalanced
             let mut run: Vec<(ThingsId, i32)> = checklist
                 .iter()
                 .map(|(uuid, _, index)| (uuid.clone(), *index))
@@ -787,7 +794,8 @@ fn build_edit_plan(
                     );
                     checklist.push((uuid, title, index));
                 } else if before.get(&uuid) != Some(&index) {
-                    // a rename in the same command already holds a patch for the item, the slot joins it
+                    // a rename in the same command already holds a patch for the item
+                    // the slot joins it
                     match changes.get_mut(&uuid.to_string()) {
                         Some(WireObject {
                             payload: Properties::ChecklistUpdate(patch),
@@ -1202,7 +1210,9 @@ mod tests {
         let mut id_gen = || ids.next().expect("id");
         let plan = build_edit_plan(&args, &store, NOW, TODAY, &mut id_gen).expect("plan");
 
-        // the first id is the added item on the to-do, the second the template, the third and fourth its checklist copies
+        // the first id is the added item on the to-do
+        // the second is the template
+        // the third and fourth are its checklist copies
         let template = plan.changes.get(&id(2)).expect("template").properties_map();
         assert_eq!(template.get("tt"), Some(&json!("New title")));
         assert_eq!(template["nt"]["v"], json!("New notes"));
@@ -1226,11 +1236,13 @@ mod tests {
         assert_eq!(copies[0].get("tt"), Some(&json!("Step won")));
         assert_eq!(copies[0].get("ts"), Some(&json!([id(2)])));
         assert_eq!(copies[1].get("tt"), Some(&json!("Step three")));
-        // the removed item's slot is free again, the added item takes it
+        // the removed item's slot is free again
+        // the added item takes it
         assert_eq!(copies[1].get("ix"), Some(&json!(2)));
         assert!(!plan.changes.contains_key(&id(5)));
 
-        // a deadline has no place on the template yet, the edit is refused
+        // a deadline has no place on the template yet
+        // the edit is refused
         let dated = EditArgs {
             deadline_date: Some("2027-01-15".to_string()),
             ..args
@@ -1272,7 +1284,8 @@ mod tests {
         let mut id_gen = || ids.next().expect("id");
         let plan = build_edit_plan(&args, &store, NOW, TODAY, &mut id_gen).expect("plan");
 
-        // the item at the limit moves to the first slot of the respaced run and keeps its rename, the new item follows
+        // the item at the limit moves to the first slot of the rebalanced run and keeps its rename
+        // the new item follows
         let moved = plan
             .changes
             .get(CHECK_A)

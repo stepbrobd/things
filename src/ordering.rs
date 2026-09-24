@@ -1,5 +1,8 @@
-//! sort index allocation shared by new and reorder, for the structural index within a container and the today index within a day's group
-//! a slot between two neighbors when the gap allows one, otherwise the run is respaced and the members that move come back as patches
+//! sort index allocation shared by new, edit and reorder, for the structural index within a container and the today index within a day's group
+//!
+//! a slot between two neighbors when the gap allows one
+//! otherwise the run is rebalanced
+//! the members that move come back as patches
 
 use crate::{ids::ThingsId, store::Task};
 
@@ -89,7 +92,8 @@ mod tests {
         assert_eq!(slot, 1027);
         assert!(moved.is_empty());
 
-        // no room above the last member, the whole run respaces
+        // no room above the last member
+        // the whole run is rebalanced
         let (slot, moved) = allocate(&[(id(1), i32::MAX)], 1);
         assert_eq!(slot, 2048);
         assert_eq!(moved, vec![(id(1), 1024)]);

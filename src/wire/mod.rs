@@ -1,6 +1,7 @@
 //! the wire types of the Things Cloud sync protocol
 //!
-//! a history page holds items shaped `{ uuid: { "t": operation, "e": entity, "p": properties } }`, and replaying them in order yields the current state
+//! a history page holds items shaped `{ uuid: { "t": operation, "e": entity, "p": properties } }`
+//! replaying them in order yields the current state
 
 use serde::{Deserialize, Deserializer, Serializer};
 
@@ -57,7 +58,9 @@ where
     Option::<T>::deserialize(deserializer).map(Option::unwrap_or_default)
 }
 
-/// a patch field of one or many, null leaving the field as it is
+/// a patch field of one or many
+///
+/// null leaves the field as it is
 pub(crate) fn deserialize_patch_vec_or_single<'de, D, T>(
     deserializer: D,
 ) -> Result<Option<Vec<T>>, D::Error>

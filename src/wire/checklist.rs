@@ -30,7 +30,7 @@ pub struct ChecklistItemProps {
     #[serde(rename = "sp", default, skip_serializing_if = "Option::is_none")]
     pub stop_date: Option<f64>,
 
-    /// `ts`, parent task IDs (normally a single task UUID)
+    /// `ts`, parent task ids (normally a single task UUID)
     #[serde(rename = "ts", default, deserialize_with = "deserialize_vec_or_single")]
     pub task_ids: Vec<ThingsId>,
 
@@ -60,7 +60,7 @@ pub struct ChecklistItemProps {
     pub conflict_overrides: Option<Value>,
 }
 
-/// sparse patch fields for ChecklistItem `t=1` updates
+/// sparse patch fields for checklist item `t=1` updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ChecklistItemPatch {
     /// `tt`, title
@@ -80,7 +80,7 @@ pub struct ChecklistItemPatch {
     )]
     pub stop_date: Option<Option<f64>>,
 
-    /// `ts`, parent task IDs, one or many as in a create
+    /// `ts`, parent task ids, one or many as in a create
     #[serde(
         rename = "ts",
         default,

@@ -42,7 +42,9 @@ struct DeletePlan {
     changes: BTreeMap<String, WireObject>,
 }
 
-/// every identifier is checked before anything is trashed, a batch lands whole or not at all
+/// every identifier is checked before anything is trashed
+///
+/// a batch lands whole or not at all
 fn build_delete_plan(
     args: &DeleteArgs,
     store: &crate::store::ThingsStore,
@@ -55,7 +57,8 @@ fn build_delete_plan(
         let (task, task_err, task_ambiguous) = store.resolve_task_identifier(identifier.as_str());
         let (area, area_err, area_ambiguous) = store.resolve_area_identifier(identifier.as_str());
 
-        // several candidates of one kind count as a match, the other kind cannot take the identifier
+        // several candidates of one kind count as a match
+        // the other kind cannot take the identifier
         let task_match = task.is_some() || !task_ambiguous.is_empty();
         let area_match = area.is_some() || !area_ambiguous.is_empty();
 
@@ -107,7 +110,10 @@ fn build_delete_plan(
         }
     }
 
-    // a project takes along everything whose effective project it is, the headings and the to-dos under them included, an area everything whose effective area it is, projects and their contents included, and a heading the to-dos under it, as in the app
+    // a project takes along everything whose effective project it is, the headings and the to-dos under them included
+    // an area takes along everything whose effective area it is, projects and their contents included
+    // a heading takes along the to-dos under it
+    // the app does the same
     let contents = |parent: &ThingsId, in_area: bool, heading: bool| -> Vec<Task> {
         store
             .tasks_by_uuid
@@ -349,7 +355,8 @@ mod tests {
             })
         );
 
-        // the heading links the to-do to the project, there is no direct project field on it
+        // the heading links the to-do to the project
+        // there is no direct project field on it
         let heading = "JFdhhhp37fpryAKu8UXwzK";
         let via_heading = "74rgJf6Qh9wYp2TcVk8mNB";
         let project_id = "By8mN2qRk5Wv7Xc9Dt3HpL";

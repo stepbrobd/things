@@ -20,7 +20,9 @@ use crate::{
 
 pub type RawState = HashMap<ThingsId, StateObject>;
 
-/// apply a task patch, keeping the old note when a note delta does not apply
+/// apply a task patch
+///
+/// it keeps the old note when a note delta does not apply
 fn apply_task_patch(
     task: &mut TaskStateProps,
     patch: TaskPatch,
@@ -210,7 +212,9 @@ fn wire_object_properties(obj: &WireObject) -> StateProperties {
     }
 }
 
-/// an object of a stored kind whose payload did not parse keeps the fields that do and is marked, as is one an update reaches before any create, a task whose note cannot be read, a task of a kind this CLI does not read and a tombstone whose payload does not parse
+/// an object of a stored kind whose payload did not parse keeps the fields that do and is marked
+///
+/// an object an update reaches before any create, a task whose note cannot be read, a task of a kind this CLI does not read and a tombstone whose payload does not parse are marked too
 fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
     let stored = obj.entity_type.as_ref().is_some_and(EntityType::is_stored);
     let unparsed = stored && matches!(obj.payload, Properties::Unknown(_));
@@ -396,7 +400,9 @@ fn purge(state: &mut RawState, target: &ThingsId) {
     }
 }
 
-/// the objects whose replay did not complete, which no command may write through
+/// the objects whose replay did not complete
+///
+/// no command may write through them
 pub fn degraded_ids(state: &RawState) -> Vec<ThingsId> {
     let mut ids: Vec<ThingsId> = state
         .iter()
@@ -410,7 +416,9 @@ pub fn degraded_ids(state: &RawState) -> Vec<ThingsId> {
     ids
 }
 
-/// the tasks a marked checklist item belongs to, whose checklist is not whole either
+/// the tasks a marked checklist item belongs to
+///
+/// their checklist is not whole either
 pub fn degraded_checklist_owners(state: &RawState) -> impl Iterator<Item = ThingsId> + '_ {
     state
         .values()
@@ -680,7 +688,8 @@ mod tests {
                 .get_task(TASK_ID)
                 .is_some()
         );
-        // what the update changed is unknown, writes on top of it could clobber it
+        // what the update changed is unknown
+        // writes on top of it could clobber it
         assert!(object.degraded);
         assert_eq!(degraded_ids(&state), vec![task_id]);
     }
@@ -700,7 +709,8 @@ mod tests {
         };
         assert_eq!(properties.title, "Send tracking number");
         assert_eq!(properties.status, TaskStatus::Incomplete);
-        // the object is marked, what is shown may be behind the history
+        // the object is marked
+        // what is shown may be behind the history
         assert!(state[&task_id].degraded);
         assert_eq!(degraded_ids(&state), vec![task_id]);
     }

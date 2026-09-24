@@ -8,8 +8,10 @@ pub fn lcp_len(a: &str, b: &str) -> usize {
 
 /// the shortest unique prefix of every id
 ///
-/// each id is encoded once into a stack buffer, the sort and the common prefix scan run on byte slices, and only the result allocates a string per entry
-/// the map is keyed by id, duplicate ids in the input collapse into one entry
+/// each id is encoded once into a stack buffer
+/// the sort and the common prefix scan run on byte slices
+/// only the result allocates a string per entry
+/// duplicate ids in the input collapse into one entry
 pub fn shortest_unique_prefixes(ids: &[ThingsId]) -> HashMap<ThingsId, String> {
     if ids.is_empty() {
         return HashMap::new();
@@ -38,7 +40,8 @@ pub fn shortest_unique_prefixes(ids: &[ThingsId]) -> HashMap<ThingsId, String> {
         } else {
             0
         };
-        // one character past the shared prefix, clamped to the full encoding
+        // one character past the shared prefix
+        // clamped to the full encoding
         // when one encoding is a prefix of another, the whole string is the shortest unique prefix
         let need = (left.max(right) + 1).min(pairs[i].2);
         let prefix = std::str::from_utf8(&enc[..need])
@@ -125,7 +128,8 @@ mod tests {
 
     #[test]
     fn shortest_unique_prefixes_are_minimal() {
-        // every prefix is minimal, one character less matches more than one id
+        // every prefix is minimal
+        // one character less matches more than one id
         let ids: Vec<ThingsId> = (0..200).map(|_| ThingsId::random()).collect();
         let prefixes = shortest_unique_prefixes(&ids);
 
@@ -149,8 +153,8 @@ mod tests {
 
     #[test]
     fn every_id_with_the_prefix_is_found_whatever_its_encoded_length() {
-        // byte order puts both 21 character ids before the 22 character one,
-        // which separates the two ids starting with A by the one starting with z
+        // byte order puts both 21 character ids before the 22 character one
+        // that order separates the two ids starting with A by the one starting with z
         let short_a = "A11111111111111111111";
         let short_z = "z11111111111111111111";
         let long_a = "A111111111111111111111";

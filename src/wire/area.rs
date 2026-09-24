@@ -12,7 +12,7 @@ pub struct AreaProps {
     #[serde(rename = "tt", default)]
     pub title: String,
 
-    /// `tg`, tag IDs applied to this area
+    /// `tg`, tag ids applied to this area
     #[serde(rename = "tg", default)]
     pub tag_ids: Vec<ThingsId>,
 
@@ -25,14 +25,14 @@ pub struct AreaProps {
     pub conflict_overrides: Option<Value>,
 }
 
-/// sparse patch fields for Area `t=1` updates
+/// sparse patch fields for area `t=1` updates
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct AreaPatch {
     /// `tt`, title
     #[serde(rename = "tt", skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
 
-    /// `tg`, tag IDs
+    /// `tg`, tag ids
     #[serde(rename = "tg", skip_serializing_if = "Option::is_none")]
     pub tag_ids: Option<Vec<ThingsId>>,
 

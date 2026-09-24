@@ -94,7 +94,10 @@ impl ThingsCloudClient {
         })
     }
 
-    /// `label` names the request in messages, the url stays out of them since the history key in it alone reads and writes the account
+    /// `label` names the request in messages
+    ///
+    /// the url stays out of them
+    /// the history key in it alone reads and writes the account
     fn request(
         &self,
         method: reqwest::Method,

@@ -48,7 +48,9 @@ pub struct RecurrenceRule {
     #[serde(rename = "rc", default)]
     pub repeat_count: i32,
 
-    /// `ts`, recurrence time span in days (`-1` is an observed sentinel)
+    /// `ts`, recurrence time span in days
+    ///
+    /// `-1` is an observed sentinel
     #[serde(rename = "ts", default)]
     pub time_span_in_days: i32,
 
@@ -118,7 +120,7 @@ impl fmt::Display for RecurrenceDescriptionError {
 impl std::error::Error for RecurrenceDescriptionError {}
 
 impl RecurrenceRule {
-    /// the rule in the English phrasing Things uses
+    /// the rule in the english phrasing Things uses
     pub fn human_readable(&self) -> Result<String, RecurrenceDescriptionError> {
         if self.frequency_amount < 1 {
             return Err(RecurrenceDescriptionError::InvalidFrequencyAmount(
@@ -299,7 +301,8 @@ fn monthly_offset(
             .filter(|day| (-1..=30).contains(day))
             .ok_or(RecurrenceDescriptionError::InvalidOffset(index))?;
 
-        // -1 is the last day of the month, which the CLI writes for `monthly:last`
+        // -1 is the last day of the month
+        // the CLI writes it for `monthly:last`
         if day < 0 {
             return Ok("last day".to_string());
         }

@@ -43,7 +43,9 @@ pub struct ThingsStore {
     pub task_ids_sorted: Vec<ThingsId>,
 }
 
-/// an instant from the wire, None outside the years 1 to 9999, where a local offset would leave chrono's range
+/// an instant from the wire, None outside the years 1 to 9999
+///
+/// outside those years a local offset would leave chrono's range
 fn ts_to_dt(ts: Option<f64>) -> Option<DateTime<Utc>> {
     let ts = ts.filter(|ts| (-62_135_596_800.0..=253_402_300_799.0).contains(ts))?;
     let mut secs = ts.floor() as i64;
@@ -100,7 +102,8 @@ impl ThingsStore {
         let mut dones: HashMap<ThingsId, i32> = HashMap::new();
 
         for task in self.tasks_by_uuid.values() {
-            // a template stands for instances still to come, it is no to-do of the project yet
+            // a template stands for instances still to come
+            // it is no to-do of the project yet
             if !task.is_todo() || task.is_recurrence_template() {
                 continue;
             }
@@ -317,7 +320,9 @@ impl ThingsStore {
         out
     }
 
-    /// one row per repeating template for the next instance after today, the one the pass or an Apple client makes next, which keeps a rule visible between instances
+    /// one row per repeating template for the next instance after today, the one the pass or an Apple client makes next
+    ///
+    /// the row keeps a rule visible between instances
     pub fn projected_repeats(&self, today: NaiveDate) -> Vec<Task> {
         self.tasks_by_uuid
             .values()
@@ -331,10 +336,12 @@ impl ThingsStore {
             .filter_map(|template| {
                 let rule = template.recurrence_rule.as_ref()?;
                 let count = template.instance_creation_count;
-                // icsd is where the search for the next instance starts, as the pass reads it
+                // icsd is where the search for the next instance starts
+                // the pass reads it that way
                 let search_from = template.instance_creation_start_date.and_then(day_of)?;
                 let due = next_occurrence_of_rule(rule, search_from.pred_opt()?, count)?;
-                // an instance due today or earlier belongs to today, the row shows the one after it
+                // an instance due today or earlier belongs to today
+                // the row shows the one after it
                 let next = if due > today {
                     due
                 } else {
@@ -430,7 +437,9 @@ impl ThingsStore {
         out
     }
 
-    /// completed and canceled items, filtered by the local calendar day of their completion instant
+    /// completed and canceled items
+    ///
+    /// filtered by the local calendar day of their completion instant
     pub fn logbook(&self, from_date: Option<NaiveDate>, to_date: Option<NaiveDate>) -> Vec<Task> {
         let mut out: Vec<Task> = self
             .tasks_by_uuid
@@ -518,7 +527,9 @@ impl ThingsStore {
         task.trashed || self.in_trashed_container(task)
     }
 
-    /// under a trashed heading or in a trashed project, which puts a to-do in the Trash along with them
+    /// under a trashed heading or in a trashed project
+    ///
+    /// that puts a to-do in the Trash along with them
     pub fn in_trashed_container(&self, task: &Task) -> bool {
         let heading = task
             .action_group
@@ -531,7 +542,9 @@ impl ThingsStore {
             || project.is_some_and(|project| project.trashed)
     }
 
-    /// in a trashed container or a project that is no longer open, which keeps a to-do out of the lists and a template out of the repeat pass
+    /// in a trashed container or a project that is no longer open
+    ///
+    /// that keeps a to-do out of the lists and a template out of the repeat pass
     pub fn in_closed_container(&self, task: &Task) -> bool {
         self.in_trashed_container(task)
             || self
@@ -608,7 +621,9 @@ impl ThingsStore {
         out
     }
 
-    /// the parents above a tag, nearest first, stopping where the chain ends or turns back on itself
+    /// the parents above a tag, nearest first
+    ///
+    /// the list stops where the chain ends or turns back on itself
     pub fn tag_ancestors(&self, tag: &ThingsId) -> Vec<ThingsId> {
         let mut seen = HashSet::from([tag.clone()]);
         let mut chain = Vec::new();

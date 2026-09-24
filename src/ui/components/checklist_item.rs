@@ -8,7 +8,8 @@ use crate::{
 
 /// one checklist item row
 ///
-/// with an `id` the id takes a fixed-width left column and the connector follows it
+/// with an `id` the id takes a fixed-width left column
+/// the connector follows it
 ///
 /// ```text
 /// M ├╴○ Confirm changelog

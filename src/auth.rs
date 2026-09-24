@@ -16,7 +16,10 @@ struct AuthPayload {
     password: String,
 }
 
-/// the auth file as written, each field taken as it is, which keeps a password made of digits a password
+/// the auth file as written
+///
+/// each field is taken as it is
+/// that keeps a password made of digits a password
 #[derive(Deserialize, Default)]
 struct AuthFile {
     #[serde(default)]
@@ -30,7 +33,9 @@ struct AuthConfig {
     password: Option<String>,
 }
 
-/// a field of the auth file as text, refused in any other shape without repeating the value
+/// a field of the auth file as text
+///
+/// refused in any other shape without repeating the value
 fn text_field(value: Option<Value>, field: &str, path: &Path) -> Result<Option<String>> {
     match value {
         None | Some(Value::Null) => Ok(None),
@@ -42,7 +47,9 @@ fn text_field(value: Option<Value>, field: &str, path: &Path) -> Result<Option<S
     }
 }
 
-/// the auth file under `THINGS_EMAIL` and `THINGS_PASSWORD`, each variable standing in for the file's field when `var` yields it, as the text it holds
+/// the auth file under `THINGS_EMAIL` and `THINGS_PASSWORD`
+///
+/// each variable stands in for the file's field when `var` yields it, as the text it holds
 fn load_auth_config(path: &Path, var: impl Fn(&str) -> Option<String>) -> Result<AuthConfig> {
     let file = match fs::read_to_string(path) {
         Ok(raw) => serde_json::from_str::<AuthFile>(&raw)
@@ -100,7 +107,9 @@ pub fn load_auth() -> Result<(String, String)> {
     validate_auth(&email, &password)
 }
 
-/// the credentials go to the auth file once `sign_in` accepts them, a refused pair leaves the file as it was
+/// the credentials go to the auth file once `sign_in` accepts them
+///
+/// a refused pair leaves the file as it was
 pub fn write_verified_auth(
     email: &str,
     password: &str,
@@ -133,8 +142,10 @@ fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
     let serialized = serde_json::to_string(&payload)?;
     let tmp_path = path.with_extension("tmp");
 
-    // the staging file is private from the start, a chmod afterwards leaves the password readable in between
-    // create_new follows no link planted at the staging path, and the rename keeps the mode
+    // the staging file is private from the start
+    // a chmod afterwards leaves the password readable in between
+    // create_new follows no link planted at the staging path
+    // the rename keeps the mode
     let mut opts = fs::OpenOptions::new();
     opts.write(true).create_new(true);
     #[cfg(unix)]
@@ -142,13 +153,16 @@ fn write_auth_at(path: &Path, email: &str, password: &str) -> Result<()> {
         use std::os::unix::fs::OpenOptionsExt;
         opts.mode(0o600);
     }
-    // a staging file an interrupted run left behind goes first, create_new refuses it
+    // a staging file an interrupted run left behind goes first
+    // create_new refuses it
     let _ = fs::remove_file(&tmp_path);
     let mut file = opts
         .open(&tmp_path)
         .with_context(|| format!("Failed writing {}", tmp_path.display()))?;
-    // open filters the mode through the umask, which can clear owner bits too
-    // the mode is restated before the password goes in, the file is no wider than 0600 meanwhile
+    // open filters the mode through the umask
+    // the umask can clear owner bits too
+    // the mode is restated before the password goes in
+    // the file is no wider than 0600 meanwhile
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
