@@ -94,7 +94,7 @@ fn build_tags_delete_plan(
     {
         return Err(format!(
             "{} has child tags, move or delete them first.",
-            one_line(&tag.title)
+            one_line(&store.resolve_tag_title(&tag.uuid))
         ));
     }
     let without = |tags: &[crate::ids::ThingsId]| {
@@ -188,8 +188,8 @@ fn build_tags_edit_plan(
             if store.tag_ancestors(&parent.uuid).contains(&tag.uuid) {
                 return Err(format!(
                     "Cannot move {} under {}, which is below it.",
-                    one_line(&tag.title),
-                    one_line(&parent.title)
+                    one_line(&store.resolve_tag_title(&tag.uuid)),
+                    one_line(&store.resolve_tag_title(&parent.uuid))
                 ));
             }
             let parent_id = parent.uuid;
@@ -314,12 +314,16 @@ impl Command for TagsArgs {
                 ctx.commit_changes(changes)
                     .with_context(|| "Failed to edit tag")?;
 
-                let name = plan.update.title.as_deref().unwrap_or(&plan.tag.title);
+                let name = plan
+                    .update
+                    .title
+                    .clone()
+                    .unwrap_or_else(|| store.resolve_tag_title(&plan.tag.uuid));
                 writeln!(
                     out,
                     "{} {}  {} {}",
                     colored(format!("{} Edited", ICONS.done), &[GREEN], cli.no_color()),
-                    one_line(name),
+                    one_line(&name),
                     colored(&plan.tag.uuid, &[DIM], cli.no_color()),
                     colored(
                         format!("({})", plan.labels.join(", ")),
@@ -353,7 +357,7 @@ impl Command for TagsArgs {
                         &[GREEN],
                         cli.no_color()
                     ),
-                    one_line(&tag.title),
+                    one_line(&store.resolve_tag_title(&tag.uuid)),
                     colored(&tag.uuid, &[DIM], cli.no_color()),
                     from
                 )?;

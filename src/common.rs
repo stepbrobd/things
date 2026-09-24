@@ -339,9 +339,7 @@ pub fn resolve_single_tag(store: &ThingsStore, identifier: &str) -> (Option<Tag>
         return (None, format!("Tag not found: {identifier}"));
     }
 
-    let all_tags = store.tags();
-    let tag = all_tags.into_iter().find(|t| t.uuid == resolved[0]);
-    match tag {
+    match store.tags_by_uuid.get(&resolved[0]).cloned() {
         Some(tag) => (Some(tag), String::new()),
         None => (None, format!("Tag not found: {identifier}")),
     }
@@ -369,7 +367,8 @@ fn resolve_tags(store: &ThingsStore, raw_tags: &str, removable: bool) -> (Vec<Th
         return (Vec::new(), String::new());
     }
 
-    let all_tags = store.tags();
+    // a tag of a blank title still resolves by its id
+    let all_tags: Vec<Tag> = store.tags_by_uuid.values().cloned().collect();
     let mut resolved = Vec::new();
     let mut seen = HashSet::new();
 

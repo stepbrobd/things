@@ -1,0 +1,63 @@
+```trycmd
+$ run.sh things --now-ts 1774400000.0 tags edit 7fTdNw446YPi1bXzHtudjm --name Named
+✓ Edited Named  7fTdNw446YPi1bXzHtudjm (name)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "7fTdNw446YPi1bXzHtudjm": {
+      "e": "Tag4",
+      "p": {
+        "md": 1774400000.0,
+        "tt": "Named"
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 tags delete 7sZ73
+× Deleted 7sZ73dPdLCHdzLnyVZC3KF  7sZ73dPdLCHdzLnyVZC3KF  (from 1 item)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "7sZ73dPdLCHdzLnyVZC3KF": {
+      "e": "Tag4",
+      "p": {},
+      "t": 2
+    },
+    "HKQNxxbgQwcuHZkst36t3p": {
+      "e": "Area3",
+      "p": {
+        "tg": [
+          "MAcRZuZz4PYqRGUtxCGkRg",
+          "7fTdNw446YPi1bXzHtudjm"
+        ]
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 tags edit 7fTdNw446YPi1bXzHtudjm --move clear
+✓ Edited 7fTdNw446YPi1bXzHtudjm  7fTdNw446YPi1bXzHtudjm (move=clear)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "7fTdNw446YPi1bXzHtudjm": {
+      "e": "Tag4",
+      "p": {
+        "md": 1774400000.0,
+        "pn": []
+      },
+      "t": 1
+    }
+  }
+}
+
+```
