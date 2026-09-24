@@ -1,4 +1,5 @@
 use std::{
+    ffi::OsString,
     fs,
     path::{Path, PathBuf},
 };
@@ -7,14 +8,28 @@ use anyhow::{Result, anyhow};
 
 const APP_NAME: &str = "things";
 
-/// the XDG base directory named by `var`, or `default` under the home directory when the variable is unset or empty, on every platform
+/// the XDG base directory named by `var`, on every platform
+///
+/// `default` under the home directory stands in when the variable is unset, empty or relative
+/// the XDG spec has an implementation ignore a relative path
 fn xdg_home(var: &str, default: &[&str]) -> Result<PathBuf> {
-    match std::env::var(var) {
-        Ok(custom) if !custom.is_empty() => Ok(PathBuf::from(custom)),
+    xdg_home_from(std::env::var_os(var), dirs::home_dir(), var, default)
+}
+
+fn xdg_home_from(
+    value: Option<OsString>,
+    home: Option<PathBuf>,
+    var: &str,
+    default: &[&str],
+) -> Result<PathBuf> {
+    match value {
+        Some(custom) if Path::new(&custom).is_absolute() => Ok(PathBuf::from(custom)),
         _ => {
             // without a home the files would land in whatever directory the command runs in
-            let mut path =
-                dirs::home_dir().ok_or_else(|| anyhow!("No home directory, set {var}."))?;
+            // a relative home would put them there too
+            let mut path = home
+                .filter(|home| home.is_absolute())
+                .ok_or_else(|| anyhow!("No absolute home directory, set {var}."))?;
             path.extend(default);
             Ok(path)
         }
@@ -50,6 +65,56 @@ pub fn create_private_dir(dir: &Path) -> std::io::Result<()> {
 mod tests {
     use super::*;
     use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn a_relative_xdg_directory_counts_as_unset() {
+        let home = PathBuf::from("/home/ada");
+        for value in [None, Some(OsString::new()), Some("relstate".into())] {
+            assert_eq!(
+                xdg_home_from(
+                    value,
+                    Some(home.clone()),
+                    "XDG_STATE_HOME",
+                    &[".local", "state"]
+                )
+                .expect("dir"),
+                home.join(".local").join("state")
+            );
+        }
+        assert_eq!(
+            xdg_home_from(
+                Some("/srv/state".into()),
+                None,
+                "XDG_STATE_HOME",
+                &[".local", "state"]
+            )
+            .expect("dir"),
+            PathBuf::from("/srv/state")
+        );
+    }
+
+    #[test]
+    fn a_relative_home_counts_as_none() {
+        for home in [None, Some(PathBuf::from("rel"))] {
+            assert!(xdg_home_from(None, home, "XDG_STATE_HOME", &[".local", "state"]).is_err());
+        }
+    }
+
+    #[test]
+    fn an_absolute_xdg_directory_need_not_be_utf8() {
+        use std::os::unix::ffi::OsStringExt;
+        let value = OsString::from_vec(b"/srv/st\xffte".to_vec());
+        assert_eq!(
+            xdg_home_from(
+                Some(value.clone()),
+                None,
+                "XDG_STATE_HOME",
+                &[".local", "state"]
+            )
+            .expect("dir"),
+            PathBuf::from(value)
+        );
+    }
 
     fn mode_of(path: &Path) -> u32 {
         fs::metadata(path).expect("metadata").permissions().mode() & 0o777
