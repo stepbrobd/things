@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, counted},
     ids::ThingsId,
     store::{Task, ThingsStore},
     ui::components::{
@@ -266,7 +266,7 @@ pub fn AnytimeView<'a>(hooks: Hooks, props: &AnytimeViewProps<'a>) -> impl Into<
             element! {
                 View(flex_direction: FlexDirection::Column, gap: 1) {
                     Text(
-                        content: format!("{} Anytime  ({} tasks)", ICONS.anytime, items.len()),
+                        content: format!("{} Anytime  ({})", ICONS.anytime, counted(items.len(), "task")),
                         wrap: TextWrap::NoWrap,
                         color: Color::Cyan,
                         weight: Weight::Bold,

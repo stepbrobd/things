@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::{ICONS, fmt_date_local},
+    common::{ICONS, counted, fmt_date_local},
     store::{Task, ThingsStore},
     ui::components::{
         empty_text::EmptyText,
@@ -70,7 +70,7 @@ pub fn LogbookView<'a>(hooks: Hooks, props: &LogbookViewProps<'a>) -> impl Into<
     element! {
         View(flex_direction: FlexDirection::Column, gap: 1) {
             Text(
-                content: format!("{} Logbook  ({} tasks)", ICONS.done, items.len()),
+                content: format!("{} Logbook  ({})", ICONS.done, counted(items.len(), "task")),
                 wrap: TextWrap::NoWrap,
                 color: Color::Green,
                 weight: Weight::Bold,

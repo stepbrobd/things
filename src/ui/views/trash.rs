@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, counted},
     store::{Task, ThingsStore},
     ui::components::{
         empty_text::EmptyText,
@@ -37,8 +37,7 @@ pub fn TrashView<'a>(hooks: Hooks, props: &TrashViewProps<'a>) -> impl Into<AnyE
         .map(|task| task.uuid.clone())
         .collect::<Vec<_>>();
     let id_prefix_len = store.unique_prefix_length(&ids);
-    let count = ids.len();
-    let label = if count == 1 { "item" } else { "items" };
+    let count = counted(ids.len(), "item");
 
     let options = TaskOptions {
         detailed: props.detailed,
@@ -78,7 +77,7 @@ pub fn TrashView<'a>(hooks: Hooks, props: &TrashViewProps<'a>) -> impl Into<AnyE
     element! {
         View(flex_direction: FlexDirection::Column) {
             Text(
-                content: format!("{} Trash  ({} {})", ICONS.deleted, count, label),
+                content: format!("{} Trash  ({})", ICONS.deleted, count),
                 wrap: TextWrap::NoWrap,
                 color: Color::DarkGrey,
                 weight: Weight::Bold,

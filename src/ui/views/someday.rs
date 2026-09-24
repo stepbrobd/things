@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, counted},
     store::{Task, ThingsStore},
     ui::components::{
         empty_text::EmptyText,
@@ -48,7 +48,7 @@ pub fn SomedayView<'a>(hooks: Hooks, props: &SomedayViewProps<'a>) -> impl Into<
     element! {
         View(flex_direction: FlexDirection::Column, gap: 1) {
             Text(
-                content: format!("{} Someday  ({} items)", ICONS.task_someday, items.len()),
+                content: format!("{} Someday  ({})", ICONS.task_someday, counted(items.len(), "item")),
                 wrap: TextWrap::NoWrap,
                 color: Color::Cyan,
                 weight: Weight::Bold,

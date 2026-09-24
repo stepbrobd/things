@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things inbox --detailed
-⬓ Inbox  (1 tasks)
+⬓ Inbox  (1 task)
 
   R ▢ Renew passport^JKind: to-do, done^M^[[8mhidden
     │ first line

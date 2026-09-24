@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::{ICONS, one_line},
+    common::{ICONS, counted, one_line},
     store::{Area, Task, ThingsStore},
     ui::components::{
         tags_badge::TagsBadge,
@@ -33,18 +33,10 @@ pub fn AreaView<'a>(hooks: Hooks, props: &AreaViewProps<'a>) -> impl Into<AnyEle
 
     let mut parts = Vec::new();
     if project_count > 0 {
-        parts.push(format!(
-            "{} project{}",
-            project_count,
-            if project_count == 1 { "" } else { "s" }
-        ));
+        parts.push(counted(project_count, "project"));
     }
     if task_count > 0 {
-        parts.push(format!(
-            "{} task{}",
-            task_count,
-            if task_count == 1 { "" } else { "s" }
-        ));
+        parts.push(counted(task_count, "task"));
     }
     let count_str = if parts.is_empty() {
         String::new()

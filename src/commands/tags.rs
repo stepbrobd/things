@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::{
     app::Cli,
     commands::{Command, write_json},
-    common::{DIM, GREEN, ICONS, colored, one_line, resolve_single_tag},
+    common::{DIM, GREEN, ICONS, colored, counted, one_line, resolve_single_tag},
     store::Tag,
     ui::{
         render_element_to_string,
@@ -334,7 +334,11 @@ impl Command for TagsArgs {
                     .map_err(|e| anyhow!("Failed to delete tag: {e}"))?;
 
                 let from = if carriers > 0 {
-                    colored(format!("  (from {carriers} items)"), &[DIM], cli.no_color())
+                    colored(
+                        format!("  (from {})", counted(carriers, "item")),
+                        &[DIM],
+                        cli.no_color(),
+                    )
                 } else {
                     String::new()
                 };

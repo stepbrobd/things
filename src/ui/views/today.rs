@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, counted},
     ids::ThingsId,
     store::{Task, ThingsStore},
     ui::components::{
@@ -31,17 +31,14 @@ fn header_text(items: &[Task]) -> String {
     let project_count = items.iter().filter(|task| task.is_project()).count();
     let task_count = items.iter().filter(|task| !task.is_project()).count();
     if project_count > 0 {
-        let label = if project_count == 1 {
-            "project"
-        } else {
-            "projects"
-        };
         format!(
-            "{} Today  ({} tasks, {} {})",
-            ICONS.today, task_count, project_count, label
+            "{} Today  ({}, {})",
+            ICONS.today,
+            counted(task_count, "task"),
+            counted(project_count, "project")
         )
     } else {
-        format!("{} Today  ({} tasks)", ICONS.today, task_count)
+        format!("{} Today  ({})", ICONS.today, counted(task_count, "task"))
     }
 }
 

@@ -119,6 +119,12 @@ pub const ICONS: Icons = Icons {
     divider: "─",
 };
 
+/// a count with its noun, singular for one
+pub fn counted(count: usize, noun: &str) -> String {
+    let plural = if count == 1 { "" } else { "s" };
+    format!("{count} {noun}{plural}")
+}
+
 pub fn colored<T: ToString>(text: T, codes: &[&str], no_color: bool) -> String {
     let text = text.to_string();
     if no_color {

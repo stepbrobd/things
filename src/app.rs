@@ -16,7 +16,7 @@ use crate::{
     client::ThingsCloudClient,
     cmd_ctx::{CmdCtx, DefaultCmdCtx},
     commands::{Command, Commands},
-    common::{ICONS, one_line, printable, printable_json, printable_plain},
+    common::{ICONS, counted, one_line, printable, printable_json, printable_plain},
     dirs::append_log_dir,
     ids::ThingsId,
     log_cache::{CacheLock, fold_state_from_append_log, get_state_with_append_log},
@@ -90,14 +90,9 @@ impl Cli {
             for id in &degraded {
                 warn!(target: "things::replay", uuid = %id, "did not replay completely, writes to it are refused");
             }
-            let noun = if degraded.len() == 1 {
-                "object"
-            } else {
-                "objects"
-            };
             eprintln!(
-                "{} {noun} did not replay completely and will not be written, THINGS_LOG=warn lists the ids",
-                degraded.len()
+                "{} did not replay completely and will not be written, THINGS_LOG=warn lists the ids",
+                counted(degraded.len(), "object")
             );
         }
         *self.degraded.borrow_mut() = degraded.into_iter().collect();

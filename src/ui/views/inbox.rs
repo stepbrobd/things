@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, counted},
     store::{Task, ThingsStore},
     ui::components::{
         empty_text::EmptyText,
@@ -43,7 +43,7 @@ pub fn InboxView<'a>(hooks: Hooks, props: &InboxViewProps<'a>) -> impl Into<AnyE
             element! {
                 View(flex_direction: FlexDirection::Column, gap: 1) {
                     Text(
-                        content: format!("{} Inbox  ({} tasks)", ICONS.inbox, items.len()),
+                        content: format!("{} Inbox  ({})", ICONS.inbox, counted(items.len(), "task")),
                         wrap: TextWrap::NoWrap,
                         color: Color::Blue,
                         weight: Weight::Bold,

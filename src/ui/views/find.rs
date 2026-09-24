@@ -3,7 +3,7 @@ use std::sync::Arc;
 use iocraft::prelude::*;
 
 use crate::{
-    common::ICONS,
+    common::{ICONS, counted},
     store::{Task, ThingsStore},
     ui::components::{
         empty_text::EmptyText, project_item::ProjectItem, task_item::TaskItem, tasks::TaskOptions,
@@ -38,8 +38,7 @@ pub fn FindView<'a>(hooks: Hooks, props: &FindViewProps<'a>) -> impl Into<AnyEle
             .collect::<Vec<_>>(),
     );
 
-    let count = props.rows.len();
-    let label = if count == 1 { "task" } else { "tasks" };
+    let count = counted(props.rows.len(), "task");
 
     let mut body: Vec<AnyElement<'a>> = Vec::new();
     for row in &props.rows {
@@ -71,7 +70,7 @@ pub fn FindView<'a>(hooks: Hooks, props: &FindViewProps<'a>) -> impl Into<AnyEle
     element! {
         View(flex_direction: FlexDirection::Column) {
             Text(
-                content: format!("{} Find  ({} {})", ICONS.find, count, label),
+                content: format!("{} Find  ({})", ICONS.find, count),
                 wrap: TextWrap::NoWrap,
                 color: Color::Cyan,
                 weight: Weight::Bold,

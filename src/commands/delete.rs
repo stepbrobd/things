@@ -7,7 +7,7 @@ use crate::{
     app::Cli,
     arg_types::IdentifierToken,
     commands::Command,
-    common::{DIM, GREEN, ICONS, colored, one_line},
+    common::{DIM, GREEN, ICONS, colored, counted, one_line},
     ids::ThingsId,
     store::Task,
     wire::{
@@ -179,7 +179,11 @@ impl Command for DeleteArgs {
 
         for (uuid, _entity, title, taken) in plan.targets {
             let along = if taken > 0 {
-                colored(format!("  (with {taken} items)"), &[DIM], cli.no_color())
+                colored(
+                    format!("  (with {})", counted(taken, "item")),
+                    &[DIM],
+                    cli.no_color(),
+                )
             } else {
                 String::new()
             };

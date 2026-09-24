@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1789689600 --now-ts 1789700000.0 today
-⭑ Today  (1 tasks)
+⭑ Today  (1 task)
 
   J ▢ Renew passport
 
@@ -8,7 +8,7 @@ $ run.sh things --id-seed 7 --today-ts 1789689600 --now-ts 1789700000.0 today
 
 ```trycmd
 $ run.sh things --id-seed 7 --today-ts 1789689600 --now-ts 1789700000.0 upcoming
-▷ Upcoming  (1 tasks)
+▷ Upcoming  (1 task)
 
   2027-09-17
     T ↻ Renew passport
