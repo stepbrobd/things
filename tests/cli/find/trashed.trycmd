@@ -1,0 +1,54 @@
+```trycmd
+$ run.sh things find --trashed
+⌕ Find  (8 tasks)
+
+  Pj ◑ Kitchen remodel
+  Ta ▢ Order tiles  [● Kitchen remodel]
+  Tc ▢ Plant bulbs  [● Garden]
+  Tb ◼ Call the plumber  [● Kitchen remodel]
+  Td ▢ Return the old router
+  Tg ▢ Renew the permit
+  Th ▢ Pay the invoice
+  Ts ⬚ Learn Italian
+
+```
+
+```trycmd
+$ run.sh things find --trashed plant
+⌕ Find  (1 task)
+
+  Tc ▢ Plant bulbs  [● Garden]
+
+```
+
+```trycmd
+$ run.sh things find --trashed --completed
+⌕ Find  (1 task)
+
+  Tb ◼ Call the plumber  [● Kitchen remodel]
+
+```
+
+```trycmd
+$ run.sh things find plant
+No matching tasks.
+
+```
+
+```trycmd
+$ run.sh things find --trashed --inbox
+No matching tasks.
+
+```
+
+```trycmd
+$ run.sh things find --trashed --today
+No matching tasks.
+
+```
+
+```trycmd
+$ run.sh things find --trashed --someday
+No matching tasks.
+
+```

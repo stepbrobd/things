@@ -167,6 +167,8 @@ pub struct FindArgs {
     pub no_deadline: bool,
     #[arg(long, short = 'r', help = "Only recurring tasks")]
     pub recurring: bool,
+    #[arg(long, help = "Search the Trash, of any status unless one is given")]
+    pub trashed: bool,
     #[arg(
         long,
         short = 'l',
@@ -370,7 +372,9 @@ fn build_status_set(args: &FindArgs) -> Option<Vec<TaskStatus>> {
         return Some(vec![TaskStatus::Completed]);
     }
     if chosen.is_empty() {
-        return Some(vec![TaskStatus::Incomplete]);
+        // the Trash holds done and canceled items as well
+        // the app lists them alongside open ones
+        return (!args.trashed).then(|| vec![TaskStatus::Incomplete]);
     }
     Some(chosen)
 }
@@ -383,7 +387,7 @@ fn matches(
     prepared: &Prepared,
     today: &DateTime<Utc>,
 ) -> MatchResult {
-    if task.is_heading() || task.trashed || store.in_trashed_container(task) {
+    if task.is_heading() || store.in_trash(task) != args.trashed {
         return MatchResult::no();
     }
 
@@ -460,6 +464,10 @@ fn matches(
         }
     }
 
+    // no view lists what is in the Trash
+    if (args.inbox || args.today || args.someday) && store.in_trash(task) {
+        return MatchResult::no();
+    }
     if args.inbox && task.start != TaskStart::Inbox {
         return MatchResult::no();
     }

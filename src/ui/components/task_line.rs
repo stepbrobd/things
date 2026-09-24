@@ -30,6 +30,7 @@ pub fn TaskLine<'a>(hooks: Hooks, props: &TaskLineProps<'a>) -> impl Into<AnyEle
 
     let leading = vec![
         marker_element(
+            &store,
             task,
             &today,
             props.show_today_markers,
@@ -61,11 +62,16 @@ pub fn TaskLine<'a>(hooks: Hooks, props: &TaskLineProps<'a>) -> impl Into<AnyEle
 }
 
 fn marker_element<'a>(
+    store: &ThingsStore,
     task: &Task,
     today: &DateTime<Utc>,
     show_today_markers: bool,
     show_staged_today_marker: bool,
 ) -> AnyElement<'a> {
+    // a to-do in the Trash carries no marker
+    if store.in_trash(task) {
+        return element!(Fragment).into_any();
+    }
     if show_today_markers {
         if task.evening {
             return element! { Text(content: ICONS.evening, color: Color::Blue) }.into_any();
