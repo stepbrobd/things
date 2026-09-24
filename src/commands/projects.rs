@@ -47,7 +47,7 @@ pub struct ProjectsArgs {
 
 #[derive(Debug, Default, Args)]
 pub struct ProjectsListArgs {
-    /// Show notes for each task
+    /// Show notes for each project
     #[arg(long, short = 'd')]
     pub detailed: bool,
 }

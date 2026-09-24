@@ -35,7 +35,7 @@ pub enum TagsSubcommand {
 }
 
 #[derive(Debug, Args)]
-#[command(about = "Show or edit tags")]
+#[command(about = "Show, create, edit, or delete tags")]
 pub struct TagsArgs {
     #[command(subcommand)]
     pub command: Option<TagsSubcommand>,

@@ -29,7 +29,7 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(
-    about = "Edit a task: title, notes, container, tags, checklist, when, deadline, reminder or repeat"
+    about = "Edit the title, notes, container, tags, checklist, when, deadline, reminder, or repeat of a task"
 )]
 pub struct EditArgs {
     #[arg(required = true, help = "Task UUID(s) (or unique UUID prefixes)")]
@@ -74,7 +74,7 @@ pub struct EditArgs {
     #[arg(
         long = "completed-on",
         value_name = "DATETIME",
-        help = "Set when a completed task was completed (single task only, RFC 3339 or YYYY-MM-DD at local midnight)"
+        help = "Set when a completed or canceled task was closed (single task only, RFC 3339 or YYYY-MM-DD at local midnight)"
     )]
     pub completed_on: Option<String>,
     #[arg(

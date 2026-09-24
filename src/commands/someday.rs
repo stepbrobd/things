@@ -14,6 +14,7 @@ use crate::{
 };
 
 #[derive(Debug, Default, Args)]
+#[command(about = "Show the Someday view")]
 pub struct SomedayArgs {
     #[command(flatten)]
     pub detailed: DetailedArgs,

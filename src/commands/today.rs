@@ -15,6 +15,7 @@ use crate::{
 };
 
 #[derive(Debug, Default, Args)]
+#[command(about = "Show the Today view (default)")]
 pub struct TodayArgs {
     #[command(flatten)]
     pub detailed: DetailedArgs,

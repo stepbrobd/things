@@ -101,7 +101,7 @@ impl Prepared {
 }
 
 #[derive(Debug, Default, Args)]
-#[command(about = "Search and filter tasks.")]
+#[command(about = "Search and filter tasks")]
 #[command(
     after_help = "Date filter syntax:  --deadline OP DATE\n  OP is one of: >  <  >=  <=  =\n  DATE is YYYY-MM-DD or a keyword: today, tomorrow, yesterday\n\n  Examples:\n    --deadline \"<today\"          overdue tasks\n    --deadline \">=2026-01-01\"    deadline on or after date\n    --created \">=2026-01-01\" --created \"<=2026-03-31\"   date range"
 )]

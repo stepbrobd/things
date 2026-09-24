@@ -16,6 +16,7 @@ pub enum CompletionShell {
 }
 
 #[derive(Debug, Clone, Args)]
+#[command(about = "Generate shell completion scripts")]
 pub struct CompletionsArgs {
     #[arg(value_enum)]
     pub shell: CompletionShell,

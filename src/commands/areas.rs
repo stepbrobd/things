@@ -30,7 +30,7 @@ pub enum AreasSubcommand {
 }
 
 #[derive(Debug, Args)]
-#[command(about = "Show or create areas")]
+#[command(about = "Show, create, or edit areas")]
 pub struct AreasArgs {
     #[command(subcommand)]
     pub command: Option<AreasSubcommand>,

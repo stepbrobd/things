@@ -81,47 +81,26 @@ pub struct TagDeltaArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Commands {
-    #[command(about = "Show the Inbox")]
     Inbox(inbox::InboxArgs),
-    #[command(about = "Show the Today view (default)")]
     Today(today::TodayArgs),
-    #[command(about = "Show tasks scheduled for the future")]
     Upcoming(upcoming::UpcomingArgs),
-    #[command(about = "Show the Anytime view")]
     Anytime(anytime::AnytimeArgs),
-    #[command(about = "Show the Someday view")]
     Someday(someday::SomedayArgs),
-    #[command(about = "Show the Logbook")]
     Logbook(logbook::LogbookArgs),
-    #[command(about = "Show the Trash")]
     Trash(trash::TrashArgs),
-    #[command(about = "Show, create, or edit projects")]
     Projects(projects::ProjectsArgs),
-    #[command(about = "Show all tasks in a project")]
     Project(project::ProjectArgs),
-    #[command(about = "Show or create areas")]
     Areas(areas::AreasArgs),
-    #[command(about = "Show projects and tasks in an area")]
     Area(area::AreaArgs),
-    #[command(about = "Show or edit tags")]
     Tags(tags::TagsArgs),
-    #[command(about = "Create a new task")]
     New(new::NewArgs),
-    #[command(about = "Edit a task title, container, notes, tags, or checklist items")]
     Edit(edit::EditArgs),
-    #[command(about = "Mark a task done, incomplete, or canceled")]
     Mark(mark::MarkArgs),
-    #[command(about = "Reorder item relative to another item")]
     Reorder(reorder::ReorderArgs),
-    #[command(about = "Move to-dos, projects and headings to the Trash, or delete an area")]
     Delete(delete::DeleteArgs),
-    #[command(about = "Configure Things Cloud credentials")]
     Auth(auth::AuthArgs),
-    #[command(about = "Search and filter tasks")]
     Find(find::FindArgs),
-    #[command(about = "Show one task or project in full")]
     Show(show::ShowArgs),
-    #[command(about = "Generate shell completion scripts")]
     Completions(completions::CompletionsArgs),
 }
 

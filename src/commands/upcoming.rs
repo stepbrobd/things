@@ -15,6 +15,7 @@ use crate::{
 };
 
 #[derive(Debug, Default, Args)]
+#[command(about = "Show tasks scheduled for the future")]
 pub struct UpcomingArgs {
     #[command(flatten)]
     pub detailed: DetailedArgs,
