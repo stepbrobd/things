@@ -1,8 +1,10 @@
-//! sort index allocation shared by new, edit and reorder, for the structural index within a container and the today index within a day's group
+//! the Today view's order and the sort index allocation shared by new, edit and reorder, for the structural index within a container and the today index within a day's group
 //!
 //! a slot between two neighbors when the gap allows one
 //! otherwise the run is rebalanced
 //! the members that move come back as patches
+
+use std::cmp::Reverse;
 
 use crate::{ids::ThingsId, store::Task};
 
@@ -11,6 +13,18 @@ pub fn today_group(task: &Task, today_ts: i64) -> i64 {
     task.today_index_reference
         .or_else(|| task.start_date.map(|day| day.timestamp()))
         .unwrap_or(today_ts)
+}
+
+/// the order in which the Today view lists its to-dos
+///
+/// ties fall to the id
+pub fn today_view_order(task: &Task) -> (Reverse<i64>, i32, Reverse<i32>, ThingsId) {
+    (
+        Reverse(task.today_index_reference.unwrap_or(0)),
+        task.today_index,
+        Reverse(task.index),
+        task.uuid.clone(),
+    )
 }
 
 /// the distance between members of a respaced run

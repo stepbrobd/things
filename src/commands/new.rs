@@ -1,4 +1,4 @@
-use std::{cmp::Reverse, collections::BTreeMap, str::FromStr};
+use std::{collections::BTreeMap, str::FromStr};
 
 use anyhow::{Context as _, Result};
 use chrono::{TimeZone, Utc};
@@ -13,7 +13,7 @@ use crate::{
         resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
-    ordering::{allocate, today_group},
+    ordering::{allocate, today_group, today_view_order},
     repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
     store::Task,
     wire::{
@@ -473,10 +473,7 @@ fn build_new_plan(
             .filter(|t| store.in_today(t, &today) && t.evening == anchor.evening)
             .cloned()
             .collect::<Vec<_>>();
-        today_siblings.sort_by_key(|task| {
-            let tir = task.today_index_reference.unwrap_or(0);
-            (Reverse(tir), task.today_index, Reverse(task.index))
-        });
+        today_siblings.sort_by_key(today_view_order);
         let anchor_pos = today_siblings
             .iter()
             .position(|t| t.uuid == anchor.uuid)

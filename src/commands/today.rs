@@ -7,6 +7,7 @@ use iocraft::prelude::*;
 use crate::{
     app::Cli,
     commands::{Command, DetailedArgs, detailed_json_conflict, write_json},
+    ordering::today_view_order,
     ui::{
         render_element_to_string,
         views::{json::common::build_tasks_json, today::TodayView},
@@ -37,14 +38,7 @@ impl Command for TodayArgs {
             .filter(|t| store.in_today(t, &today))
             .collect();
 
-        today_items.sort_by_key(|task| {
-            let tir = task.today_index_reference.unwrap_or(0);
-            (
-                std::cmp::Reverse(tir),
-                task.today_index,
-                std::cmp::Reverse(task.index),
-            )
-        });
+        today_items.sort_by_key(today_view_order);
 
         let json = cli.json;
         if json {
