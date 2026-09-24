@@ -1,0 +1,39 @@
+```trycmd
+$ run.sh things find --today
+No matching tasks.
+
+```
+
+```trycmd
+$ run.sh things find --inbox
+No matching tasks.
+
+```
+
+```trycmd
+$ run.sh things find --someday
+⌕ Find  (1 task)
+
+  Tu ⬚ Learn the banjo
+
+```
+
+```trycmd
+$ run.sh things find --trashed --someday
+No matching tasks.
+
+```
+
+```trycmd
+$ run.sh things find --inbox --any-status
+No matching tasks.
+
+```
+
+```trycmd
+$ run.sh things find --someday --any-status
+⌕ Find  (1 task)
+
+  Tu ⬚ Learn the banjo
+
+```

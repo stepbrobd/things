@@ -472,17 +472,28 @@ fn matches(
         }
     }
 
-    // no view lists what is in the Trash
-    if (args.inbox || args.today || args.someday) && store.in_trash(task) {
+    // each view filter takes what its view lists
+    // no view lists a blank or closed to-do or what is in the Trash
+    if (args.inbox || args.today || args.someday)
+        && (task.is_blank() || task.status != TaskStatus::Incomplete || store.in_trash(task))
+    {
         return MatchResult::no();
     }
-    if args.inbox && task.start != TaskStart::Inbox {
+    let in_inbox = task.start == TaskStart::Inbox
+        && store.effective_project_uuid(task).is_none()
+        && store.effective_area_uuid(task).is_none();
+    if args.inbox && !in_inbox {
         return MatchResult::no();
     }
-    if args.today && !task.is_today(today) {
+    if args.today && (!task.is_today(today) || store.in_closed_container(task)) {
         return MatchResult::no();
     }
-    if args.someday && !task.in_someday() {
+    // Someday leaves out a to-do inside a project and what is in the Trash
+    let in_someday = task.in_someday()
+        && !store.in_trash(task)
+        && !task.is_recurrence_template()
+        && (task.is_project() || store.effective_project_uuid(task).is_none());
+    if args.someday && !in_someday {
         return MatchResult::no();
     }
     if args.evening && !task.evening {
