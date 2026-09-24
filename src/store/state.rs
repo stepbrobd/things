@@ -338,14 +338,14 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
             warn!(target: "things::replay", key = %one_line(&key), "an object whose id is not base58 is skipped");
             continue;
         };
+        // a tombstone purges what it names whether a create or an update carries it
+        // the other clients read it that way
+        if let Properties::Tombstone(tombstone) = &obj.payload {
+            purged.push(tombstone.deleted_object_id.clone());
+            continue;
+        }
         match obj.operation_type {
-            OperationType::Create => {
-                if let Properties::TombstoneCreate(tombstone) = &obj.payload {
-                    purged.push(tombstone.deleted_object_id.clone());
-                    continue;
-                }
-                insert_state_object(state, &uuid, obj);
-            }
+            OperationType::Create => insert_state_object(state, &uuid, obj),
             OperationType::Update => {
                 if let Some(existing) = state.get_mut(&uuid) {
                     match obj.properties() {
@@ -572,6 +572,16 @@ mod tests {
         let task = store.get_task("Ta11111111111111111111").expect("listed");
         assert_eq!(task.title, "Order tiles");
         assert!(task.degraded);
+    }
+
+    #[test]
+    fn a_tombstone_that_an_update_carries_purges_what_it_names() {
+        let items = [
+            r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Order tiles","st":1,"tr":true}}}"#,
+            r#"{"Tm11111111111111111111":{"t":1,"e":"Tombstone2","p":{"dloid":"Ta11111111111111111111","dld":1774396800}}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        assert!(state.is_empty(), "{state:?}");
     }
 
     #[test]

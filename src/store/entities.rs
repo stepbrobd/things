@@ -375,7 +375,7 @@ impl From<Properties> for StateProperties {
             AreaUpdate(patch) => Area(patch.into()),
             TagCreate(props) => Tag(props.into()),
             TagUpdate(patch) => Tag(patch.into()),
-            TombstoneCreate(_) | CommandCreate(_) | Ignored(_) | Unknown(_) | Delete => Other,
+            Tombstone(_) | CommandCreate(_) | Ignored(_) | Unknown(_) | Delete => Other,
         }
     }
 }
