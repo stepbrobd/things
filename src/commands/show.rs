@@ -68,11 +68,19 @@ impl Command for ShowArgs {
         writeln!(out, "{} {kind}, {status}", field("Kind"))?;
 
         let mut when = match (task.start, task.start_date) {
+            // a start this CLI does not know still shows the day it carries
+            (TaskStart::Unknown(raw), Some(day)) if day.date_naive() == today.date_naive() => {
+                format!("unknown start {raw}, today")
+            }
+            (TaskStart::Unknown(raw), Some(day)) => {
+                format!("unknown start {raw}, {}", day.format("%Y-%m-%d"))
+            }
+            (TaskStart::Unknown(raw), None) => format!("unknown start {raw}"),
             (TaskStart::Inbox, _) => "inbox".to_string(),
             (_, Some(day)) if day.date_naive() == today.date_naive() => "today".to_string(),
             (_, Some(day)) => day.format("%Y-%m-%d").to_string(),
             (TaskStart::Someday, None) => "someday".to_string(),
-            _ => "anytime".to_string(),
+            (TaskStart::Anytime, None) => "anytime".to_string(),
         };
         if task.evening {
             when.push_str(" evening");
