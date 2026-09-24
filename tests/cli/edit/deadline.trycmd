@@ -7,7 +7,7 @@ $ run.sh things --today-ts 1699920000 --now-ts 1700000333.0 edit A7h5eCi24RvAWKC
     "A7h5eCi24RvAWKC3Hv3muf": {
       "e": "Task7",
       "p": {
-        "dd": 2022364800.0,
+        "dd": 2022364800,
         "md": 1700000333.0
       },
       "t": 1

@@ -9,7 +9,7 @@ use crate::{
     ids::ThingsId,
     wire::{
         deserialize_default_on_null, deserialize_optional_field, notes::TaskNotes,
-        recurrence::RecurrenceRule,
+        recurrence::RecurrenceRule, serialize_day_stamp,
     },
 };
 
@@ -256,11 +256,14 @@ pub struct TaskPatch {
     )]
     pub stop_date: Option<Option<f64>>,
 
-    /// `dd`, deadline timestamp
+    /// `dd`, deadline day timestamp
+    ///
+    /// read as any number and written whole
     #[serde(
         rename = "dd",
         default,
         deserialize_with = "deserialize_optional_field",
+        serialize_with = "serialize_day_stamp",
         skip_serializing_if = "Option::is_none"
     )]
     pub deadline: Option<Option<f64>>,

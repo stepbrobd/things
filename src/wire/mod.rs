@@ -2,7 +2,7 @@
 //!
 //! a history page holds items shaped `{ uuid: { "t": operation, "e": entity, "p": properties } }`, and replaying them in order yields the current state
 
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serializer};
 
 pub mod area;
 pub mod checklist;
@@ -28,6 +28,25 @@ where
     T: Deserialize<'de>,
 {
     Option::<T>::deserialize(deserializer).map(Some)
+}
+
+/// a day stamp as the app writes it, a whole number without a fraction
+pub(crate) fn serialize_day_stamp<S>(
+    value: &Option<Option<f64>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match value {
+        // a day stamp is whole
+        // an f64 holds every integer below 2^53 exactly
+        Some(Some(day)) if day.fract() == 0.0 && day.abs() < 9.0e15 => {
+            serializer.serialize_i64(*day as i64)
+        }
+        Some(Some(day)) => serializer.serialize_f64(*day),
+        Some(None) | None => serializer.serialize_none(),
+    }
 }
 
 pub(crate) fn deserialize_default_on_null<'de, D, T>(deserializer: D) -> Result<T, D::Error>
