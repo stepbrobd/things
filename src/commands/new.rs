@@ -427,56 +427,53 @@ fn build_new_plan(
     props.sort_index = structural_ix;
     index_updates.extend(structural_updates);
 
-    if new_is_today && anchor_is_today {
-        let mut section_evening = if props.evening_bit != 0 { 1 } else { 0 };
-
-        if anchor_is_today && let Some(anchor) = &anchor {
-            // the anchor names the section
-            // an evening that disagrees is refused rather than dropped
-            if props.evening_bit != 0 && !anchor.evening {
-                return Err(
-                    "--when evening and an anchor in the day section of Today disagree."
-                        .to_string(),
-                );
-            }
-            section_evening = if anchor.evening { 1 } else { 0 };
-            props.evening_bit = section_evening;
+    // a to-do Today lists by its deadline alone has no place in Today's order to put anything next to
+    if new_is_today
+        && anchor_is_today
+        && let Some(anchor) = &anchor
+        && anchor.today_index_reference.is_none()
+        && anchor.start_date.is_none()
+    {
+        return Err(format!(
+            "Anchor is in Today by its deadline alone, which gives it no place in Today's order: {}",
+            one_line(&anchor.title)
+        ));
+    }
+    if new_is_today
+        && anchor_is_today
+        && let Some(anchor) = &anchor
+    {
+        // the anchor names the section
+        // an evening that disagrees is refused rather than dropped
+        if props.evening_bit != 0 && !anchor.evening {
+            return Err(
+                "--when evening and an anchor in the day section of Today disagree.".to_string(),
+            );
         }
+        props.evening_bit = if anchor.evening { 1 } else { 0 };
 
         let mut today_siblings = store
             .tasks_by_uuid
             .values()
-            .filter(|t| {
-                store.in_today(t, &today) && (if t.evening { 1 } else { 0 }) == section_evening
-            })
+            .filter(|t| store.in_today(t, &today) && t.evening == anchor.evening)
             .cloned()
             .collect::<Vec<_>>();
         today_siblings.sort_by_key(|task| {
             let tir = task.today_index_reference.unwrap_or(0);
             (Reverse(tir), task.today_index, Reverse(task.index))
         });
+        let anchor_pos = today_siblings
+            .iter()
+            .position(|t| t.uuid == anchor.uuid)
+            .expect("the anchor is among the rows of its section");
+        let today_insert_at = if args.before_id.is_some() {
+            anchor_pos
+        } else {
+            anchor_pos + 1
+        };
 
-        let mut today_insert_at = 0usize;
-        if anchor_is_today
-            && let Some(anchor) = &anchor
-            && (if anchor.evening { 1 } else { 0 }) == section_evening
-            && let Some(anchor_pos) = today_siblings.iter().position(|t| t.uuid == anchor.uuid)
-        {
-            today_insert_at = if args.before_id.is_some() {
-                anchor_pos
-            } else {
-                anchor_pos + 1
-            };
-        }
-
-        // the newcomer joins the day group of its neighbor, and takes a slot among that group's today indexes
-        let prev_today = today_insert_at
-            .checked_sub(1)
-            .and_then(|at| today_siblings.get(at));
-        let next_today = today_siblings.get(today_insert_at);
-        let tir = next_today
-            .or(prev_today)
-            .map_or(today_ts, |task| today_group(task, today_ts));
+        // the newcomer joins the anchor's day group and takes a slot among that group's today indexes
+        let tir = today_group(anchor, today_ts);
         let group: Vec<(ThingsId, i32)> = today_siblings
             .iter()
             .filter(|task| today_group(task, today_ts) == tir)

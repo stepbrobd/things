@@ -91,6 +91,13 @@ fn build_reorder_plan(
     // the structural path refuses the others
     let is_today_orderable = |task: &crate::store::Task| store.in_today(task, &today);
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
+    // a to-do Today lists by its deadline alone has no place in Today's order to put anything next to
+    if is_today_reorder && anchor.today_index_reference.is_none() && anchor.start_date.is_none() {
+        return Err(format!(
+            "Anchor is in Today by its deadline alone, which gives it no place in Today's order: {}",
+            one_line(&anchor.title)
+        ));
+    }
 
     if is_today_reorder {
         let anchor_tir = today_group(&anchor, today_ts);

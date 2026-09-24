@@ -1,0 +1,98 @@
+```trycmd
+$ run.sh things reorder Ta --after-id Td
+? 1
+Anchor is in Today by its deadline alone, which gives it no place in Today's order: D due today
+
+```
+
+```trycmd
+$ run.sh things new x --when today --after Td
+? 1
+Anchor is in Today by its deadline alone, which gives it no place in Today's order: D due today
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Td --after-id Ta
+✓ Reordered D due today  Td11111111111111111111 (after=A, today_ref=1774396800, today_index=15)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Td11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "ti": 15,
+        "tir": 1774396800
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things today
+⭑ Today  (4 tasks)
+
+  Ta ▢ A
+  Tb ▢ B
+  Tx ▢ X from yesterday
+  Td ▢ D due today  ⚑ due by 2026-03-25
+
+```
+
+```trycmd
+$ run.sh things --id-seed 7 --now-ts 1774400000.0 new N --when today --after Tx
+✓ Created N  11111116AjePwYNteRv
+{
+  "ancestor_index": 0,
+  "changes": {
+    "11111116AjePwYNteRv": {
+      "e": "Task7",
+      "p": {
+        "acrd": null,
+        "agr": [],
+        "ar": [],
+        "ato": null,
+        "cd": 1774400000.0,
+        "dd": null,
+        "dds": null,
+        "dl": [],
+        "do": 0,
+        "icc": 0,
+        "icp": false,
+        "icsd": null,
+        "ix": 5,
+        "lai": null,
+        "lt": false,
+        "md": 1774400000.0,
+        "nt": null,
+        "pr": [],
+        "rmd": null,
+        "rp": null,
+        "rr": null,
+        "rt": [],
+        "sb": 0,
+        "sp": null,
+        "sr": 1774396800,
+        "ss": 0,
+        "st": 1,
+        "tg": [],
+        "ti": 6,
+        "tir": 1774310400,
+        "tp": 0,
+        "tr": false,
+        "tt": "N",
+        "xx": {
+          "_t": "oo",
+          "sn": {}
+        }
+      },
+      "t": 0
+    }
+  }
+}
+
+```
