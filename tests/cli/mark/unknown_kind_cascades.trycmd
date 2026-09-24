@@ -18,3 +18,10 @@ $ run.sh things reorder Rc --after-id Ra
 Cannot rebalance around an item of unknown kind 5
 
 ```
+
+```trycmd
+$ run.sh things new x --when anytime --after Ra
+? 1
+Cannot rebalance around an item of unknown kind 5
+
+```

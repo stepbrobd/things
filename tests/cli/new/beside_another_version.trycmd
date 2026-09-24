@@ -1,0 +1,64 @@
+```trycmd
+$ run.sh things --id-seed 7 --now-ts 1774400000.0 new Weed --in Pa --after Ta
+✓ Created Weed  11111116AjePwYNteRv
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+{
+  "ancestor_index": 0,
+  "changes": {
+    "11111116AjePwYNteRv": {
+      "e": "Task7",
+      "p": {
+        "acrd": null,
+        "agr": [],
+        "ar": [],
+        "ato": null,
+        "cd": 1774400000.0,
+        "dd": null,
+        "dds": null,
+        "dl": [],
+        "do": 0,
+        "icc": 0,
+        "icp": false,
+        "icsd": null,
+        "ix": 1262,
+        "lai": null,
+        "lt": false,
+        "md": 1774400000.0,
+        "nt": null,
+        "pr": [
+          "Pa11111111111111111111"
+        ],
+        "rmd": null,
+        "rp": null,
+        "rr": null,
+        "rt": [],
+        "sb": 0,
+        "sp": null,
+        "sr": null,
+        "ss": 0,
+        "st": 1,
+        "tg": [],
+        "ti": 0,
+        "tir": null,
+        "tp": 0,
+        "tr": false,
+        "tt": "Weed",
+        "xx": {
+          "_t": "oo",
+          "sn": {}
+        }
+      },
+      "t": 0
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --id-seed 7 --now-ts 1774400000.0 new Sand --in Pb --after Tc
+? 1
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Cannot rebalance around an item of kind Task8
+
+```

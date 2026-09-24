@@ -4,3 +4,10 @@ $ run.sh things --now-ts 1774400000.0 reorder Dx --after-id Da
 Cannot rebalance around an item of unknown kind 9
 
 ```
+
+```trycmd
+$ run.sh things --id-seed 7 --now-ts 1774400000.0 new N --when today --after Da
+? 1
+Cannot rebalance around an item of unknown kind 9
+
+```

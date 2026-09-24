@@ -392,7 +392,6 @@ fn build_new_plan(
             !store.in_trash(t)
                 && !t.is_recurrence_template()
                 && (every_status || t.status == TaskStatus::Incomplete)
-                && t.entity.can_upgrade_to_task7()
                 && task_bucket(t, store) == target_bucket
         })
         .cloned()
@@ -415,6 +414,18 @@ fn build_new_plan(
     }
 
     let (structural_ix, structural_updates) = plan_ix_insert(&siblings, structural_insert_at);
+    // rows of a kind the writes do not know count in the order
+    // a placement that moves rows is refused while one of them is in the list
+    if !structural_updates.is_empty()
+        && let Some(task) = siblings
+            .iter()
+            .find(|task| !task.entity.can_upgrade_to_task7() || task.unknown_kind().is_some())
+    {
+        return Err(match task.unknown_kind() {
+            Some(raw) => format!("Cannot rebalance around an item of unknown kind {raw}"),
+            None => format!("Cannot rebalance around an item of kind {}", task.entity),
+        });
+    }
     props.sort_index = structural_ix;
     index_updates.extend(structural_updates);
 
@@ -473,6 +484,19 @@ fn build_new_plan(
             .filter(|task| today_group(task, today_ts) == tir)
             .count();
         let (today_index, moved) = allocate(&group, hole);
+        // a rebalance writes to every row it moves
+        // one of a kind the writes do not know is refused as in the structural run
+        if !moved.is_empty()
+            && let Some(task) = today_siblings.iter().find(|task| {
+                today_group(task, today_ts) == tir
+                    && (!task.entity.can_upgrade_to_task7() || task.unknown_kind().is_some())
+            })
+        {
+            return Err(match task.unknown_kind() {
+                Some(raw) => format!("Cannot rebalance around an item of unknown kind {raw}"),
+                None => format!("Cannot rebalance around an item of kind {}", task.entity),
+            });
+        }
         props.today_index_reference = Some(tir);
         props.today_sort_index = today_index;
         today_updates = moved;
