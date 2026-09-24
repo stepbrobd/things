@@ -545,7 +545,7 @@ fn build_edit_plan(
         }
     }
 
-    let mut rename_map: HashMap<String, String> = HashMap::new();
+    let mut renames: Vec<(String, String)> = Vec::new();
     for token in &args.rename_checklist {
         let Some((short_id, new_title)) = token.split_once(':') else {
             return Err(format!(
@@ -559,7 +559,7 @@ fn build_edit_plan(
                 "--rename-checklist requires 'id:new title' format, got: {token:?}"
             ));
         }
-        rename_map.insert(short_id.to_string(), new_title.to_string());
+        renames.push((short_id.to_string(), new_title.to_string()));
     }
 
     let mut changes: BTreeMap<String, WireObject> = BTreeMap::new();
@@ -678,8 +678,11 @@ fn build_edit_plan(
             }
         }
 
-        if !rename_map.is_empty() {
-            for (short_id, new_title) in &rename_map {
+        if !renames.is_empty() {
+            // the renames apply in the order given
+            // a second rename of one item is refused rather than one of the two winning
+            let mut renamed = HashSet::new();
+            for (short_id, new_title) in &renames {
                 let matches = task
                     .checklist_items
                     .iter()
@@ -695,6 +698,11 @@ fn build_edit_plan(
                 if removed.contains(&matches[0].uuid) {
                     return Err(format!(
                         "Checklist item '{short_id}' cannot be removed and renamed in one edit."
+                    ));
+                }
+                if !renamed.insert(matches[0].uuid.clone()) {
+                    return Err(format!(
+                        "Checklist item '{short_id}' cannot be renamed twice in one edit."
                     ));
                 }
                 changes.insert(
@@ -815,7 +823,7 @@ fn build_edit_plan(
 
         let has_checklist_changes = !args.add_checklist.is_empty()
             || args.remove_checklist.is_some()
-            || !rename_map.is_empty();
+            || !renames.is_empty();
         if update.is_empty() && !has_checklist_changes {
             return Err("No edit changes requested.".to_string());
         }
@@ -1590,6 +1598,20 @@ mod tests {
         ));
         assert!(plan.changes.contains_key(&new_check(1)));
         assert!(plan.changes.contains_key(&new_check(2)));
+
+        // two prefixes of one item rename it once at most
+        let twice = EditArgs {
+            add_checklist: Vec::new(),
+            remove_checklist: None,
+            rename_checklist: vec![
+                format!("{}:First", &CHECK_A[..6]),
+                format!("{}:Second", &CHECK_A[..7]),
+            ],
+            ..args("")
+        };
+        let err =
+            build_edit_plan(&twice, &store, NOW, TODAY, &mut id_gen).expect_err("renamed twice");
+        assert!(err.contains("cannot be renamed twice"), "{err}");
     }
 
     #[test]
