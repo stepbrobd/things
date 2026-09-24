@@ -1,0 +1,27 @@
+```trycmd
+$ run.sh things mark Tu --done
+? 1
+Item is of an unknown status. (Odd status)
+
+```
+
+```trycmd
+$ run.sh things mark Tu --incomplete
+? 1
+Item is of an unknown status. (Odd status)
+
+```
+
+```trycmd
+$ run.sh things mark Tc --check Cu
+? 1
+Checklist item is of an unknown status: Odd step
+
+```
+
+```trycmd
+$ run.sh things mark Tc --uncheck Cu
+? 1
+Checklist item is of an unknown status: Odd step
+
+```

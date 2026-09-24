@@ -148,6 +148,9 @@ fn validate_mark_target(
     if task.is_recurrence_template() {
         return "A repeat template takes no status, mark one of its instances instead.".to_string();
     }
+    if matches!(task.status, TaskStatus::Unknown(_)) {
+        return "Item is of an unknown status.".to_string();
+    }
     if action == "completed" && task.status == TaskStatus::Completed {
         return "Item is already completed.".to_string();
     }
@@ -294,6 +297,12 @@ fn build_mark_checklist_plan(
 
     let mut changes = BTreeMap::new();
     for item in &items {
+        if matches!(item.status, TaskStatus::Unknown(_)) {
+            return Err(format!(
+                "Checklist item is of an unknown status: {}",
+                one_line(&item.title)
+            ));
+        }
         if item.status == status {
             return Err(format!(
                 "Checklist item is already {label}: {}",
