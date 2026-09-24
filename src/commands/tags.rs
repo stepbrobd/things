@@ -160,11 +160,9 @@ fn build_tags_edit_plan(
         }
         // a title is how a tag is named on the command line
         // two that differ in case alone name neither
-        if store
-            .tags_by_uuid
-            .values()
-            .any(|other| other.uuid != tag.uuid && other.title.eq_ignore_ascii_case(name))
-        {
+        if store.tags_by_uuid.values().any(|other| {
+            other.uuid != tag.uuid && other.title.to_lowercase() == name.to_lowercase()
+        }) {
             return Err(format!("A tag named {name} exists already."));
         }
         update.title = Some(name.to_string());
@@ -173,6 +171,18 @@ fn build_tags_edit_plan(
 
     if let Some(move_target) = &args.move_target {
         let move_raw = &**move_target;
+        // a tag titled clear leaves the keyword naming either
+        // its id names it alone
+        if move_raw.eq_ignore_ascii_case("clear")
+            && store
+                .tags_by_uuid
+                .values()
+                .any(|other| other.title.to_lowercase() == move_raw.to_lowercase())
+        {
+            return Err(format!(
+                "Ambiguous --move target '{move_raw}' (matches clear and a tag, name the tag by its ID)."
+            ));
+        }
         if move_raw.eq_ignore_ascii_case("clear") {
             update.parent_ids = Some(vec![]);
             labels.push("move=clear".to_string());
@@ -268,7 +278,7 @@ impl Command for TagsArgs {
                 if store
                     .tags_by_uuid
                     .values()
-                    .any(|tag| tag.title.eq_ignore_ascii_case(name))
+                    .any(|tag| tag.title.to_lowercase() == name.to_lowercase())
                 {
                     bail!("A tag named {name} exists already.");
                 }
@@ -536,6 +546,23 @@ mod tests {
                 .get("pn"),
             Some(&json!([]))
         );
+
+        // a tag titled clear leaves the keyword ambiguous
+        let with_clear = build_store(vec![
+            tag(TAG_UUID, "Clear", None),
+            tag(CHILD_UUID, "Sunny", Some(TAG_UUID)),
+        ]);
+        let ambiguous = build_tags_edit_plan(
+            &TagsEditArgs {
+                tag_id: CHILD_UUID.parse().expect("id"),
+                name: None,
+                move_target: Some("clear".parse().expect("id")),
+            },
+            &with_clear,
+            NOW,
+        )
+        .expect_err("clear names a tag too");
+        assert!(ambiguous.contains("matches clear and a tag"), "{ambiguous}");
 
         let no_change = build_tags_edit_plan(
             &TagsEditArgs {

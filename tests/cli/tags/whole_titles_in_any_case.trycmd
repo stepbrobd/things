@@ -1,0 +1,38 @@
+```trycmd
+$ run.sh things --now-ts 1774400000.0 tags delete "Work, work"
+× Deleted Work, work  Gx11111111111111111111
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Gx11111111111111111111": {
+      "e": "Tag4",
+      "p": {},
+      "t": 2
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things find --tag "Errands, weekly"
+⌕ Find  (1 task)
+
+  Tb ▢ Buy stamps  [Errands, weekly]
+
+```
+
+```trycmd
+$ run.sh things find --tag été
+⌕ Find  (1 task)
+
+  Tc ▢ Book the ferry  [Été]
+
+```
+
+```trycmd
+$ run.sh things tags new été
+? 1
+A tag named été exists already.
+
+```

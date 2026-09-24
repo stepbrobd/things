@@ -322,22 +322,11 @@ pub fn task6_note(value: &str) -> TaskNotes {
 }
 
 pub fn resolve_single_tag(store: &ThingsStore, identifier: &str) -> (Option<Tag>, String) {
-    let identifier = identifier.trim();
-    if identifier.is_empty() {
-        return (None, format!("Tag not found: {identifier}"));
-    }
-
-    let (resolved, err) = resolve_tag_ids(store, identifier);
-    if !err.is_empty() {
-        return (None, err);
-    }
-    if resolved.len() != 1 {
-        return (None, format!("Tag not found: {identifier}"));
-    }
-
-    match store.tags_by_uuid.get(&resolved[0]).cloned() {
-        Some(tag) => (Some(tag), String::new()),
-        None => (None, format!("Tag not found: {identifier}")),
+    // the whole argument names one tag, whatever commas its title holds
+    let all_tags: Vec<Tag> = store.tags_by_uuid.values().cloned().collect();
+    match resolve_single_tag_id(&all_tags, identifier) {
+        Ok(id) => (store.tags_by_uuid.get(&id).cloned(), String::new()),
+        Err(err) => (None, err),
     }
 }
 
@@ -387,7 +376,7 @@ fn resolve_tags(store: &ThingsStore, raw_tags: &str, removable: bool) -> (Vec<Th
 fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> {
     let exact = tags
         .iter()
-        .filter(|tag| tag.title.eq_ignore_ascii_case(token))
+        .filter(|tag| tag.title.to_lowercase() == token.to_lowercase())
         .map(|tag| tag.uuid.clone())
         .collect::<Vec<_>>();
     if exact.len() == 1 {
