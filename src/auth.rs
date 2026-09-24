@@ -6,7 +6,7 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::dirs::{auth_file_path, create_private_dir};
@@ -15,18 +15,6 @@ use crate::dirs::{auth_file_path, create_private_dir};
 struct AuthPayload {
     email: String,
     password: String,
-}
-
-/// the auth file as written
-///
-/// each field is taken as it is
-/// that keeps a password made of digits a password
-#[derive(Deserialize, Default)]
-struct AuthFile {
-    #[serde(default)]
-    email: Option<Value>,
-    #[serde(default)]
-    password: Option<Value>,
 }
 
 struct AuthConfig {
@@ -55,13 +43,26 @@ fn text_field(value: Option<Value>, field: &str, path: &Path) -> Result<Option<S
 /// every other variable the program reads counts that way too
 /// a variable that is not UTF-8 is refused rather than taken as unset
 fn load_auth_config(path: &Path, var: impl Fn(&str) -> Option<OsString>) -> Result<AuthConfig> {
-    let file = match fs::read_to_string(path) {
-        Ok(raw) => serde_json::from_str::<AuthFile>(&raw)
-            .with_context(|| format!("Failed reading auth config at {}", path.display()))?,
-        Err(error) if error.kind() == ErrorKind::NotFound => AuthFile::default(),
+    // each field is read as the JSON value it holds
+    // a password made of digits stays a password
+    let mut fields = match fs::read_to_string(path) {
+        Ok(raw) => match serde_json::from_str::<Value>(&raw)
+            .with_context(|| format!("Failed reading auth file at {}", path.display()))?
+        {
+            Value::Object(fields) => fields,
+            // any other shape is refused without repeating it
+            // a bare string there could be the password
+            _ => {
+                return Err(anyhow!(
+                    "The auth file at {} is not a JSON object",
+                    path.display()
+                ));
+            }
+        },
+        Err(error) if error.kind() == ErrorKind::NotFound => serde_json::Map::new(),
         Err(error) => {
             return Err(error)
-                .with_context(|| format!("Failed reading auth config at {}", path.display()));
+                .with_context(|| format!("Failed reading auth file at {}", path.display()));
         }
     };
     let text_var = |name: &str| {
@@ -76,11 +77,11 @@ fn load_auth_config(path: &Path, var: impl Fn(&str) -> Option<OsString>) -> Resu
     };
     let email = match text_var("THINGS_EMAIL")? {
         Some(text) => Some(text),
-        None => text_field(file.email, "email", path)?,
+        None => text_field(fields.remove("email"), "email", path)?,
     };
     let password = match text_var("THINGS_PASSWORD")? {
         Some(text) => Some(text),
-        None => text_field(file.password, "password", path)?,
+        None => text_field(fields.remove("password"), "password", path)?,
     };
     Ok(AuthConfig { email, password })
 }
@@ -323,6 +324,27 @@ mod tests {
             format!("{error:#}").contains("THINGS_PASSWORD"),
             "{error:#}"
         );
+    }
+
+    #[test]
+    fn a_file_that_is_not_an_object_is_refused_without_being_repeated() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("auth.json");
+        for raw in [
+            "31415926",
+            r#""hunter2""#,
+            r#"["user@example.com","hunter2"]"#,
+        ] {
+            fs::write(&path, raw).expect("seed");
+            let Err(error) = load_auth_config(&path, |_| None) else {
+                panic!("{raw} is no auth file");
+            };
+            let text = format!("{error:#}");
+            assert!(
+                !text.contains("31415926") && !text.contains("hunter2"),
+                "{text}"
+            );
+        }
     }
 
     #[test]
