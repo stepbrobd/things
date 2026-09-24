@@ -60,17 +60,18 @@ struct Progress {
 }
 
 fn project_progress(project: &Task, store: &ThingsStore) -> Progress {
-    if project.in_someday() {
-        return Progress {
-            marker: ICONS.project_someday,
-            total: 0,
-            done: 0,
-        };
-    }
-
     let progress = store.project_progress(&project.uuid);
     let total = progress.total;
     let done = progress.done;
+
+    // a someday project keeps its own marker and still counts its to-dos
+    if project.in_someday() {
+        return Progress {
+            marker: ICONS.project_someday,
+            total,
+            done,
+        };
+    }
 
     if total == 0 || done == 0 {
         return Progress {
