@@ -503,12 +503,7 @@ fn build_edit_plan(
         } else if move_l == "clear" {
             labels.push("move=clear".to_string());
         } else {
-            match resolve_container(
-                store,
-                move_raw,
-                "--move",
-                "Inbox, clear, a project ID, or an area ID",
-            )? {
+            match resolve_container(store, move_raw, "--move")? {
                 Container::Project(project_uuid) => {
                     shared_update.parent_project_ids = Some(vec![project_uuid]);
                     shared_update.area_ids = Some(vec![]);
@@ -1717,10 +1712,7 @@ mod tests {
             &mut id_gen,
         )
         .expect_err("invalid move target kind");
-        assert_eq!(
-            err,
-            "--move target must be Inbox, clear, a project ID, or an area ID."
-        );
+        assert_eq!(err, "Container is a to-do: Not a project");
     }
 
     #[test]

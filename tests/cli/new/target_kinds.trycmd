@@ -1,14 +1,14 @@
 ```trycmd
 $ run.sh things new x --in Ha
 ? 1
---in target must be inbox, a project ID, or an area ID.
+Container is a heading: Spring
 
 ```
 
 ```trycmd
 $ run.sh things edit Ta --move Ha
 ? 1
---move target must be Inbox, clear, a project ID, or an area ID.
+Container is a heading: Spring
 
 ```
 
@@ -43,7 +43,7 @@ Ambiguous --move target 'W' (matches an item and an area).
 ```trycmd
 $ run.sh things projects edit Pa --move Ha
 ? 1
-Projects can only be moved to an area or clear.
+Container is a heading, and projects go into an area or clear: Spring
 
 ```
 

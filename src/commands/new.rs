@@ -254,12 +254,7 @@ fn build_new_plan(
 
     let in_target = &*args.in_target;
     if !in_target.eq_ignore_ascii_case("inbox") {
-        match resolve_container(
-            store,
-            in_target,
-            "--in",
-            "inbox, a project ID, or an area ID",
-        )? {
+        match resolve_container(store, in_target, "--in")? {
             Container::Project(project_uuid) => props.parent_project_ids = vec![project_uuid],
             Container::Area(area_uuid) => props.area_ids = vec![area_uuid],
         }

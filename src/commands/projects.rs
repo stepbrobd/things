@@ -9,8 +9,8 @@ use crate::{
     arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
     common::{
-        DIM, GREEN, ICONS, colored, day_timestamp, one_line, parse_day, resolve_removable_tag_ids,
-        resolve_tag_ids, task6_note,
+        DIM, GREEN, ICONS, colored, day_timestamp, kind_with_article, one_line, parse_day,
+        resolve_removable_tag_ids, resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
     ui::{
@@ -113,7 +113,7 @@ fn build_projects_edit_plan(
         return Err(err);
     };
     if !project.is_project() {
-        return Err("The specified ID is not a project.".to_string());
+        return Err(format!("Not a project: {}", one_line(&project.title)));
     }
 
     let mut update = TaskPatch::default();
@@ -173,8 +173,12 @@ fn build_projects_edit_plan(
                     ));
                 }
                 // a project, heading or to-do is no place for a project, wherever it is
-                (Some(_), None) => {
-                    return Err("Projects can only be moved to an area or clear.".to_string());
+                (Some(item), None) => {
+                    return Err(format!(
+                        "Container is {}, and projects go into an area or clear: {}",
+                        kind_with_article(&item),
+                        one_line(&item.title)
+                    ));
                 }
                 // an area that did not replay completely may not be what it shows
                 (None, Some(area)) if area.degraded => {

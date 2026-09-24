@@ -15,13 +15,13 @@ Container is in the Trash: Trashed project
 ```trycmd
 $ run.sh things new x --in Tc
 ? 1
---in target must be inbox, a project ID, or an area ID.
+Container is a to-do: Directly trashed
 
 ```
 
 ```trycmd
 $ run.sh things edit Td --move Ta
 ? 1
---move target must be Inbox, clear, a project ID, or an area ID.
+Container is a to-do: First
 
 ```

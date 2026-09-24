@@ -5,8 +5,11 @@ use crc32fast::Hasher;
 
 use crate::{
     ids::ThingsId,
-    store::{Tag, ThingsStore},
-    wire::notes::{StructuredTaskNotes, TaskNotes},
+    store::{Tag, Task, ThingsStore},
+    wire::{
+        notes::{StructuredTaskNotes, TaskNotes},
+        task::TaskType,
+    },
 };
 
 /// today, the local calendar day at UTC midnight
@@ -326,15 +329,25 @@ pub enum Container {
     Area(ThingsId),
 }
 
+/// an item named by its kind with its article
+///
+/// a kind this CLI does not know is named by its number, as `show` names it
+pub fn kind_with_article(task: &Task) -> String {
+    match task.item_type {
+        TaskType::Todo => "a to-do".to_string(),
+        TaskType::Project => "a project".to_string(),
+        TaskType::Heading => "a heading".to_string(),
+        TaskType::Unknown(raw) => format!("an item of unknown kind {raw}"),
+    }
+}
+
 /// the project or area `target` names for a to-do, or why a to-do cannot go there
 ///
 /// `flag` names the option in messages
-/// `takes` lists the values the option takes
 pub fn resolve_container(
     store: &ThingsStore,
     target: &str,
     flag: &str,
-    takes: &str,
 ) -> Result<Container, String> {
     let (item, _, item_candidates) = store.resolve_task_identifier(target);
     let (area, _, area_candidates) = store.resolve_area_identifier(target);
@@ -364,7 +377,13 @@ pub fn resolve_container(
         (None, Some(area)) => return Ok(Container::Area(area.uuid)),
         (None, None) => return Err(format!("Container not found: {target}")),
         (Some(project), None) if project.is_project() => project,
-        (Some(_), None) => return Err(format!("{flag} target must be {takes}.")),
+        (Some(item), None) => {
+            return Err(format!(
+                "Container is {}: {}",
+                kind_with_article(&item),
+                one_line(&item.title)
+            ));
+        }
     };
     // a project of a kind the writes do not know may be closed or in the Trash without showing it
     if !project.entity.can_upgrade_to_task7() {
