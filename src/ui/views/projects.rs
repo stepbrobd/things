@@ -41,7 +41,7 @@ pub fn ProjectsView<'a>(props: &'a ProjectsViewProps) -> impl Into<AnyElement<'a
     };
 
     let free_projects = if !props.no_area_projects.is_empty() {
-        element! {
+        Some(element! {
             View(flex_direction: FlexDirection::Column, padding_left: 2) {
                 TaskList(
                     items: props.no_area_projects.iter().collect::<Vec<_>>(),
@@ -49,10 +49,9 @@ pub fn ProjectsView<'a>(props: &'a ProjectsViewProps) -> impl Into<AnyElement<'a
                     options,
                 )
             }
-        }
-        .into_any()
+        })
     } else {
-        element!(Fragment).into_any()
+        None
     };
 
     let project_areas = props.area_groups.iter().map(|group| {
@@ -62,14 +61,13 @@ pub fn ProjectsView<'a>(props: &'a ProjectsViewProps) -> impl Into<AnyElement<'a
     });
 
     element! {
-        View(flex_direction: FlexDirection::Column) {
+        View(flex_direction: FlexDirection::Column, gap: 1) {
             Text(
                 content: format!("● Projects  ({})", props.projects_count),
                 color: Color::Green,
                 weight: Weight::Bold,
                 wrap: TextWrap::NoWrap,
             )
-            Text(content: "", wrap: TextWrap::NoWrap)
             #(free_projects)
             #(project_areas)
         }
@@ -92,7 +90,6 @@ fn ProjectsAreaSection<'a>(props: &ProjectsAreaSectionProps<'a>) -> impl Into<An
 
     element! {
         View(flex_direction: FlexDirection::Column, padding_left: 2) {
-            Text(content: "", wrap: TextWrap::NoWrap)
             View(flex_direction: FlexDirection::Row, gap: 1) {
                 Id(id: &group.area_uuid, length: props.id_prefix_len)
                 Text(content: ICONS.area, color: Color::DarkGrey)
