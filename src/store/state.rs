@@ -754,7 +754,7 @@ mod tests {
         };
         assert_eq!(properties.title, "Partial");
         assert!(state[&task_id].degraded);
-        // a settings object without a create is not a task and carries no mark
+        // an update before any create marks an object of a stored kind alone
         let settings =
             wire_item(r#"{"Se11111111111111111111":{"t":1,"e":"Settings5","p":{"x":1}}}"#);
         let state = fold_items([settings]);
