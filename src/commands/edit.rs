@@ -440,7 +440,22 @@ fn build_edit_plan(
     today_ts: i64,
     next_id: &mut dyn FnMut() -> String,
 ) -> std::result::Result<EditPlan, String> {
-    let multiple = args.task_ids.len() > 1;
+    let mut tasks = Vec::new();
+    for identifier in &args.task_ids {
+        let (task_opt, err, _) = store.resolve_mark_identifier(identifier.as_str());
+        let Some(task) = task_opt else {
+            return Err(err);
+        };
+        if task.is_project() {
+            return Err("Use 'projects edit' to edit a project.".to_string());
+        }
+        // ids that name one to-do count once
+        if !tasks.iter().any(|seen: &Task| seen.uuid == task.uuid) {
+            tasks.push(task);
+        }
+    }
+
+    let multiple = tasks.len() > 1;
     if multiple && args.title.is_some() {
         return Err("--title requires a single to-do ID.".to_string());
     }
@@ -462,18 +477,6 @@ fn build_edit_plan(
             "--add-checklist/--remove-checklist/--rename-checklist require a single to-do ID."
                 .to_string(),
         );
-    }
-
-    let mut tasks = Vec::new();
-    for identifier in &args.task_ids {
-        let (task_opt, err, _) = store.resolve_mark_identifier(identifier.as_str());
-        let Some(task) = task_opt else {
-            return Err(err);
-        };
-        if task.is_project() {
-            return Err("Use 'projects edit' to edit a project.".to_string());
-        }
-        tasks.push(task);
     }
 
     let mut shared_update = TaskPatch::default();

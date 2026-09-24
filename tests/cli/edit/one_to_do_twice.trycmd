@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things --now-ts 1774400000.0 edit Ta Ta11111111111111111111 --title Bags
+✓ Edited Bags  Ta11111111111111111111 (title)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Ta11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "tt": "Bags"
+      },
+      "t": 1
+    }
+  }
+}
+
+```

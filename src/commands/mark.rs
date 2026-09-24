@@ -335,16 +335,23 @@ impl Command for MarkArgs {
             .or(self.check_cancel_ids.as_ref());
 
         if let Some(checklist_raw) = checklist_raw {
-            if self.task_ids.len() != 1 {
+            // ids that name one to-do count once
+            let mut tasks: Vec<crate::store::Task> = Vec::new();
+            for identifier in &self.task_ids {
+                let (task_opt, err, _) = store.resolve_mark_identifier(identifier.as_str());
+                let Some(task) = task_opt else {
+                    bail!("{err}");
+                };
+                if !tasks.iter().any(|seen| seen.uuid == task.uuid) {
+                    tasks.push(task);
+                }
+            }
+            if tasks.len() != 1 {
                 bail!(
                     "Checklist flags (--check, --uncheck, --check-cancel) require exactly one to-do ID."
                 );
             }
-
-            let (task_opt, err, _) = store.resolve_mark_identifier(self.task_ids[0].as_str());
-            let Some(task) = task_opt else {
-                bail!("{err}");
-            };
+            let task = tasks.remove(0);
 
             if task.checklist_items.is_empty() {
                 bail!("Item has no checklist: {}", one_line(&task.title));
