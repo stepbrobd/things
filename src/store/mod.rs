@@ -23,8 +23,9 @@ use crate::{
         ThingsId,
         matching::{prefix_matches, shortest_unique_prefixes},
     },
-    repeat::next_occurrence_of_rule,
+    repeat::{RepeatSpec, next_occurrence_of_rule, rule_reaches},
     wire::{
+        recurrence::RecurrenceType,
         task::{TaskStart, TaskStatus},
         wire_object::EntityType,
     },
@@ -295,16 +296,32 @@ impl ThingsStore {
             .filter_map(|template| {
                 let rule = template.recurrence_rule.as_ref()?;
                 let count = template.instance_creation_count;
-                // icsd is where the search for the next instance starts
-                // the pass reads it that way
-                let search_from = template.instance_creation_start_date.and_then(day_of)?;
-                let due = next_occurrence_of_rule(rule, search_from.pred_opt()?, count)?;
-                // an instance due today or earlier belongs to today
-                // the row shows the one after it
-                let next = if due > today {
-                    due
+                let shown = template.today_index_reference.and_then(day_of);
+                let next = if RepeatSpec::from_rule(rule).is_some() {
+                    // icsd is where the search for the next instance starts
+                    // the pass reads it that way
+                    let search_from = template.instance_creation_start_date.and_then(day_of)?;
+                    let due = next_occurrence_of_rule(rule, search_from.pred_opt()?, count)?;
+                    match shown {
+                        // the pass leaves a template whose tir names another day than the rule yields to the app
+                        // the app makes that instance on tir
+                        // from that day on the day of the next one is unknown
+                        Some(shown) if shown != due => (shown > today).then_some(shown)?,
+                        // an instance due today or earlier belongs to today
+                        // the row shows the one after it
+                        _ if due <= today => {
+                            next_occurrence_of_rule(rule, today, count.checked_add(1)?)?
+                        }
+                        _ => due,
+                    }
                 } else {
-                    next_occurrence_of_rule(rule, today, count.checked_add(1)?)?
+                    // a fixed schedule this CLI cannot evaluate still has its next day in tir
+                    // the row shows that day while it is ahead and within the rule's end and count
+                    // the tir of an after completion rule is unverified and shows nothing
+                    let shown = shown.filter(|shown| *shown > today)?;
+                    (rule.recurrence_type == RecurrenceType::FixedSchedule
+                        && rule_reaches(rule, shown, count))
+                    .then_some(shown)?
                 };
                 let mut projected = template.clone();
                 projected.start_date = DateTime::from_timestamp(day_timestamp(next), 0);

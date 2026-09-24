@@ -303,8 +303,9 @@ impl RepeatSpec {
     /// the spec and anchor behind a fixed schedule rule from the wire
     ///
     /// None for after completion and for every offset shape other than the ones the app was seen to write
-    /// a rule the CLI cannot evaluate exactly is shown and never projected or materialized
+    /// the repeat pass makes no instance of a rule the CLI cannot evaluate exactly
     /// a guess would put instances on the wrong days
+    /// its projection takes the day the app recorded in tir instead
     pub fn from_rule(rule: &RecurrenceRule) -> Option<(Self, NaiveDate)> {
         if rule.recurrence_type != RecurrenceType::FixedSchedule
             || !(1..=MAX_EVERY).contains(&rule.frequency_amount)
@@ -461,14 +462,19 @@ pub fn next_occurrence_of_rule(
     after: NaiveDate,
     instances_created: i32,
 ) -> Option<NaiveDate> {
-    if rule.repeat_count > 0 && instances_created >= rule.repeat_count {
-        return None;
-    }
     let (spec, anchor) = RepeatSpec::from_rule(rule)?;
     let next = spec.next_occurrence(anchor, after)?;
+    rule_reaches(rule, next, instances_created).then_some(next)
+}
+
+/// whether the end day and the repeat count of a wire rule leave room for an instance on `day`, whatever its cadence
+pub fn rule_reaches(rule: &RecurrenceRule, day: NaiveDate, instances_created: i32) -> bool {
+    if rule.repeat_count > 0 && instances_created >= rule.repeat_count {
+        return false;
+    }
     match rule.end_date {
-        Some(end) if end != RECURRENCE_END_NEVER => (next <= day_of(end)?).then_some(next),
-        _ => Some(next),
+        Some(end) if end != RECURRENCE_END_NEVER => day_of(end).is_some_and(|end| day <= end),
+        _ => true,
     }
 }
 
@@ -1295,6 +1301,37 @@ mod tests {
             props.title = String::new();
         }
         assert!(projected(&store_of(vec![(uuid, blank)])).is_empty());
+        // every other day from 2026-03-16 the rule yields 2026-03-26
+        // a tir on 2026-03-27 is the day the app makes the instance
+        let every_other_day = r#"{"ed":64092211200,"fa":2,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        let shown_later = store_of(vec![template_shown_on(
+            every_other_day,
+            "2026-03-26",
+            "2026-03-27",
+        )]);
+        assert_eq!(projected(&shown_later), vec![day("2026-03-27")]);
+        // from that day on the day of the next one is unknown
+        assert!(shown_later.projected_repeats(day("2026-03-27")).is_empty());
+        // a fixed schedule this CLI cannot evaluate shows on its tir while that day is ahead
+        // the last thursday of every month is one
+        let last_thursday = r#"{"ed":64092211200,"fa":1,"fu":8,"ia":1773619200,"of":[{"wd":4,"wdo":-1}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        let unevaluated = store_of(vec![template_shown_on(
+            last_thursday,
+            "2026-03-26",
+            "2026-03-26",
+        )]);
+        assert_eq!(projected(&unevaluated), vec![day("2026-03-26")]);
+        assert!(unevaluated.projected_repeats(day("2026-03-26")).is_empty());
+        // the tir of an after completion rule shows nothing
+        let after_completion = r#"{"ed":64092211200,"fa":2,"fu":256,"ia":1773619200,"of":[{"wd":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":1,"ts":0}"#;
+        assert!(
+            projected(&store_of(vec![template_shown_on(
+                after_completion,
+                "2026-03-26",
+                "2026-03-27",
+            )]))
+            .is_empty()
+        );
     }
 
     #[test]
