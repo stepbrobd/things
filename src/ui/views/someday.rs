@@ -41,7 +41,7 @@ pub fn SomedayView<'a>(hooks: Hooks, props: &SomedayViewProps<'a>) -> impl Into<
         detailed: props.detailed,
         show_project: false,
         show_area: false,
-        show_today_markers: false,
+        show_today_markers: true,
         show_staged_today_marker: false,
     };
 

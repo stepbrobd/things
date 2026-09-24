@@ -52,18 +52,12 @@ pub fn AreaView<'a>(hooks: Hooks, props: &AreaViewProps<'a>) -> impl Into<AnyEle
     item_uuids.extend(props.tasks.iter().map(|t| t.uuid.clone()));
     let id_prefix_len = store.unique_prefix_length(&item_uuids);
 
-    let task_options = TaskOptions {
+    // projects and to-dos alike carry the markers of what Today lists
+    let options = TaskOptions {
         detailed: props.detailed,
         show_project: false,
         show_area: false,
         show_today_markers: true,
-        show_staged_today_marker: false,
-    };
-    let project_options = TaskOptions {
-        detailed: props.detailed,
-        show_project: false,
-        show_area: false,
-        show_today_markers: false,
         show_staged_today_marker: false,
     };
 
@@ -84,7 +78,7 @@ pub fn AreaView<'a>(hooks: Hooks, props: &AreaViewProps<'a>) -> impl Into<AnyEle
                     View(flex_direction: FlexDirection::Column) {
                         Text(content: "", wrap: TextWrap::NoWrap)
                         View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT) {
-                            TaskList(items: props.tasks.clone(), id_prefix_len, options: task_options)
+                            TaskList(items: props.tasks.clone(), id_prefix_len, options)
                         }
                     }
                 })
@@ -95,7 +89,7 @@ pub fn AreaView<'a>(hooks: Hooks, props: &AreaViewProps<'a>) -> impl Into<AnyEle
                     View(flex_direction: FlexDirection::Column) {
                         Text(content: "", wrap: TextWrap::NoWrap)
                         View(flex_direction: FlexDirection::Column, padding_left: LIST_INDENT) {
-                            TaskList(items: props.projects.clone(), id_prefix_len, options: project_options)
+                            TaskList(items: props.projects.clone(), id_prefix_len, options)
                         }
                     }
                 })

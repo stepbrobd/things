@@ -1,0 +1,18 @@
+```trycmd
+$ run.sh things area Ar
+◆ Home  (2 projects, 1 task)
+
+  Ta ▢ ⭑ Loose today
+
+  Pj ◯ ⭑ Paint the fence
+  Pk ◯ ☽ Evening project
+
+```
+
+```trycmd
+$ run.sh things someday
+⬚ Someday  (1 item)
+
+  Ts ⬚ ⭑ Someday with a deadline  ⚑ due by 2026-03-24
+
+```
