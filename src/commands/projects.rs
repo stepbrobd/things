@@ -29,7 +29,7 @@ use crate::{
 
 #[derive(Subcommand)]
 pub enum ProjectsSubcommand {
-    #[command(about = "Show all active projects")]
+    #[command(about = "Show all incomplete projects")]
     List(ProjectsListArgs),
     #[command(about = "Create a new project")]
     New(ProjectsNewArgs),

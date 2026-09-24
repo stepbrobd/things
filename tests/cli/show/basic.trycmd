@@ -1,7 +1,7 @@
 ```trycmd
 $ run.sh things --today-ts 1774396800 show Ta11111111111111111111
 Write the announcement  Ta11111111111111111111
-Kind: to-do, open
+Kind: to-do, incomplete
 When: today @09:00
 Deadline: 2026-04-01
 Project: Launch

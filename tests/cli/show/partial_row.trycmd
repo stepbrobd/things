@@ -1,7 +1,7 @@
 ```trycmd
 $ run.sh things show Ta
 Order tiles  Ta11111111111111111111
-Kind: to-do, open, did not replay completely
+Kind: to-do, incomplete, did not replay completely
 When: inbox
 Dates: modified 2026-03-23
 2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
@@ -11,7 +11,7 @@ Dates: modified 2026-03-23
 ```trycmd
 $ run.sh things show Tb
 Grout  Tb11111111111111111111
-Kind: to-do, open, did not replay completely
+Kind: to-do, incomplete, did not replay completely
 When: inbox
 2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
 

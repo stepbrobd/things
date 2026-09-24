@@ -16,7 +16,7 @@ $ run.sh things projects
 ```trycmd
 $ run.sh things show Tc
 Plant bulbs  Tc11111111111111111111
-Kind: to-do, open, in the Trash
+Kind: to-do, incomplete, in the Trash
 When: anytime
 Project: Garden
 Heading: Spring

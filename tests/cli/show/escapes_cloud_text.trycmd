@@ -1,7 +1,7 @@
 ```trycmd
 $ run.sh things show Rc
 Renew passport^JKind: to-do, done^M^[[8mhidden  Rc11111111111111111111
-Kind: to-do, open
+Kind: to-do, incomplete
 When: inbox
 Dates: created 2026-03-20, modified 2026-03-20
 Notes:

@@ -58,7 +58,7 @@ impl Command for ShowArgs {
             TaskType::Unknown(raw) => format!("unknown kind {raw}"),
         };
         let mut status = match task.status {
-            TaskStatus::Incomplete => "open".to_string(),
+            TaskStatus::Incomplete => "incomplete".to_string(),
             TaskStatus::Completed => "done".to_string(),
             TaskStatus::Canceled => "canceled".to_string(),
             TaskStatus::Unknown(raw) => format!("unknown status {raw}"),

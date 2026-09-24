@@ -29,7 +29,7 @@ pub struct ProjectsViewProps {
 #[component]
 pub fn ProjectsView<'a>(props: &'a ProjectsViewProps) -> impl Into<AnyElement<'a>> {
     if props.projects_count == 0 {
-        return element! { EmptyText(content: "No active projects.") }.into_any();
+        return element! { EmptyText(content: "No incomplete projects.") }.into_any();
     }
 
     let options = TaskOptions {
