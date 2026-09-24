@@ -152,22 +152,25 @@ impl Command for ShowArgs {
         }
         // instants show under their local day
         // the deadline above is a day stamp
-        let mut dates = vec![format!("created {}", fmt_date_local(task.creation_date))];
-        if task.modification_date.is_some() {
-            dates.push(format!(
-                "modified {}",
-                fmt_date_local(task.modification_date)
-            ));
+        // a date the item lacks is left out
+        // a status this CLI does not know gets no word of its own for the day it ended
+        let closed = match task.status {
+            TaskStatus::Completed => "completed",
+            TaskStatus::Canceled => "canceled",
+            _ => "closed",
+        };
+        let dates = [
+            ("created", task.creation_date),
+            ("modified", task.modification_date),
+            (closed, task.stop_date),
+        ]
+        .into_iter()
+        .filter(|(_, date)| date.is_some())
+        .map(|(label, date)| format!("{label} {}", fmt_date_local(date)))
+        .collect::<Vec<_>>();
+        if !dates.is_empty() {
+            writeln!(out, "{} {}", field("Dates"), dates.join(", "))?;
         }
-        if task.stop_date.is_some() {
-            let closed = if task.is_canceled() {
-                "canceled"
-            } else {
-                "completed"
-            };
-            dates.push(format!("{closed} {}", fmt_date_local(task.stop_date)));
-        }
-        writeln!(out, "{} {}", field("Dates"), dates.join(", "))?;
         if let Some(notes) = task
             .notes
             .as_deref()

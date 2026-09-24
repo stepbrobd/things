@@ -1,0 +1,8 @@
+```trycmd
+$ run.sh things show Tu
+From a newer client  Tu11111111111111111111
+Kind: to-do, unknown status 77
+When: anytime
+Dates: created 2026-03-20, modified 2026-03-23, closed 2026-03-23
+
+```
