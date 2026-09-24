@@ -1,0 +1,23 @@
+```trycmd
+$ run.sh things edit Tq --when today --repeat daily
+? 1
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container did not replay completely: Porch
+
+```
+
+```trycmd
+$ run.sh things edit Td --when today --repeat daily
+? 1
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Tag did not replay completely: Chores
+
+```
+
+```trycmd
+$ run.sh things edit Tn --when today --repeat daily
+? 1
+2 objects did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Container not found: Am11111111111111111111
+
+```

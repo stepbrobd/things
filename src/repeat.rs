@@ -517,12 +517,31 @@ pub fn due_instances(
                 // a template in a project or heading whose replay failed makes nothing either
                 // that container may be closed or in the Trash without showing it
                 // a container missing from the store failed to replay or was never seen
+                // an item of another kind and the template of a repeating project take no to-do
                 && !template
                     .action_group
                     .iter()
                     .cloned()
                     .chain(store.effective_project_uuid(template))
-                    .any(|id| store.tasks_by_uuid.get(&id).is_none_or(|container| container.degraded))
+                    .any(|id| {
+                        store.tasks_by_uuid.get(&id).is_none_or(|container| {
+                            container.degraded
+                                || container.is_recurrence_template()
+                                || !(container.is_project() || container.is_heading())
+                        })
+                    })
+                // an area or a tag whose replay failed takes no instance
+                // an area missing from the store failed to replay or was never seen
+                && template.area.as_ref().is_none_or(|id| {
+                    store
+                        .areas_by_uuid
+                        .get(id)
+                        .is_some_and(|area| !area.degraded)
+                })
+                && !template
+                    .tags
+                    .iter()
+                    .any(|id| store.tags_by_uuid.get(id).is_some_and(|tag| tag.degraded))
                 // a template with a deadline is left to the Apple clients
                 // the app keeps an instance's deadline as an offset no capture has shown written
                 && template.deadline.is_none()
@@ -1270,6 +1289,44 @@ mod tests {
                 .contains_key(&PROJECT.parse().expect("project id"))
         );
         assert!(due_on(&missing, "2026-03-25").is_empty());
+    }
+
+    #[test]
+    fn a_template_where_the_commands_put_no_to_do_makes_nothing() {
+        let daily = r#"{"ed":64092211200,"fa":1,"fu":16,"ia":1773619200,"of":[{"dy":0}],"rc":0,"rrv":4,"sr":1773619200,"tp":0,"ts":0}"#;
+        const HOLDER: &str = "Pj11111111111111111111";
+        let placed = |place: fn(&mut TaskProps, ThingsId), holder: &str| {
+            let (uuid, mut object) = template_object(daily, "2026-03-25", 1);
+            if let crate::wire::wire_object::Properties::TaskCreate(props) = &mut object.payload {
+                place(props, HOLDER.parse().expect("holder id"));
+            }
+            let holder: WireObject = serde_json::from_str(holder).expect("holder");
+            store_of(vec![(uuid, object), (HOLDER.to_string(), holder)])
+        };
+        let in_project: fn(&mut TaskProps, ThingsId) =
+            |props, id| props.parent_project_ids = vec![id];
+        let in_area: fn(&mut TaskProps, ThingsId) = |props, id| props.area_ids = vec![id];
+        let tagged: fn(&mut TaskProps, ThingsId) = |props, id| props.tag_ids = vec![id];
+        // the template of a repeating project and an item of an unknown kind hold no to-do
+        let project_template = format!(
+            r#"{{"t":0,"e":"Task7","p":{{"tt":"Garden season","tp":1,"st":1,"rr":{daily}}}}}"#
+        );
+        assert!(due_on(&placed(in_project, &project_template), "2026-03-25").is_empty());
+        let unknown_kind = r#"{"t":0,"e":"Task7","p":{"tt":"Odd","tp":9,"st":1}}"#;
+        assert!(due_on(&placed(in_project, unknown_kind), "2026-03-25").is_empty());
+        // an area that replayed takes the instance
+        // one whose field does not parse and one missing from the store take none
+        let area = r#"{"t":0,"e":"Area3","p":{"tt":"Home"}}"#;
+        assert_eq!(due_on(&placed(in_area, area), "2026-03-25").len(), 1);
+        let marked_area = r#"{"t":0,"e":"Area3","p":{"tt":"Home","ix":"first"}}"#;
+        assert!(due_on(&placed(in_area, marked_area), "2026-03-25").is_empty());
+        let missing_area = r#"{"t":0,"e":"Area3","p":"garbled"}"#;
+        assert!(due_on(&placed(in_area, missing_area), "2026-03-25").is_empty());
+        // a tag whose field does not parse goes on no instance
+        let tag = r#"{"t":0,"e":"Tag4","p":{"tt":"Chores"}}"#;
+        assert_eq!(due_on(&placed(tagged, tag), "2026-03-25").len(), 1);
+        let marked_tag = r#"{"t":0,"e":"Tag4","p":{"tt":"Chores","ix":"first"}}"#;
+        assert!(due_on(&placed(tagged, marked_tag), "2026-03-25").is_empty());
     }
 
     #[test]

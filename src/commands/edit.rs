@@ -319,6 +319,35 @@ fn apply_schedule(
                 }
             }
         }
+        // nor in an area or with a tag that did not replay completely
+        let area = match &update.area_ids {
+            Some(ids) => ids.first().cloned(),
+            None => task.area.clone(),
+        };
+        if let Some(id) = area {
+            let Some(area) = store.areas_by_uuid.get(&id) else {
+                return Err(format!("Container not found: {id}"));
+            };
+            if area.degraded {
+                return Err(format!(
+                    "Container did not replay completely: {}",
+                    one_line(&area.title)
+                ));
+            }
+        }
+        if let Some(tag) = update
+            .tag_ids
+            .as_ref()
+            .unwrap_or(&task.tags)
+            .iter()
+            .filter_map(|id| store.tags_by_uuid.get(id))
+            .find(|tag| tag.degraded)
+        {
+            return Err(format!(
+                "Tag did not replay completely: {}",
+                one_line(&store.resolve_tag_title(&tag.uuid))
+            ));
+        }
         let spec: RepeatSpec = rule_text.parse()?;
         let bound = bound(args.times, args.until.as_deref())?;
         let when_day = match update.scheduled_date {
