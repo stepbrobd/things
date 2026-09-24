@@ -561,7 +561,7 @@ pub fn get_state_with_append_log(
     client: &mut ThingsCloudClient,
     cache_dir: &Path,
 ) -> Result<(RawState, CacheLock, Option<anyhow::Error>)> {
-    let lock = lock_cache(cache_dir)?;
+    let lock = lock_cache(cache_dir).context("Failed to lock the sync cache")?;
     let sync_error = match sync_locked(client, cache_dir) {
         Ok(()) => None,
         Err(error) => {
@@ -583,15 +583,15 @@ pub fn get_state_with_append_log(
         Some(sync) => error.context(format!(
             "Sync failed ({sync:#}), and the sync cache cannot be read"
         )),
-        None => error,
+        None => error.context("Failed to read the sync cache"),
     })?;
     Ok((state, lock, sync_error))
 }
 
 /// the state folded from the journal on disk, without touching the server
 pub fn fold_state_from_append_log(cache_dir: &Path) -> Result<RawState> {
-    let _lock = lock_cache(cache_dir)?;
-    fold_locked(cache_dir)
+    let _lock = lock_cache(cache_dir).context("Failed to lock the sync cache")?;
+    fold_locked(cache_dir).context("Failed to read the sync cache")
 }
 
 #[cfg(test)]
@@ -669,9 +669,8 @@ mod tests {
         let cache_dir = temp_dir.path();
         seed_log(cache_dir, "{not-json}\n");
 
-        let error = fold_state_from_append_log(cache_dir)
-            .expect_err("corrupt log must fail")
-            .to_string();
+        let error = fold_state_from_append_log(cache_dir).expect_err("corrupt log must fail");
+        let error = format!("{error:#}");
 
         assert!(error.contains("byte 0"));
         assert!(error.contains("key must be a string"));

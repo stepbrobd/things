@@ -60,13 +60,13 @@ pub struct TagDeltaArgs {
     #[arg(
         long = "add-tags",
         short = 'a',
-        help = "Comma-separated tags to add (titles or UUID prefixes)"
+        help = "Comma-separated tags to add (titles or ID prefixes)"
     )]
     pub add_tags: Option<String>,
     #[arg(
         long = "remove-tags",
         short = 'r',
-        help = "Comma-separated tags to remove (titles or UUID prefixes)"
+        help = "Comma-separated tags to remove (titles or ID prefixes)"
     )]
     pub remove_tags: Option<String>,
 }

@@ -57,7 +57,7 @@ pub struct ProjectsListArgs {
 pub struct ProjectsNewArgs {
     /// Project title
     pub title: String,
-    #[arg(long, short = 'a', help = "Area UUID/prefix to place the project in")]
+    #[arg(long, short = 'a', help = "Area ID or prefix to place the project in")]
     pub area: Option<String>,
     #[arg(
         long,
@@ -70,7 +70,7 @@ pub struct ProjectsNewArgs {
     #[arg(
         long,
         short = 't',
-        help = "Comma-separated tags (titles or UUID prefixes)"
+        help = "Comma-separated tags (titles or ID prefixes)"
     )]
     pub tags: Option<String>,
     #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]
@@ -79,11 +79,15 @@ pub struct ProjectsNewArgs {
 
 #[derive(Debug, Args)]
 pub struct ProjectsEditArgs {
-    /// Project UUID (or unique UUID prefix)
+    /// Project ID (or unique ID prefix)
     pub project_id: String,
     #[arg(long, short = 't', help = "Replace title")]
     pub title: Option<String>,
-    #[arg(long = "move", short = 'm', help = "Move to clear or area UUID/prefix")]
+    #[arg(
+        long = "move",
+        short = 'm',
+        help = "Move to clear or area ID or prefix"
+    )]
     pub move_target: Option<String>,
     #[arg(long, short = 'n', help = "Replace notes (use empty string to clear)")]
     pub notes: Option<String>,

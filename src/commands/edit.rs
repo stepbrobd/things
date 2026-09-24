@@ -32,7 +32,7 @@ use crate::{
     about = "Edit the title, notes, container, tags, checklist, when, deadline, reminder, or repeat of a task"
 )]
 pub struct EditArgs {
-    #[arg(required = true, help = "Task UUID(s) (or unique UUID prefixes)")]
+    #[arg(required = true, help = "Task ID(s) (or unique ID prefixes)")]
     pub task_ids: Vec<IdentifierToken>,
     #[arg(long, short = 't', help = "Replace title (single task only)")]
     pub title: Option<String>,
@@ -45,7 +45,7 @@ pub struct EditArgs {
     #[arg(
         long = "move",
         short = 'm',
-        help = "Move to Inbox, clear, project UUID/prefix, or area UUID/prefix"
+        help = "Move to Inbox, clear, project ID or prefix, or area ID or prefix"
     )]
     pub move_target: Option<String>,
     #[command(flatten)]

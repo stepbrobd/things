@@ -107,7 +107,7 @@ impl Prepared {
 #[derive(Debug, Default, Args)]
 #[command(about = "Search and filter tasks")]
 #[command(
-    after_help = "Date filter syntax:  --deadline OP DATE\n  OP is one of: >  <  >=  <=  =\n  DATE is YYYY-MM-DD or a keyword: today, tomorrow, yesterday\n\n  Examples:\n    --deadline \"<today\"          overdue tasks\n    --deadline \">=2026-01-01\"    deadline on or after date\n    --created \">=2026-01-01\" --created \"<=2026-03-31\"   date range"
+    after_help = "Date filter syntax:  --deadline OP DATE\n  OP is one of: >  <  >=  <=  =\n  DATE is YYYY-MM-DD or a keyword: today, tomorrow, yesterday\n\n  Examples:\n    --deadline \"<today\"          Overdue tasks\n    --deadline \">=2026-01-01\"    Deadline on or after date\n    --created \">=2026-01-01\" --created \"<=2026-03-31\"   Date range"
 )]
 #[command(group(ArgGroup::new("status").args(["incomplete", "completed", "canceled", "any_status"]).multiple(false)))]
 #[command(group(ArgGroup::new("deadline_presence").args(["has_deadline", "no_deadline"]).multiple(false)))]
@@ -140,21 +140,21 @@ pub struct FindArgs {
         long = "tag",
         short = 't',
         value_name = "TAG",
-        help = "Has this tag (title or UUID prefix), repeatable with OR logic"
+        help = "Has this tag (title or ID prefix), repeatable with OR logic"
     )]
     tag_filters: Vec<IdentifierToken>,
     #[arg(
         long = "project",
         short = 'p',
         value_name = "PROJECT",
-        help = "In this project (title substring or UUID prefix), repeatable with OR logic"
+        help = "In this project (title substring or ID prefix), repeatable with OR logic"
     )]
     project_filters: Vec<IdentifierToken>,
     #[arg(
         long = "area",
         short = 'a',
         value_name = "AREA",
-        help = "In this area (title substring or UUID prefix), repeatable with OR logic"
+        help = "In this area (title substring or ID prefix), repeatable with OR logic"
     )]
     area_filters: Vec<IdentifierToken>,
     #[arg(long, short = 'I', help = "In Inbox view")]

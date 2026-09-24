@@ -398,7 +398,7 @@ fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> 
         return Ok(prefix[0].clone());
     }
     if prefix.len() > 1 {
-        return Err(format!("Ambiguous tag UUID prefix: {token}"));
+        return Err(format!("Ambiguous tag ID prefix: {token}"));
     }
 
     Err(format!("Tag not found: {token}"))

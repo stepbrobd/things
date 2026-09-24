@@ -19,7 +19,7 @@ use crate::{
 #[derive(Debug, Args)]
 #[command(about = "Move to-dos, projects, and headings to the Trash, or delete an area")]
 pub struct DeleteArgs {
-    /// Item UUID(s) (or unique UUID prefixes)
+    /// Item ID(s) (or unique ID prefixes)
     #[arg(required = true)]
     pub item_ids: Vec<IdentifierToken>,
 }

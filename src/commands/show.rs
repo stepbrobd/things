@@ -14,7 +14,7 @@ use crate::{
 #[derive(Debug, Args)]
 #[command(about = "Show one task or project in full")]
 pub struct ShowArgs {
-    /// Task or project UUID (or unique UUID prefix)
+    /// Task or project ID (or unique ID prefix)
     pub item_id: String,
 }
 

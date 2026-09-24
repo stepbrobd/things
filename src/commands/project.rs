@@ -20,7 +20,7 @@ use crate::{
 #[derive(Debug, Args)]
 #[command(about = "Show all tasks in a project")]
 pub struct ProjectArgs {
-    /// Project UUID (or unique UUID prefix)
+    /// Project ID (or unique ID prefix)
     pub project_id: String,
     /// Show notes beneath each task
     #[arg(long, short = 'd')]

@@ -32,7 +32,7 @@ use crate::{
 #[command(disable_help_subcommand = true)]
 #[command(about = "Command-line interface for Things 3 via Cloud API")]
 #[command(
-    after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync log live\n\nExit status:\n  0  Success\n  1  The command failed\n  2  The command line did not parse\n  3  The sync failed and the output comes from the cached state"
+    after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                One of pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync cache live\n\nExit status:\n  0  Success\n  1  The command failed\n  2  The command line did not parse\n  3  The sync failed and the output comes from the cached state"
 )]
 pub struct Cli {
     /// Output JSON when supported by the selected command
@@ -123,15 +123,15 @@ impl Cli {
                 let mut buf = String::new();
                 std::io::stdin()
                     .read_to_string(&mut buf)
-                    .with_context(|| "failed to read journal JSON from stdin")?;
+                    .with_context(|| "Failed to read journal JSON from stdin")?;
                 buf
             } else {
                 std::fs::read_to_string(journal_path).with_context(|| {
-                    format!("failed to read journal file {}", journal_path.display())
+                    format!("Failed to read journal file {}", journal_path.display())
                 })?
             };
             let items: Vec<WireItem> =
-                serde_json::from_str(&raw).with_context(|| "failed to parse journal JSON")?;
+                serde_json::from_str(&raw).with_context(|| "Failed to parse journal JSON")?;
             return Ok(fold_items(items));
         }
 
@@ -236,7 +236,7 @@ fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
         changes.extend(materialized.changes.clone());
     }
     ctx.commit_changes(changes.clone())
-        .with_context(|| "failed to create due instances of repeating to-dos")?;
+        .with_context(|| "Failed to create due instances of repeating to-dos")?;
     // the committed objects join the run's state
     // the command that follows sees them without another sync
     if let Some(state) = cli.state_cache.borrow_mut().as_mut() {

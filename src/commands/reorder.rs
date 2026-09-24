@@ -23,11 +23,11 @@ use crate::{
 #[command(about = "Reorder item relative to another item")]
 #[command(group(ArgGroup::new("anchor").args(["before_id", "after_id"]).required(true).multiple(false)))]
 pub struct ReorderArgs {
-    /// Item UUID (or unique UUID prefix)
+    /// Item ID (or unique ID prefix)
     pub item_id: String,
-    #[arg(long, short = 'b', help = "Anchor item UUID/prefix to place before")]
+    #[arg(long, short = 'b', help = "Anchor item ID or prefix to place before")]
     pub before_id: Option<String>,
-    #[arg(long, short = 'a', help = "Anchor item UUID/prefix to place after")]
+    #[arg(long, short = 'a', help = "Anchor item ID or prefix to place after")]
     pub after_id: Option<String>,
 }
 

@@ -31,7 +31,7 @@ pub struct NewArgs {
         long = "in",
         short = 'i',
         default_value = "inbox",
-        help = "Container: inbox, project UUID/prefix, or area UUID/prefix"
+        help = "Container: inbox, project ID or prefix, or area ID or prefix"
     )]
     pub in_target: String,
     #[arg(
@@ -44,13 +44,13 @@ pub struct NewArgs {
         long = "before",
         short = 'b',
         conflicts_with = "after_id",
-        help = "Insert before this sibling task UUID/prefix"
+        help = "Insert before this sibling task ID or prefix"
     )]
     pub before_id: Option<String>,
     #[arg(
         long = "after",
         short = 'a',
-        help = "Insert after this sibling task UUID/prefix"
+        help = "Insert after this sibling task ID or prefix"
     )]
     pub after_id: Option<String>,
     #[arg(long, short = 'n', default_value = "", help = "Task notes")]
@@ -58,7 +58,7 @@ pub struct NewArgs {
     #[arg(
         long,
         short = 't',
-        help = "Comma-separated tags (titles or UUID prefixes)"
+        help = "Comma-separated tags (titles or ID prefixes)"
     )]
     pub tags: Option<String>,
     #[arg(long = "deadline", short = 'd', help = "Deadline date (YYYY-MM-DD)")]

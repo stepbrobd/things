@@ -46,14 +46,14 @@ pub struct AreasNewArgs {
     #[arg(
         long,
         short = 't',
-        help = "Comma-separated tags (titles or UUID prefixes)"
+        help = "Comma-separated tags (titles or ID prefixes)"
     )]
     pub tags: Option<String>,
 }
 
 #[derive(Debug, Args)]
 pub struct AreasEditArgs {
-    /// Area UUID (or unique UUID prefix)
+    /// Area ID (or unique ID prefix)
     pub area_id: String,
     #[arg(long, short = 't', help = "Replace title")]
     pub title: Option<String>,

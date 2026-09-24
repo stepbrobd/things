@@ -20,7 +20,7 @@ use crate::{
 #[command(about = "Mark a task done, incomplete, or canceled")]
 #[command(group(ArgGroup::new("status").args(["done", "incomplete", "canceled", "check_ids", "uncheck_ids", "check_cancel_ids"]).required(true).multiple(false)))]
 pub struct MarkArgs {
-    /// Task UUID(s) (or unique UUID prefixes)
+    /// Task ID(s) (or unique ID prefixes)
     #[arg(required = true)]
     pub task_ids: Vec<IdentifierToken>,
     #[arg(long, short = 'd', help = "Mark task(s) as completed")]
@@ -100,7 +100,7 @@ fn validate_recurring_instance(
         return (
             false,
             format!(
-                "Recurring instance has {} template references where exactly 1 is expected.",
+                "Recurring instance has {} template references where exactly one is expected.",
                 task.recurrence_templates.len()
             ),
         );
@@ -818,7 +818,7 @@ mod tests {
             assert_eq!(
                 errs,
                 vec![
-                    "Recurring instance has 2 template references where exactly 1 is expected. (Recurring instance)"
+                    "Recurring instance has 2 template references where exactly one is expected. (Recurring instance)"
                 ]
             );
         }

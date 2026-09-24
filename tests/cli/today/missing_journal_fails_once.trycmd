@@ -1,6 +1,6 @@
 ```trycmd
 $ run.sh things --load-journal missing.json today
 ? 1
-failed to read journal file missing.json: No such file or directory (os error 2)
+Failed to read journal file missing.json: No such file or directory (os error 2)
 
 ```
