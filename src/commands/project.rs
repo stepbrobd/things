@@ -53,6 +53,7 @@ impl Command for ProjectArgs {
             .into_iter()
             .filter(|t| {
                 !t.is_recurrence_template()
+                    && !store.in_trash(t)
                     && store.effective_project_uuid(t).as_ref() == Some(&project.uuid)
             })
             .collect::<Vec<_>>();

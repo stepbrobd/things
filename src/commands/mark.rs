@@ -149,9 +149,6 @@ fn validate_mark_target(
     if task.is_recurrence_template() {
         return "A repeat template takes no status, mark one of its instances instead.".to_string();
     }
-    if task.trashed {
-        return "Task is in Trash and cannot be completed.".to_string();
-    }
     if action == "done" && task.status == TaskStatus::Completed {
         return "Task is already completed.".to_string();
     }
@@ -228,7 +225,7 @@ fn build_mark_status_plan(
                 .values()
                 .filter(|child| {
                     child.is_todo()
-                        && !child.trashed
+                        && !store.in_trash(child)
                         && child.status == TaskStatus::Incomplete
                         && !child.is_recurrence_template()
                         && !seen.contains(&child.uuid)

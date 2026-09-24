@@ -1,0 +1,78 @@
+```trycmd
+$ run.sh things project Pk
+◯ Garden (0/0)
+  No tasks.
+
+```
+
+```trycmd
+$ run.sh things projects
+● Projects  (1)
+
+  Pk ◯ Garden
+
+```
+
+```trycmd
+$ run.sh things show Tc
+Plant bulbs  Tc11111111111111111111
+Kind: to-do, open, in the Trash
+When: anytime
+Project: Garden
+Heading: Spring
+Dates: created 2026-03-20, modified 2026-03-22
+
+```
+
+```trycmd
+$ run.sh things mark Tc --done
+? 1
+Item not found: Tc
+
+```
+
+```trycmd
+$ run.sh things delete Tc
+? 1
+Item already deleted: Plant bulbs
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 mark Pk --done
+✓ Done Garden  Pk11111111111111111111
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Pk11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "sp": 1774400000.0,
+        "ss": 3
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 delete Pk
+× Deleted Garden  Pk11111111111111111111
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Pk11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "md": 1774400000.0,
+        "tr": true
+      },
+      "t": 1
+    }
+  }
+}
+
+```

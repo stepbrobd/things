@@ -86,7 +86,7 @@ impl ThingsStore {
             .tasks_by_uuid
             .values()
             .filter(|task| {
-                !task.trashed && !task.is_heading() && task.entity.can_upgrade_to_task7()
+                !self.in_trash(task) && !task.is_heading() && task.entity.can_upgrade_to_task7()
             })
             .collect();
 
@@ -415,7 +415,7 @@ impl ThingsStore {
             .tasks_by_uuid
             .values()
             .filter(|t| {
-                !t.trashed
+                !self.in_trash(t)
                     && t.status == TaskStatus::Incomplete
                     && t.start == TaskStart::Someday
                     && !t.is_heading()

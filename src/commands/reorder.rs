@@ -216,7 +216,9 @@ fn build_reorder_plan(
     let mut siblings = store
         .tasks_by_uuid
         .values()
-        .filter(|t| !t.trashed && t.status == TaskStatus::Incomplete && bucket(t) == item_bucket)
+        .filter(|t| {
+            !store.in_trash(t) && t.status == TaskStatus::Incomplete && bucket(t) == item_bucket
+        })
         .cloned()
         .collect::<Vec<_>>();
     siblings.sort_by(|a, b| match a.index.cmp(&b.index) {

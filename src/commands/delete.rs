@@ -83,7 +83,7 @@ fn build_delete_plan(
                     task.entity
                 ));
             }
-            if task.trashed {
+            if store.in_trash(&task) {
                 return Err(format!("Item already deleted: {}", task.title));
             }
             if task.has_repeater() {
@@ -113,7 +113,7 @@ fn build_delete_plan(
             .tasks_by_uuid
             .values()
             .filter(|task| {
-                !task.trashed
+                !store.in_trash(task)
                     && task.uuid != *parent
                     && if in_area {
                         store.effective_area_uuid(task).as_ref() == Some(parent)

@@ -58,7 +58,7 @@ impl Command for ShowArgs {
             TaskStatus::Canceled => "canceled".to_string(),
             TaskStatus::Unknown(raw) => format!("unknown status {raw}"),
         };
-        if task.trashed {
+        if store.in_trash(&task) {
             status.push_str(", in the Trash");
         }
         if task.degraded {

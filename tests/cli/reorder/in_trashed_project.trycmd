@@ -1,0 +1,6 @@
+```trycmd
+$ run.sh things reorder Tb --before-id Ta
+? 1
+Cannot reorder item in the selected list.
+
+```

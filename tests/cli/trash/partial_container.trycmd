@@ -1,0 +1,23 @@
+```trycmd
+$ run.sh things trash
+× Trash  (2 items)
+
+  T ⬚ Sort the attic
+  H ▢ (untitled)
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
+
+```trycmd
+$ run.sh things someday
+Someday is empty.
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
+
+```trycmd
+$ run.sh things area Ar
+◆ Home
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```

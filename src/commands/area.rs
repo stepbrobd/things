@@ -67,6 +67,7 @@ impl Command for AreaArgs {
                 }
                 t.area.as_ref() == Some(&area.uuid)
                     && !t.is_project()
+                    && !store.in_trash(t)
                     && store.effective_project_uuid(t).is_none()
             })
             .collect::<Vec<_>>();
