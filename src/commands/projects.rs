@@ -154,33 +154,28 @@ fn build_projects_edit_plan(
             update.area_ids = Some(vec![]);
             labels.push("move=clear".to_string());
         } else {
-            let (resolved_project, _, project_candidates) = store.resolve_mark_identifier(move_raw);
+            let (item, _, item_candidates) = store.resolve_task_identifier(move_raw);
             let (area, _, area_candidates) = store.resolve_area_identifier(move_raw);
-            if !project_candidates.is_empty() || !area_candidates.is_empty() {
+            if !item_candidates.is_empty() || !area_candidates.is_empty() {
                 return Err(format!(
                     "Ambiguous --move target '{move_raw}' (matches several items)."
                 ));
             }
-            let area_uuid = area.as_ref().map(|a| a.uuid.clone());
-
-            // an item of any kind and an area under one prefix leave the target open
-            let (any_item, _, item_candidates) = store.resolve_task_identifier(move_raw);
-            if (any_item.is_some() || !item_candidates.is_empty()) && area_uuid.is_some() {
-                return Err(format!(
-                    "Ambiguous --move target '{}' (matches an item and an area).",
-                    move_raw
-                ));
-            }
-            // a project, heading or to-do is no place for a project, wherever it is
-            if resolved_project.is_some() || store.resolve_task_identifier(move_raw).0.is_some() {
-                return Err("Projects can only be moved to an area or clear.".to_string());
-            }
-            if let Some(area_uuid) = area_uuid {
-                let area_id = area_uuid;
-                update.area_ids = Some(vec![area_id]);
-                labels.push(format!("move={move_raw}"));
-            } else {
-                return Err(format!("Container not found: {move_raw}"));
+            match (item, area) {
+                (Some(_), Some(_)) => {
+                    return Err(format!(
+                        "Ambiguous --move target '{move_raw}' (matches an item and an area)."
+                    ));
+                }
+                // a project, heading or to-do is no place for a project, wherever it is
+                (Some(_), None) => {
+                    return Err("Projects can only be moved to an area or clear.".to_string());
+                }
+                (None, Some(area)) => {
+                    update.area_ids = Some(vec![area.uuid]);
+                    labels.push(format!("move={move_raw}"));
+                }
+                (None, None) => return Err(format!("Container not found: {move_raw}")),
             }
         }
     }

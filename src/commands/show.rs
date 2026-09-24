@@ -28,9 +28,13 @@ impl Command for ShowArgs {
     ) -> Result<()> {
         let store = cli.load_store()?;
         let today = ctx.today();
-        let (task, err, _) = store.resolve_task_identifier(&self.item_id);
+        let (task, err, ambiguous) = store.resolve_task_identifier(&self.item_id);
         let Some(task) = task else {
-            bail!("{err}");
+            let candidates = ambiguous
+                .iter()
+                .map(|task| format!("\n  {}  ({})", one_line(&task.title), task.uuid))
+                .collect::<String>();
+            bail!("{err}{candidates}");
         };
 
         if cli.json {

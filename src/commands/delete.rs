@@ -80,8 +80,18 @@ fn build_delete_plan(
         }
 
         if let Some(task) = task {
+            if let Some(raw) = task.unknown_kind() {
+                return Err(format!(
+                    "Item is of unknown kind {raw}: {}",
+                    one_line(&task.title)
+                ));
+            }
             if !task.entity.can_upgrade_to_task7() {
-                return Err(format!("Cannot delete an item of kind {}", task.entity));
+                return Err(format!(
+                    "Item is of kind {}: {}",
+                    task.entity,
+                    one_line(&task.title)
+                ));
             }
             if store.in_trash(&task) {
                 return Err(format!("Item is in the Trash: {}", one_line(&task.title)));
@@ -144,6 +154,12 @@ fn build_delete_plan(
         let heading = target.is_some_and(Task::is_heading);
         if in_area || heading || target.is_some_and(Task::is_project) {
             for child in contents(&parent, in_area, heading) {
+                if let Some(raw) = child.unknown_kind() {
+                    return Err(format!(
+                        "Item is of unknown kind {raw}: {}",
+                        one_line(&child.title)
+                    ));
+                }
                 if child.has_repeater() {
                     return Err(format!(
                         "Cannot delete an item with a repeater, whose bookkeeping the Apple clients keep: {}",

@@ -37,17 +37,20 @@ impl Command for ProjectArgs {
     ) -> Result<()> {
         let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
-        let (task_opt, err, ambiguous) = store.resolve_mark_identifier(&self.project_id);
+        let (task_opt, err, ambiguous) = store.resolve_task_identifier(&self.project_id);
         let Some(project) = task_opt else {
             let candidates = ambiguous
                 .iter()
-                .map(|task| format!("\n  {}", one_line(&task.title)))
+                .map(|task| format!("\n  {}  ({})", one_line(&task.title), task.uuid))
                 .collect::<String>();
             bail!("{err}{candidates}");
         };
 
         if !project.is_project() {
             bail!("Not a project: {}", one_line(&project.title));
+        }
+        if store.in_trash(&project) {
+            bail!("Project is in the Trash: {}", one_line(&project.title));
         }
 
         let children = store

@@ -37,8 +37,6 @@ pub struct ThingsStore {
     pub tags_by_uuid: HashMap<ThingsId, Tag>,
     pub project_progress_by_uuid: HashMap<ThingsId, ProjectProgress>,
     pub short_ids: HashMap<ThingsId, String>,
-    pub markable_ids: HashSet<ThingsId>,
-    pub markable_ids_sorted: Vec<ThingsId>,
     pub area_ids_sorted: Vec<ThingsId>,
     pub task_ids_sorted: Vec<ThingsId>,
 }
@@ -63,7 +61,6 @@ impl ThingsStore {
         store.build(raw_state);
         store.build_project_progress_index();
         store.short_ids = shortest_unique_prefixes(&store.short_id_domain(raw_state));
-        store.build_mark_indexes();
         store.area_ids_sorted = store.areas_by_uuid.keys().cloned().collect();
         store.area_ids_sorted.sort();
         store.task_ids_sorted = store.tasks_by_uuid.keys().cloned().collect();
@@ -81,20 +78,6 @@ impl ThingsStore {
             ids.push(uuid.clone());
         }
         ids
-    }
-
-    fn build_mark_indexes(&mut self) {
-        let markable: Vec<&Task> = self
-            .tasks_by_uuid
-            .values()
-            .filter(|task| {
-                !self.in_trash(task) && !task.is_heading() && task.entity.can_upgrade_to_task7()
-            })
-            .collect();
-
-        self.markable_ids = markable.iter().map(|t| t.uuid.clone()).collect();
-        self.markable_ids_sorted = self.markable_ids.iter().cloned().collect();
-        self.markable_ids_sorted.sort();
     }
 
     fn build_project_progress_index(&mut self) {
@@ -779,22 +762,20 @@ impl ThingsStore {
         }
 
         if matches.len() > 1 {
-            let mut out = Vec::new();
-            for m in matches.iter().take(10) {
-                if let Some(item) = lookup(m) {
-                    out.push(item.clone());
-                }
-            }
-            let remaining = matches.len().saturating_sub(out.len());
-            let mut msg = format!("Ambiguous {} id prefix.", label.to_lowercase());
-            if remaining > 0 {
-                msg.push_str(&format!(
-                    " ({} matches, showing first {})",
-                    matches.len(),
-                    out.len()
-                ));
-            }
-            return (None, msg, out);
+            let out = matches
+                .iter()
+                .take(10)
+                .filter_map(|m| lookup(m).cloned())
+                .collect();
+            return (
+                None,
+                format!(
+                    "Ambiguous {} ID prefix ({} matches).",
+                    label.to_lowercase(),
+                    matches.len()
+                ),
+                out,
+            );
         }
 
         (
@@ -804,39 +785,26 @@ impl ThingsStore {
         )
     }
 
+    /// one to-do or project the commands write, by full id or unique prefix among every item
+    ///
+    /// an item in the Trash, a heading or an item of a kind the writes do not know is named as such rather than as missing
     pub fn resolve_mark_identifier(&self, identifier: &str) -> (Option<Task>, String, Vec<Task>) {
-        let resolved = self.resolve_prefix(
-            identifier,
-            |id| {
-                self.markable_ids
-                    .contains(id)
-                    .then(|| self.tasks_by_uuid.get(id))
-                    .flatten()
-            },
-            &self.markable_ids_sorted,
-            "Item",
-        );
-        // an item in the Trash or a heading takes no writes and is named as such rather than as missing
-        if resolved.0.is_none()
-            && resolved.2.is_empty()
-            && let (Some(task), _, _) = self.resolve_task_identifier(identifier)
-        {
-            if self.in_trash(&task) {
-                return (
-                    None,
-                    format!("Item is in the Trash: {}", one_line(&task.title)),
-                    Vec::new(),
-                );
-            }
-            if task.is_heading() {
-                return (
-                    None,
-                    format!("Item is a heading: {}", one_line(&task.title)),
-                    Vec::new(),
-                );
-            }
-        }
-        resolved
+        let resolved = self.resolve_task_identifier(identifier);
+        let Some(task) = &resolved.0 else {
+            return resolved;
+        };
+        let refusal = if self.in_trash(task) {
+            format!("Item is in the Trash: {}", one_line(&task.title))
+        } else if task.is_heading() {
+            format!("Item is a heading: {}", one_line(&task.title))
+        } else if let Some(raw) = task.unknown_kind() {
+            format!("Item is of unknown kind {raw}: {}", one_line(&task.title))
+        } else if !task.entity.can_upgrade_to_task7() {
+            format!("Item is of kind {}: {}", task.entity, one_line(&task.title))
+        } else {
+            return resolved;
+        };
+        (None, refusal, Vec::new())
     }
 
     pub fn resolve_area_identifier(&self, identifier: &str) -> (Option<Area>, String, Vec<Area>) {
@@ -853,7 +821,7 @@ impl ThingsStore {
             identifier,
             |id| self.tasks_by_uuid.get(id),
             &self.task_ids_sorted,
-            "Task",
+            "Item",
         )
     }
 }

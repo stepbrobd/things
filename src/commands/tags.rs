@@ -110,6 +110,12 @@ fn build_tags_delete_plan(
         .values()
         .filter(|task| task.tags.contains(&tag.uuid))
     {
+        if let Some(raw) = task.unknown_kind() {
+            return Err(format!(
+                "Item is of unknown kind {raw} and carries the tag: {}",
+                one_line(&task.title)
+            ));
+        }
         changes.insert(
             task.uuid.to_string(),
             WireObject::update(

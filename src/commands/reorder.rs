@@ -158,9 +158,6 @@ fn build_reorder_plan(
     let Some(item) = item_opt else {
         return Err(err);
     };
-    if !item.entity.can_upgrade_to_task7() {
-        return Err(format!("Cannot reorder an item of kind {}", item.entity));
-    }
 
     let anchor_id = args
         .before_id
@@ -171,18 +168,26 @@ fn build_reorder_plan(
     let Some(anchor) = anchor_opt else {
         return Err(err);
     };
-    if !anchor.entity.can_upgrade_to_task7() {
-        return Err(format!(
-            "Cannot reorder next to an item of kind {}",
-            anchor.entity
-        ));
-    }
 
     if item.uuid == anchor.uuid {
         return Err("Cannot reorder an item relative to itself.".to_string());
     }
-    // an item or anchor that is closed or in the Trash takes no place in a list
+    // an item or anchor of a kind the writes do not know may sit in a list they cannot see
+    // one that is closed or in the Trash takes no place in a list
     for (role, task) in [("Item", &item), ("Anchor", &anchor)] {
+        if let Some(raw) = task.unknown_kind() {
+            return Err(format!(
+                "{role} is of unknown kind {raw}: {}",
+                one_line(&task.title)
+            ));
+        }
+        if !task.entity.can_upgrade_to_task7() {
+            return Err(format!(
+                "{role} is of kind {}: {}",
+                task.entity,
+                one_line(&task.title)
+            ));
+        }
         if let Some(state) = store.closed_state(task) {
             return Err(format!("{role} is {state}: {}", one_line(&task.title)));
         }
@@ -283,6 +288,18 @@ fn build_reorder_plan(
             .map(|task| (task.uuid.clone(), task.today_index))
             .collect();
         let (new_ti, moved) = allocate(&run, hole);
+        // a rebalance writes to every row it moves
+        // one of a kind the writes do not know is refused as in the structural run
+        if !moved.is_empty()
+            && let Some(task) = group
+                .iter()
+                .find(|task| !task.entity.can_upgrade_to_task7() || task.unknown_kind().is_some())
+        {
+            return Err(match task.unknown_kind() {
+                Some(raw) => format!("Cannot rebalance around an item of unknown kind {raw}"),
+                None => format!("Cannot rebalance around an item of kind {}", task.entity),
+            });
+        }
 
         let sb = if item.evening != anchor.evening {
             Some(if anchor.evening { 1 } else { 0 })
@@ -440,12 +457,12 @@ fn build_reorder_plan(
     if !moved.is_empty()
         && let Some(task) = order
             .iter()
-            .find(|task| !task.entity.can_upgrade_to_task7())
+            .find(|task| !task.entity.can_upgrade_to_task7() || task.unknown_kind().is_some())
     {
-        return Err(format!(
-            "Cannot rebalance around an item of kind {}",
-            task.entity
-        ));
+        return Err(match task.unknown_kind() {
+            Some(raw) => format!("Cannot rebalance around an item of unknown kind {raw}"),
+            None => format!("Cannot rebalance around an item of kind {}", task.entity),
+        });
     }
     let mut index_updates: Vec<(String, i32)> = moved
         .into_iter()

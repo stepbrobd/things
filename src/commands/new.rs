@@ -205,11 +205,20 @@ fn build_new_plan(
             return Err(err);
         }
         if let Some(task) = &task
+            && let Some(raw) = task.unknown_kind()
+        {
+            return Err(format!(
+                "Anchor is of unknown kind {raw}: {}",
+                one_line(&task.title)
+            ));
+        }
+        if let Some(task) = &task
             && !task.entity.can_upgrade_to_task7()
         {
             return Err(format!(
-                "Cannot place a to-do next to an item of kind {}",
-                task.entity
+                "Anchor is of kind {}: {}",
+                task.entity,
+                one_line(&task.title)
             ));
         }
         if let Some(task) = &task

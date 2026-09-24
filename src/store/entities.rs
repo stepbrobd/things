@@ -213,6 +213,14 @@ impl Task {
         self.item_type == TaskType::Todo
     }
 
+    /// the number of an item kind this CLI does not know, None for a to-do, project or heading
+    pub fn unknown_kind(&self) -> Option<i32> {
+        match self.item_type {
+            TaskType::Unknown(raw) => Some(raw),
+            _ => None,
+        }
+    }
+
     pub fn is_project(&self) -> bool {
         self.item_type == TaskType::Project
     }

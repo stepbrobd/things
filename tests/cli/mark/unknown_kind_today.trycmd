@@ -1,0 +1,6 @@
+```trycmd
+$ run.sh things --now-ts 1774400000.0 reorder Dx --after-id Da
+? 1
+Cannot rebalance around an item of unknown kind 9
+
+```

@@ -1,0 +1,57 @@
+```trycmd
+$ run.sh things mark T --done
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Ambiguous item ID prefix (2 matches).
+
+```
+
+```trycmd
+$ run.sh things edit T --title Renamed
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Ambiguous item ID prefix (2 matches).
+
+```
+
+```trycmd
+$ run.sh things mark Tb --done
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Item is in the Trash: Rake leaves
+
+```
+
+```trycmd
+$ run.sh things mark Pn --done
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Item is of kind Task8: Shed
+
+```
+
+```trycmd
+$ run.sh things projects edit Pn --title Barn
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Item is of kind Task8: Shed
+
+```
+
+```trycmd
+$ run.sh things project Pn
+◯ Shed (0/0)
+  No tasks.
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
+
+```trycmd
+$ run.sh things show T
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Ambiguous item ID prefix (2 matches).
+  Plant bulbs  (Ta11111111111111111111)
+  Rake leaves  (Tb11111111111111111111)
+
+```

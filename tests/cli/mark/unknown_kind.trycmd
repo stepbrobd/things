@@ -1,0 +1,27 @@
+```trycmd
+$ run.sh things mark Uk --done
+? 1
+Item is of unknown kind 5: Odd row
+
+```
+
+```trycmd
+$ run.sh things delete Uk
+? 1
+Item is of unknown kind 5: Odd row
+
+```
+
+```trycmd
+$ run.sh things reorder Uk --after-id Td
+? 1
+Item is of unknown kind 5: Odd row
+
+```
+
+```trycmd
+$ run.sh things new x --after Uk
+? 1
+Anchor is of unknown kind 5: Odd row
+
+```
