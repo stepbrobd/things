@@ -15,6 +15,13 @@ pub fn today_group(task: &Task, today_ts: i64) -> i64 {
         .unwrap_or(today_ts)
 }
 
+/// a place in Today's order
+///
+/// a to-do Today lists by its deadline alone has none
+pub fn in_today_order(task: &Task) -> bool {
+    task.today_index_reference.is_some() || task.start_date.is_some()
+}
+
 /// the order in which the Today view lists its to-dos
 ///
 /// ties fall to the id

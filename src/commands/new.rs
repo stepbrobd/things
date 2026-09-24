@@ -13,7 +13,7 @@ use crate::{
         resolve_tag_ids, task6_note,
     },
     ids::ThingsId,
-    ordering::{allocate, today_group, today_view_order},
+    ordering::{allocate, in_today_order, today_group, today_view_order},
     repeat::{Bound, RepeatSpec, TemplateSource, bound, template},
     store::Task,
     wire::{
@@ -446,8 +446,7 @@ fn build_new_plan(
     if new_is_today
         && anchor_is_today
         && let Some(anchor) = &anchor
-        && anchor.today_index_reference.is_none()
-        && anchor.start_date.is_none()
+        && !in_today_order(anchor)
     {
         return Err(format!(
             "Anchor is in Today by its deadline alone, which gives it no place in Today's order: {}",
@@ -470,7 +469,9 @@ fn build_new_plan(
         let mut today_siblings = store
             .tasks_by_uuid
             .values()
-            .filter(|t| store.in_today(t, &today) && t.evening == anchor.evening)
+            .filter(|t| {
+                store.in_today(t, &today) && in_today_order(t) && t.evening == anchor.evening
+            })
             .cloned()
             .collect::<Vec<_>>();
         today_siblings.sort_by_key(today_view_order);

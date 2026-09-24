@@ -12,7 +12,7 @@ use crate::{
     commands::Command,
     common::{DIM, GREEN, ICONS, colored, one_line},
     ids::ThingsId,
-    ordering::{allocate, today_group, today_view_order},
+    ordering::{allocate, in_today_order, today_group, today_view_order},
     wire::{
         task::{TaskPatch, TaskStatus},
         wire_object::{EntityType, WireObject},
@@ -190,7 +190,7 @@ fn build_reorder_plan(
     let is_today_orderable = |task: &crate::store::Task| store.in_today(task, &today);
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
     // a to-do Today lists by its deadline alone has no place in Today's order to put anything next to
-    if is_today_reorder && anchor.today_index_reference.is_none() && anchor.start_date.is_none() {
+    if is_today_reorder && !in_today_order(&anchor) {
         return Err(format!(
             "Anchor is in Today by its deadline alone, which gives it no place in Today's order: {}",
             one_line(&anchor.title)
@@ -245,6 +245,7 @@ fn build_reorder_plan(
             .filter(|task| {
                 task.uuid != item.uuid
                     && is_today_orderable(task)
+                    && in_today_order(task)
                     && today_group(task, today_ts) == anchor_tir
             })
             .collect();
