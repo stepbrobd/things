@@ -147,25 +147,21 @@ impl ThingsStore {
                     let task = self.parse_task(uuid, props, entity, obj.degraded);
                     self.tasks_by_uuid.insert(uuid.clone(), task);
                 }
-                Some(EntityType::Area3) => {
+                Some(entity) if entity.is_area_family() => {
                     let StateProperties::Area(props) = &obj.properties else {
                         continue;
                     };
                     let area = self.parse_area(uuid, props);
                     self.areas_by_uuid.insert(uuid.clone(), area);
                 }
-                Some(EntityType::Tag3 | EntityType::Tag4) => {
+                Some(entity) if entity.is_tag_family() => {
                     let StateProperties::Tag(props) = &obj.properties else {
                         continue;
                     };
                     let tag = self.parse_tag(uuid, props);
                     self.tags_by_uuid.insert(uuid.clone(), tag);
                 }
-                Some(
-                    EntityType::ChecklistItem
-                    | EntityType::ChecklistItem2
-                    | EntityType::ChecklistItem3,
-                ) => {
+                Some(entity) if entity.is_checklist_family() => {
                     if let StateProperties::ChecklistItem(props) = &obj.properties {
                         checklist_items.push(self.parse_checklist_item(uuid, props));
                     }

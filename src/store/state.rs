@@ -213,13 +213,17 @@ fn wire_object_properties(obj: &WireObject) -> StateProperties {
     }
 }
 
-/// an object of a stored kind whose payload did not parse keeps the fields that do and is marked
+/// an object of a stored kind, or another version of one, whose payload did not parse keeps the fields that do and is marked
 ///
-/// an object an update reaches before any create, a task whose note cannot be read, a task of a kind this CLI does not read and a tombstone whose payload does not parse are marked too
+/// an object an update reaches before any create, a task whose note cannot be read, an object of a version this CLI does not read and a tombstone it cannot read are marked too
 fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
     let stored = obj.entity_type.as_ref().is_some_and(EntityType::is_stored);
+    let other_version = obj
+        .entity_type
+        .as_ref()
+        .is_some_and(EntityType::is_other_stored_version);
     let unparsed = stored && matches!(obj.payload, Properties::Unknown(_));
-    let properties = if unparsed {
+    let properties = if (stored || other_version) && matches!(obj.payload, Properties::Unknown(_)) {
         obj.readable_properties()
             .map_or(StateProperties::Other, Into::into)
     } else {
@@ -231,25 +235,35 @@ fn insert_state_object(state: &mut RawState, uuid: &ThingsId, obj: WireObject) {
         Properties::TaskCreate(props)
             if props.notes.as_ref().is_some_and(|notes| notes.apply_to(None).is_err())
     );
-    let future = obj
-        .entity_type
-        .as_ref()
-        .is_some_and(|entity| entity.is_task_family() && !stored);
     // a tombstone whose payload does not parse names nothing to purge
     // its own mark reports it as not replayed
     let unread_tombstone = matches!(obj.entity_type, Some(EntityType::Tombstone2))
         && matches!(obj.payload, Properties::Unknown(_));
-    let degraded = unparsed || create_less || unreadable_note || future || unread_tombstone;
+    // a tombstone of another version is not read
+    // what it names stays
+    // its own mark reports it
+    let other_tombstone = obj
+        .entity_type
+        .as_ref()
+        .is_some_and(EntityType::is_other_tombstone_version);
+    let degraded = unparsed
+        || create_less
+        || unreadable_note
+        || other_version
+        || unread_tombstone
+        || other_tombstone;
     if unparsed {
         warn!(target: "things::replay", uuid = %uuid, "the object's payload did not parse, the fields that do are kept");
     } else if unreadable_note {
         warn!(target: "things::replay", uuid = %uuid, "the task's note cannot be read");
     } else if create_less {
         warn!(target: "things::replay", uuid = %uuid, "an update reached the object before any create, it is kept partial");
-    } else if future {
-        warn!(target: "things::replay", uuid = %uuid, "a task of a kind this CLI does not read, it is kept opaque");
+    } else if other_version {
+        warn!(target: "things::replay", uuid = %uuid, "an object of a version this CLI does not read, it is kept as far as it parses");
     } else if unread_tombstone {
         warn!(target: "things::replay", uuid = %uuid, "the tombstone's payload did not parse, nothing is purged");
+    } else if other_tombstone {
+        warn!(target: "things::replay", uuid = %uuid, "a tombstone of a version this CLI does not read, nothing is purged");
     }
     state.insert(
         uuid.clone(),
@@ -303,6 +317,12 @@ fn apply_update_payload(
             Some("the payload is of another kind than the object".to_string())
         }
     };
+    // an update of another version may carry what the known schema drops
+    let failure = failure.or_else(|| {
+        entity_type
+            .is_some_and(EntityType::is_other_stored_version)
+            .then(|| "an update of a version this CLI does not read".to_string())
+    });
     if let Some(failure) = failure {
         warn!(target: "things::replay", uuid = %uuid, "{failure}");
         existing.degraded = true;
@@ -588,6 +608,23 @@ mod tests {
     }
 
     #[test]
+    fn a_tombstone_of_another_version_is_marked_and_purges_nothing() {
+        for kind in ["Tombstone", "Tombstone3"] {
+            let items = [
+                r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Order tiles","st":1,"tr":true}}}"#.to_string(),
+                format!(r#"{{"Tm11111111111111111111":{{"t":0,"e":"{kind}","p":{{"dloid":"Ta11111111111111111111"}}}}}}"#),
+            ];
+            let state = fold_items(items.map(|item| wire_item(&item)));
+            let tombstone = "Tm11111111111111111111".parse::<ThingsId>().expect("id");
+            assert!(
+                state.contains_key(&"Ta11111111111111111111".parse::<ThingsId>().expect("id")),
+                "{kind} leaves the to-do"
+            );
+            assert_eq!(degraded_ids(&state), vec![tombstone], "{kind}");
+        }
+    }
+
+    #[test]
     fn a_tombstone_purges_what_it_names_whatever_its_deletion_time_holds() {
         let items = [
             r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Order tiles","st":1,"tr":true}}}"#,
@@ -617,6 +654,57 @@ mod tests {
             panic!("the to-do keeps its task state");
         };
         assert_eq!(task.title, "Plant bulbs");
+    }
+
+    #[test]
+    fn another_version_of_a_stored_kind_is_read_as_far_as_it_parses_and_marked() {
+        let items = [
+            r#"{"Ta11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Travel","st":1}}}"#,
+            r#"{"Cm11111111111111111111":{"t":0,"e":"ChecklistItem4","p":{"tt":"Take pills","ts":["Ta11111111111111111111"],"ss":0,"ix":1}}}"#,
+            r#"{"Tg11111111111111111111":{"t":0,"e":"Tag5","p":{"tt":"Errand"}}}"#,
+            r#"{"Ar11111111111111111111":{"t":0,"e":"Area3","p":{"tt":"Home"}}}"#,
+            r#"{"Ar11111111111111111111":{"t":1,"e":"Area4","p":{"tt":"House"}}}"#,
+            // fields that fail the known schema leave the rest readable
+            r#"{"Tb11111111111111111111":{"t":0,"e":"Task7","p":{"tt":"Pack","st":1}}}"#,
+            r#"{"Cn11111111111111111111":{"t":0,"e":"ChecklistItem4","p":{"tt":"Charger","ts":["Tb11111111111111111111"],"ss":"open","ix":2}}}"#,
+            r#"{"Th11111111111111111111":{"t":0,"e":"Tag5","p":{"tt":"Garden","ix":"first"}}}"#,
+            // an older version counts as another one too
+            r#"{"Tc11111111111111111111":{"t":0,"e":"Task3","p":{"tt":"Post letters","st":1}}}"#,
+            r#"{"As11111111111111111111":{"t":0,"e":"Area2","p":{"tt":"Work"}}}"#,
+        ];
+        let state = fold_items(items.map(wire_item));
+        let store = ThingsStore::from_raw_state(&state);
+        // the owner of a checklist item of another version takes no writes
+        for owner in ["Ta11111111111111111111", "Tb11111111111111111111"] {
+            assert!(store.get_task(owner).expect("to-do").degraded, "{owner}");
+        }
+        let mut titles = store
+            .tags()
+            .into_iter()
+            .map(|tag| tag.title)
+            .collect::<Vec<_>>();
+        titles.sort();
+        assert_eq!(titles, ["Errand", "Garden"]);
+        assert_eq!(
+            store
+                .get_area("Ar11111111111111111111")
+                .expect("area")
+                .title,
+            "House"
+        );
+        let ids = [
+            "Ar11111111111111111111",
+            "As11111111111111111111",
+            "Cm11111111111111111111",
+            "Cn11111111111111111111",
+            "Ta11111111111111111111",
+            "Tb11111111111111111111",
+            "Tc11111111111111111111",
+            "Tg11111111111111111111",
+            "Th11111111111111111111",
+        ]
+        .map(|id| id.parse::<ThingsId>().expect("id"));
+        assert_eq!(degraded_ids(&state), ids);
     }
 
     #[test]

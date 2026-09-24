@@ -176,20 +176,20 @@ impl WireObject {
         let payload = match operation_type {
             OperationType::Delete => Delete,
             OperationType::Create => match entity_type {
-                Some(Task6 | Task7) => TaskCreate(Box::new(parse(p)?)),
-                Some(ChecklistItem | ChecklistItem2 | ChecklistItem3) => ChecklistCreate(parse(p)?),
-                Some(Tag3 | Tag4) => TagCreate(parse(p)?),
-                Some(Area3) => AreaCreate(parse(p)?),
+                Some(entity) if entity.is_task_family() => TaskCreate(Box::new(parse(p)?)),
+                Some(entity) if entity.is_checklist_family() => ChecklistCreate(parse(p)?),
+                Some(entity) if entity.is_tag_family() => TagCreate(parse(p)?),
+                Some(entity) if entity.is_area_family() => AreaCreate(parse(p)?),
                 Some(Tombstone2) => TombstoneCreate(parse(p)?),
                 Some(Command) => CommandCreate(parse(p)?),
                 Some(Settings3 | Settings4 | Settings5) => Ignored(p),
                 _ => Properties::Unknown(p),
             },
             OperationType::Update => match entity_type {
-                Some(Task6 | Task7) => TaskUpdate(Box::new(parse(p)?)),
-                Some(ChecklistItem | ChecklistItem2 | ChecklistItem3) => ChecklistUpdate(parse(p)?),
-                Some(Tag3 | Tag4) => TagUpdate(parse(p)?),
-                Some(Area3) => AreaUpdate(parse(p)?),
+                Some(entity) if entity.is_task_family() => TaskUpdate(Box::new(parse(p)?)),
+                Some(entity) if entity.is_checklist_family() => ChecklistUpdate(parse(p)?),
+                Some(entity) if entity.is_tag_family() => TagUpdate(parse(p)?),
+                Some(entity) if entity.is_area_family() => AreaUpdate(parse(p)?),
                 Some(Settings3 | Settings4 | Settings5) => Ignored(p),
                 _ => Properties::Unknown(p),
             },
@@ -316,7 +316,8 @@ pub enum OperationType {
 ///
 /// versioned by Things, `Task6` or `Area3` for instance
 ///
-/// the kinds of histories from before base58 ids, `Task3`, `Task4`, `Area2` and the first `Tombstone`, are not read and parse as unknown
+/// a version this CLI does not know parses as unknown
+/// the `Task3`, `Task4`, `Area2` and first `Tombstone` kinds of histories from before base58 ids are among them
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Display, EnumString)]
 #[serde(from = "String", into = "String")]
 pub enum EntityType {
@@ -381,16 +382,50 @@ impl EntityType {
         matches!(self, Self::Task6 | Self::Task7)
     }
 
+    /// a task of any version, another one read with the latest known schema
     pub fn is_task_family(&self) -> bool {
-        if self.is_task() {
-            return true;
-        }
+        self.is_task() || self.is_version_of("Task")
+    }
 
+    /// a checklist item of any version, another one read with the latest known schema
+    pub fn is_checklist_family(&self) -> bool {
+        matches!(
+            self,
+            Self::ChecklistItem | Self::ChecklistItem2 | Self::ChecklistItem3
+        ) || self.is_version_of("ChecklistItem")
+    }
+
+    /// a tag of any version, another one read with the latest known schema
+    pub fn is_tag_family(&self) -> bool {
+        matches!(self, Self::Tag3 | Self::Tag4) || self.is_version_of("Tag")
+    }
+
+    /// an area of any version, another one read with the latest known schema
+    pub fn is_area_family(&self) -> bool {
+        matches!(self, Self::Area3) || self.is_version_of("Area")
+    }
+
+    /// a version this CLI does not know of a kind it stores
+    pub fn is_other_stored_version(&self) -> bool {
+        !self.is_stored()
+            && (self.is_task_family()
+                || self.is_checklist_family()
+                || self.is_tag_family()
+                || self.is_area_family())
+    }
+
+    /// a tombstone of a version this CLI does not read, the first `Tombstone` or one after `Tombstone2`
+    pub fn is_other_tombstone_version(&self) -> bool {
+        matches!(self, Self::Unknown(name) if name == "Tombstone")
+            || self.is_version_of("Tombstone")
+    }
+
+    /// an unknown kind named `prefix` with a version number
+    fn is_version_of(&self, prefix: &str) -> bool {
         let Self::Unknown(name) = self else {
             return false;
         };
-
-        name.strip_prefix("Task").is_some_and(|version| {
+        name.strip_prefix(prefix).is_some_and(|version| {
             !version.is_empty() && version.chars().all(|c| c.is_ascii_digit())
         })
     }

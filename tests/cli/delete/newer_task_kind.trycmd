@@ -1,0 +1,17 @@
+```trycmd
+$ run.sh things project Pa
+◯ Garden (0/2)
+
+  Tb ▢ Rake leaves
+  Ta ▢ Plant bulbs
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 delete Pa
+? 1
+1 object did not replay completely and will not be written, THINGS_LOG=warn lists the ids
+Failed to delete items: Not writing Ta11111111111111111111: its history did not replay completely.
+
+```
