@@ -375,6 +375,7 @@ impl ThingsStore {
                     && !t.is_project()
                     && !t.is_heading()
                     && !t.is_blank()
+                    && !t.is_recurrence_template()
                     && (t.start_date.is_none() || t.start_date <= Some(*today))
                     && project_visible(t, self)
             })
@@ -418,7 +419,10 @@ impl ThingsStore {
                 {
                     return false;
                 }
-                if task.is_heading() || self.in_trashed_container(task) {
+                if task.is_heading()
+                    || task.is_recurrence_template()
+                    || self.in_trashed_container(task)
+                {
                     return false;
                 }
                 let Some(stop_date) = task.stop_date else {
@@ -493,10 +497,12 @@ impl ThingsStore {
     ///
     /// a marked object without a create shows here as elsewhere
     /// a capture that is done, canceled or in the Trash is out of it
+    /// a repeat template is out of it whatever its schedule
     pub fn in_inbox(&self, task: &Task) -> bool {
         task.status == TaskStatus::Incomplete
             && task.start == TaskStart::Inbox
             && !self.in_trash(task)
+            && !task.is_recurrence_template()
             && self.effective_project_uuid(task).is_none()
             && self.effective_area_uuid(task).is_none()
             && !task.is_project()

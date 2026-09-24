@@ -1,0 +1,28 @@
+```trycmd
+$ run.sh things upcoming
+▷ Upcoming  (3 tasks)
+
+  2026-03-26
+    Tu ↻ Water plants
+    Tv ↻ Feed cat
+    Tw ↻ Stretch
+
+```
+
+```trycmd
+$ run.sh things anytime
+Anytime is empty.
+
+```
+
+```trycmd
+$ run.sh things inbox
+Inbox is empty.
+
+```
+
+```trycmd
+$ run.sh things logbook
+Logbook is empty.
+
+```
