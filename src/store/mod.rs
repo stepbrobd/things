@@ -500,7 +500,9 @@ impl ThingsStore {
             let Some(project) = self.tasks_by_uuid.get(&project_uuid) else {
                 return true;
             };
-            if project.start == TaskStart::Someday {
+            // a scheduled project keeps st 2 after its day until an Apple client confirms it
+            // it waits only while it has no day
+            if project.in_someday() {
                 return false;
             }
             if let Some(start_date) = project.start_date
