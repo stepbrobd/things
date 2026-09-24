@@ -1,0 +1,42 @@
+```trycmd
+$ run.sh things edit Ta --move "" --title Renamed
+? 2
+error: invalid value '' for '--move <MOVE_TARGET>': The value is empty
+
+For more information, try '--help'.
+
+```
+
+```trycmd
+$ run.sh things --now-ts 1774400000.0 edit Ta --move " inbox "
+✓ Edited Plant bulbs  Ta11111111111111111111 (move=inbox)
+{
+  "ancestor_index": 0,
+  "changes": {
+    "Ta11111111111111111111": {
+      "e": "Task7",
+      "p": {
+        "agr": [],
+        "ar": [],
+        "md": 1774400000.0,
+        "pr": [],
+        "sb": 0,
+        "sr": null,
+        "st": 0,
+        "tir": null
+      },
+      "t": 1
+    }
+  }
+}
+
+```
+
+```trycmd
+$ run.sh things show " "
+? 2
+error: invalid value ' ' for '<ITEM_ID>': The value is empty
+
+For more information, try '--help'.
+
+```

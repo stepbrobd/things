@@ -6,6 +6,7 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs, detailed_json_conflict, write_json},
     common::{
         DIM, GREEN, ICONS, colored, day_timestamp, one_line, parse_day, resolve_removable_tag_ids,
@@ -58,7 +59,7 @@ pub struct ProjectsNewArgs {
     /// Project title
     pub title: String,
     #[arg(long, short = 'a', help = "Area ID or prefix to place the project in")]
-    pub area: Option<String>,
+    pub area: Option<IdentifierToken>,
     #[arg(
         long,
         short = 'w',
@@ -80,7 +81,7 @@ pub struct ProjectsNewArgs {
 #[derive(Debug, Args)]
 pub struct ProjectsEditArgs {
     /// Project ID (or unique ID prefix)
-    pub project_id: String,
+    pub project_id: IdentifierToken,
     #[arg(long, short = 't', help = "Replace title")]
     pub title: Option<String>,
     #[arg(
@@ -88,7 +89,7 @@ pub struct ProjectsEditArgs {
         short = 'm',
         help = "Move to clear or area ID or prefix"
     )]
-    pub move_target: Option<String>,
+    pub move_target: Option<IdentifierToken>,
     #[arg(long, short = 'n', help = "Replace notes (use empty string to clear)")]
     pub notes: Option<String>,
     #[command(flatten)]
@@ -144,7 +145,7 @@ fn build_projects_edit_plan(
     }
 
     if let Some(move_target) = &args.move_target {
-        let move_raw = move_target.trim();
+        let move_raw = &**move_target;
         let move_l = move_raw.to_lowercase();
         if move_l == "inbox" {
             return Err("Projects cannot be moved to Inbox.".to_string());
@@ -525,7 +526,7 @@ mod tests {
 
         let title_plan = build_projects_edit_plan(
             &ProjectsEditArgs {
-                project_id: PROJECT_UUID.to_string(),
+                project_id: PROJECT_UUID.parse().expect("id"),
                 title: Some("Roadmap v2".to_string()),
                 move_target: None,
                 notes: None,
@@ -544,9 +545,9 @@ mod tests {
 
         let clear_plan = build_projects_edit_plan(
             &ProjectsEditArgs {
-                project_id: PROJECT_UUID.to_string(),
+                project_id: PROJECT_UUID.parse().expect("id"),
                 title: None,
-                move_target: Some("clear".to_string()),
+                move_target: Some("clear".parse().expect("id")),
                 notes: None,
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
@@ -566,9 +567,9 @@ mod tests {
 
         let move_plan = build_projects_edit_plan(
             &ProjectsEditArgs {
-                project_id: PROJECT_UUID.to_string(),
+                project_id: PROJECT_UUID.parse().expect("id"),
                 title: None,
-                move_target: Some(target_area_uuid.to_string()),
+                move_target: Some(target_area_uuid.parse().expect("id")),
                 notes: None,
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
@@ -599,7 +600,7 @@ mod tests {
 
         let remove_plan = build_projects_edit_plan(
             &ProjectsEditArgs {
-                project_id: PROJECT_UUID.to_string(),
+                project_id: PROJECT_UUID.parse().expect("id"),
                 title: None,
                 move_target: None,
                 notes: None,
@@ -621,7 +622,7 @@ mod tests {
 
         let no_change = build_projects_edit_plan(
             &ProjectsEditArgs {
-                project_id: PROJECT_UUID.to_string(),
+                project_id: PROJECT_UUID.parse().expect("id"),
                 title: None,
                 move_target: None,
                 notes: None,
@@ -638,9 +639,9 @@ mod tests {
 
         let inbox = build_projects_edit_plan(
             &ProjectsEditArgs {
-                project_id: PROJECT_UUID.to_string(),
+                project_id: PROJECT_UUID.parse().expect("id"),
                 title: None,
-                move_target: Some("inbox".to_string()),
+                move_target: Some("inbox".parse().expect("id")),
                 notes: None,
                 tag_delta: TagDeltaArgs {
                     add_tags: None,

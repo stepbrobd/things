@@ -47,7 +47,7 @@ pub struct EditArgs {
         short = 'm',
         help = "Move to Inbox, clear, project ID or prefix, or area ID or prefix"
     )]
-    pub move_target: Option<String>,
+    pub move_target: Option<IdentifierToken>,
     #[command(flatten)]
     pub tag_delta: TagDeltaArgs,
     #[arg(
@@ -486,10 +486,12 @@ fn build_edit_plan(
     let mut shared_update = TaskPatch::default();
     let mut move_from_inbox_st: Option<TaskStart> = None;
     let mut labels: Vec<String> = Vec::new();
-    let move_raw = args.move_target.clone().unwrap_or_default();
-    let move_l = move_raw.to_lowercase();
-
-    if !move_raw.trim().is_empty() {
+    let move_l = args
+        .move_target
+        .as_deref()
+        .map(str::to_lowercase)
+        .unwrap_or_default();
+    if let Some(move_raw) = args.move_target.as_deref() {
         if move_l == "inbox" {
             if args.when.is_some() || args.reminder.is_some() || args.repeat.is_some() {
                 return Err(
@@ -505,8 +507,8 @@ fn build_edit_plan(
         } else if move_l == "clear" {
             labels.push("move=clear".to_string());
         } else {
-            let (project_opt, _, project_candidates) = store.resolve_mark_identifier(&move_raw);
-            let (area_opt, _, area_candidates) = store.resolve_area_identifier(&move_raw);
+            let (project_opt, _, project_candidates) = store.resolve_mark_identifier(move_raw);
+            let (area_opt, _, area_candidates) = store.resolve_area_identifier(move_raw);
             if !project_candidates.is_empty() || !area_candidates.is_empty() {
                 return Err(format!(
                     "Ambiguous --move target '{move_raw}' (matches several items)."
@@ -563,7 +565,7 @@ fn build_edit_plan(
                 shared_update.action_group_ids = Some(vec![]);
                 move_from_inbox_st = Some(TaskStart::Anytime);
                 labels.push(format!("move={move_raw}"));
-            } else if let (Some(task), _, _) = store.resolve_task_identifier(&move_raw)
+            } else if let (Some(task), _, _) = store.resolve_task_identifier(move_raw)
                 && store.in_trash(&task)
             {
                 return Err(if task.is_project() {
@@ -1051,7 +1053,7 @@ mod tests {
     fn edit_title_and_notes_payloads() {
         let store = build_store(vec![task(TASK_UUID, "Old title")]);
         let args = EditArgs {
-            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            task_ids: vec![TASK_UUID.parse().expect("id")],
             title: Some("New title".to_string()),
             notes: Some("new notes".to_string()),
             move_target: None,
@@ -1092,10 +1094,10 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let inbox = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
-                move_target: Some("inbox".to_string()),
+                move_target: Some("inbox".parse().expect("id")),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
@@ -1127,10 +1129,10 @@ mod tests {
 
         let clear = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
-                move_target: Some("clear".to_string()),
+                move_target: Some("clear".parse().expect("id")),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
@@ -1160,10 +1162,10 @@ mod tests {
 
         let project_move = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
-                move_target: Some(PROJECT_UUID.to_string()),
+                move_target: Some(PROJECT_UUID.parse().expect("id")),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
@@ -1205,10 +1207,10 @@ mod tests {
             area(AREA, "Home"),
         ]);
         let args = EditArgs {
-            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            task_ids: vec![TASK_UUID.parse().expect("id")],
             title: Some("New title".to_string()),
             notes: Some("New notes".to_string()),
-            move_target: Some(AREA.to_string()),
+            move_target: Some(AREA.parse().expect("id")),
             tag_delta: TagDeltaArgs {
                 add_tags: Some("Work".to_string()),
                 remove_tags: None,
@@ -1280,7 +1282,7 @@ mod tests {
             checklist(CHECK_A, TASK_UUID, "Step one", i32::MAX),
         ]);
         let args = EditArgs {
-            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            task_ids: vec![TASK_UUID.parse().expect("id")],
             title: None,
             notes: None,
             move_target: None,
@@ -1344,10 +1346,10 @@ mod tests {
         );
         let store = build_store(vec![scheduled]);
         let args = |move_target: Option<&str>, when: Option<&str>| EditArgs {
-            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            task_ids: vec![TASK_UUID.parse().expect("id")],
             title: None,
             notes: None,
-            move_target: move_target.map(str::to_string),
+            move_target: move_target.map(|target| target.parse().expect("id")),
             tag_delta: TagDeltaArgs {
                 add_tags: None,
                 remove_tags: None,
@@ -1412,10 +1414,10 @@ mod tests {
         let store = build_store(vec![template]);
         let args =
             |move_target: Option<&str>, when: Option<&str>, reminder: Option<&str>| EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
-                move_target: move_target.map(str::to_string),
+                move_target: move_target.map(|target| target.parse().expect("id")),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
@@ -1471,12 +1473,12 @@ mod tests {
         let plan = build_edit_plan(
             &EditArgs {
                 task_ids: vec![
-                    IdentifierToken::from(TASK_UUID),
-                    IdentifierToken::from(TASK_UUID2),
+                    TASK_UUID.parse().expect("id"),
+                    TASK_UUID2.parse().expect("id"),
                 ],
                 title: None,
                 notes: None,
-                move_target: Some(PROJECT_UUID.to_string()),
+                move_target: Some(PROJECT_UUID.parse().expect("id")),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
@@ -1506,8 +1508,8 @@ mod tests {
         let err = build_edit_plan(
             &EditArgs {
                 task_ids: vec![
-                    IdentifierToken::from(TASK_UUID),
-                    IdentifierToken::from(TASK_UUID2),
+                    TASK_UUID.parse().expect("id"),
+                    TASK_UUID2.parse().expect("id"),
                 ],
                 title: Some("New".to_string()),
                 notes: None,
@@ -1552,7 +1554,7 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let plan = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
                 move_target: None,
@@ -1597,7 +1599,7 @@ mod tests {
         let mut ids = vec![new_check(1), new_check(2)].into_iter();
         let mut id_gen = || ids.next().expect("next id");
         let args = |remove: &str| EditArgs {
-            task_ids: vec![IdentifierToken::from(TASK_UUID)],
+            task_ids: vec![TASK_UUID.parse().expect("id")],
             title: None,
             notes: None,
             move_target: None,
@@ -1651,7 +1653,7 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
                 move_target: None,
@@ -1684,7 +1686,7 @@ mod tests {
         let store = build_store(vec![task(TASK_UUID, "A"), project(PROJECT_UUID, "Roadmap")]);
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(PROJECT_UUID)],
+                task_ids: vec![PROJECT_UUID.parse().expect("id")],
                 title: Some("New".to_string()),
                 notes: None,
                 move_target: None,
@@ -1720,10 +1722,10 @@ mod tests {
         ]);
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
-                move_target: Some(PROJECT_UUID.to_string()),
+                move_target: Some(PROJECT_UUID.parse().expect("id")),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
@@ -1766,10 +1768,10 @@ mod tests {
         let mut id_gen = || "X".to_string();
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: None,
                 notes: None,
-                move_target: Some("ABCD1234".to_string()),
+                move_target: Some("ABCD1234".parse().expect("id")),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
                     remove_tags: None,
@@ -1808,8 +1810,8 @@ mod tests {
         let err = build_edit_plan(
             &EditArgs {
                 task_ids: vec![
-                    IdentifierToken::from(TASK_UUID),
-                    IdentifierToken::from(TASK_UUID2),
+                    TASK_UUID.parse().expect("id"),
+                    TASK_UUID2.parse().expect("id"),
                 ],
                 title: None,
                 notes: None,
@@ -1846,7 +1848,7 @@ mod tests {
         let store = build_store(vec![task(TASK_UUID, "A")]);
         let err = build_edit_plan(
             &EditArgs {
-                task_ids: vec![IdentifierToken::from(TASK_UUID)],
+                task_ids: vec![TASK_UUID.parse().expect("id")],
                 title: Some("   ".to_string()),
                 notes: None,
                 move_target: None,

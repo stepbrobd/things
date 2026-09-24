@@ -9,6 +9,7 @@ use clap::{ArgGroup, Args};
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::Command,
     common::{DIM, GREEN, ICONS, colored, one_line},
     ids::ThingsId,
@@ -24,11 +25,11 @@ use crate::{
 #[command(group(ArgGroup::new("anchor").args(["before_id", "after_id"]).required(true).multiple(false)))]
 pub struct ReorderArgs {
     /// Item ID (or unique ID prefix)
-    pub item_id: String,
+    pub item_id: IdentifierToken,
     #[arg(long, short = 'b', help = "Anchor item ID or prefix to place before")]
-    pub before_id: Option<String>,
+    pub before_id: Option<IdentifierToken>,
     #[arg(long, short = 'a', help = "Anchor item ID or prefix to place after")]
-    pub after_id: Option<String>,
+    pub after_id: Option<IdentifierToken>,
 }
 
 /// the item already sits right next to the anchor in every list of `lists` that holds both
@@ -166,11 +167,10 @@ fn build_reorder_plan(
 
     let anchor_id = args
         .before_id
-        .as_ref()
-        .or(args.after_id.as_ref())
-        .cloned()
+        .as_deref()
+        .or(args.after_id.as_deref())
         .unwrap_or_default();
-    let (anchor_opt, err, _) = store.resolve_task_identifier(&anchor_id);
+    let (anchor_opt, err, _) = store.resolve_task_identifier(anchor_id);
     let Some(anchor) = anchor_opt else {
         return Err(err);
     };
@@ -594,8 +594,8 @@ mod tests {
 
         let before = build_reorder_plan(
             &ReorderArgs {
-                item_id: TASK_C.to_string(),
-                before_id: Some(TASK_B.to_string()),
+                item_id: TASK_C.parse().expect("id"),
+                before_id: Some(TASK_B.parse().expect("id")),
                 after_id: None,
             },
             &store,
@@ -614,9 +614,9 @@ mod tests {
         ]);
         let today_plan = build_reorder_plan(
             &ReorderArgs {
-                item_id: TASK_A.to_string(),
+                item_id: TASK_A.parse().expect("id"),
                 before_id: None,
-                after_id: Some(TASK_B.to_string()),
+                after_id: Some(TASK_B.parse().expect("id")),
             },
             &store_today,
             NOW,
@@ -638,9 +638,9 @@ mod tests {
         ]);
         let rebalance = build_reorder_plan(
             &ReorderArgs {
-                item_id: TASK_C.to_string(),
+                item_id: TASK_C.parse().expect("id"),
                 before_id: None,
-                after_id: Some(TASK_A.to_string()),
+                after_id: Some(TASK_A.parse().expect("id")),
             },
             &store,
             NOW,
@@ -673,9 +673,9 @@ mod tests {
         ]);
         let future_error = build_reorder_plan(
             &ReorderArgs {
-                item_id: TASK_C.to_string(),
+                item_id: TASK_C.parse().expect("id"),
                 before_id: None,
-                after_id: Some(TASK_A.to_string()),
+                after_id: Some(TASK_A.parse().expect("id")),
             },
             &future_sibling_store,
             NOW,
@@ -689,8 +689,8 @@ mod tests {
 
         let err = build_reorder_plan(
             &ReorderArgs {
-                item_id: TASK_A.to_string(),
-                before_id: Some(TASK_A.to_string()),
+                item_id: TASK_A.parse().expect("id"),
+                before_id: Some(TASK_A.parse().expect("id")),
                 after_id: None,
             },
             &store,

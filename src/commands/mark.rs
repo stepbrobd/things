@@ -551,7 +551,7 @@ mod tests {
         let done_store = build_store(vec![task(TASK_A, "Alpha", 0)]);
         let (done_plan, _, errs) = build_mark_status_plan(
             &MarkArgs {
-                task_ids: vec![IdentifierToken::from(TASK_A)],
+                task_ids: vec![TASK_A.parse().expect("id")],
                 done: true,
                 incomplete: false,
                 canceled: false,
@@ -571,7 +571,7 @@ mod tests {
         let incomplete_store = build_store(vec![task(TASK_A, "Alpha", 3)]);
         let (incomplete_plan, _, _) = build_mark_status_plan(
             &MarkArgs {
-                task_ids: vec![IdentifierToken::from(TASK_A)],
+                task_ids: vec![TASK_A.parse().expect("id")],
                 done: false,
                 incomplete: true,
                 canceled: false,
@@ -597,7 +597,7 @@ mod tests {
             EntityType::Task7,
         )]);
         let args = MarkArgs {
-            task_ids: vec![IdentifierToken::from(TASK_A)],
+            task_ids: vec![TASK_A.parse().expect("id")],
             done: true,
             incomplete: false,
             canceled: false,
@@ -637,7 +637,7 @@ mod tests {
 
         let (checked_plan, _, _) = build_mark_checklist_plan(
             &MarkArgs {
-                task_ids: vec![IdentifierToken::from(TASK_A)],
+                task_ids: vec![TASK_A.parse().expect("id")],
                 done: false,
                 incomplete: false,
                 canceled: false,
@@ -738,7 +738,7 @@ mod tests {
             ])
         };
         let status = |done: bool, incomplete: bool| MarkArgs {
-            task_ids: vec![IdentifierToken::from(PROJECT)],
+            task_ids: vec![PROJECT.parse().expect("id")],
             done,
             incomplete,
             canceled: !done && !incomplete,
@@ -775,7 +775,7 @@ mod tests {
             vec![],
         )]);
         let status = |done: bool| MarkArgs {
-            task_ids: vec![IdentifierToken::from(TASK_A)],
+            task_ids: vec![TASK_A.parse().expect("id")],
             done,
             incomplete: false,
             canceled: !done,

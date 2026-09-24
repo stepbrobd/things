@@ -1,0 +1,25 @@
+```trycmd
+$ run.sh things find --project=
+? 2
+error: invalid value '' for '--project <PROJECT>': The value is empty
+
+For more information, try '--help'.
+
+```
+
+```trycmd
+$ run.sh things find "--area= "
+? 2
+error: invalid value ' ' for '--area <AREA>': The value is empty
+
+For more information, try '--help'.
+
+```
+
+```trycmd
+$ run.sh things find "--project= Garden "
+⌕ Find  (1 task)
+
+  Ts ⬚ Build a pond  [● Garden]
+
+```

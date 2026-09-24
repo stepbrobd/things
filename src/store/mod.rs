@@ -748,22 +748,13 @@ impl ThingsStore {
         sorted_ids: &[ThingsId],
         label: &str,
     ) -> (Option<T>, String, Vec<T>) {
-        let ident = identifier.trim();
-        if ident.is_empty() {
-            return (
-                None,
-                format!("Missing {} identifier.", label.to_lowercase()),
-                Vec::new(),
-            );
-        }
-
-        if let Ok(exact_id) = ident.parse::<ThingsId>()
+        if let Ok(exact_id) = identifier.parse::<ThingsId>()
             && let Some(exact) = lookup(&exact_id)
         {
             return (Some(exact.clone()), String::new(), Vec::new());
         }
 
-        let matches: Vec<&ThingsId> = prefix_matches(sorted_ids, ident);
+        let matches: Vec<&ThingsId> = prefix_matches(sorted_ids, identifier);
         if matches.len() == 1
             && let Some(item) = lookup(matches[0])
         {

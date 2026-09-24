@@ -7,6 +7,7 @@ use serde_json::json;
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::{Command, TagDeltaArgs, write_json},
     common::{DIM, GREEN, ICONS, colored, one_line, resolve_removable_tag_ids, resolve_tag_ids},
     ui::{
@@ -54,7 +55,7 @@ pub struct AreasNewArgs {
 #[derive(Debug, Args)]
 pub struct AreasEditArgs {
     /// Area ID (or unique ID prefix)
-    pub area_id: String,
+    pub area_id: IdentifierToken,
     #[arg(long, short = 't', help = "Replace title")]
     pub title: Option<String>,
     #[command(flatten)]
@@ -304,7 +305,7 @@ mod tests {
 
         let title = build_areas_edit_plan(
             &AreasEditArgs {
-                area_id: AREA_UUID.to_string(),
+                area_id: AREA_UUID.parse().expect("id"),
                 title: Some("New Name".to_string()),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
@@ -321,7 +322,7 @@ mod tests {
 
         let remove = build_areas_edit_plan(
             &AreasEditArgs {
-                area_id: AREA_UUID.to_string(),
+                area_id: AREA_UUID.parse().expect("id"),
                 title: None,
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
@@ -341,7 +342,7 @@ mod tests {
 
         let no_change = build_areas_edit_plan(
             &AreasEditArgs {
-                area_id: AREA_UUID.to_string(),
+                area_id: AREA_UUID.parse().expect("id"),
                 title: None,
                 tag_delta: TagDeltaArgs {
                     add_tags: None,
@@ -356,7 +357,7 @@ mod tests {
 
         let empty_title = build_areas_edit_plan(
             &AreasEditArgs {
-                area_id: AREA_UUID.to_string(),
+                area_id: AREA_UUID.parse().expect("id"),
                 title: Some("".to_string()),
                 tag_delta: TagDeltaArgs {
                     add_tags: None,

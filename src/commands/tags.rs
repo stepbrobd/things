@@ -7,6 +7,7 @@ use serde_json::json;
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::{Command, write_json},
     common::{DIM, GREEN, ICONS, colored, counted, one_line, resolve_single_tag},
     store::Tag,
@@ -49,23 +50,23 @@ pub struct TagsNewArgs {
     /// Tag title
     pub name: String,
     #[arg(long, short = 'p', help = "Parent tag title or ID or prefix")]
-    pub parent: Option<String>,
+    pub parent: Option<IdentifierToken>,
 }
 
 #[derive(Debug, Args)]
 pub struct TagsEditArgs {
     /// Tag title or ID or prefix
-    pub tag_id: String,
+    pub tag_id: IdentifierToken,
     #[arg(long, short = 'n', help = "Replace tag title")]
     pub name: Option<String>,
     #[arg(long = "move", short = 'm', help = "Move under another tag or clear")]
-    pub move_target: Option<String>,
+    pub move_target: Option<IdentifierToken>,
 }
 
 #[derive(Debug, Args)]
 pub struct TagsDeleteArgs {
     /// Tag title or ID or prefix
-    pub tag_id: String,
+    pub tag_id: IdentifierToken,
 }
 
 #[derive(Debug, Clone)]
@@ -171,7 +172,7 @@ fn build_tags_edit_plan(
     }
 
     if let Some(move_target) = &args.move_target {
-        let move_raw = move_target.trim();
+        let move_raw = &**move_target;
         if move_raw.eq_ignore_ascii_case("clear") {
             update.parent_ids = Some(vec![]);
             labels.push("move=clear".to_string());
@@ -473,7 +474,7 @@ mod tests {
 
         let rename = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: TAG_UUID.to_string(),
+                tag_id: TAG_UUID.parse().expect("id"),
                 name: Some("Work Stuff".to_string()),
                 move_target: None,
             },
@@ -488,7 +489,7 @@ mod tests {
         // another tag's title in other case would leave both unnamed on the command line
         let clash = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: CHILD_UUID.to_string(),
+                tag_id: CHILD_UUID.parse().expect("id"),
                 name: Some("work".to_string()),
                 move_target: None,
             },
@@ -500,9 +501,9 @@ mod tests {
 
         let reparent = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: CHILD_UUID.to_string(),
+                tag_id: CHILD_UUID.parse().expect("id"),
                 name: None,
-                move_target: Some(TAG_UUID.to_string()),
+                move_target: Some(TAG_UUID.parse().expect("id")),
             },
             &store,
             NOW,
@@ -517,9 +518,9 @@ mod tests {
 
         let clear = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: CHILD_UUID.to_string(),
+                tag_id: CHILD_UUID.parse().expect("id"),
                 name: None,
-                move_target: Some("clear".to_string()),
+                move_target: Some("clear".parse().expect("id")),
             },
             &store,
             NOW,
@@ -534,7 +535,7 @@ mod tests {
 
         let no_change = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: TAG_UUID.to_string(),
+                tag_id: TAG_UUID.parse().expect("id"),
                 name: None,
                 move_target: None,
             },
@@ -546,9 +547,9 @@ mod tests {
 
         let self_parent = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: TAG_UUID.to_string(),
+                tag_id: TAG_UUID.parse().expect("id"),
                 name: None,
-                move_target: Some(TAG_UUID.to_string()),
+                move_target: Some(TAG_UUID.parse().expect("id")),
             },
             &store,
             NOW,
@@ -560,9 +561,9 @@ mod tests {
         // that keeps Work from going under Meetings
         let cycle = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: TAG_UUID.to_string(),
+                tag_id: TAG_UUID.parse().expect("id"),
                 name: None,
-                move_target: Some(CHILD_UUID.to_string()),
+                move_target: Some(CHILD_UUID.parse().expect("id")),
             },
             &store,
             NOW,
@@ -583,9 +584,9 @@ mod tests {
         );
         let err = build_tags_edit_plan(
             &TagsEditArgs {
-                tag_id: TAG_UUID.to_string(),
+                tag_id: TAG_UUID.parse().expect("id"),
                 name: None,
-                move_target: Some(CHILD_UUID.to_string()),
+                move_target: Some(CHILD_UUID.parse().expect("id")),
             },
             &store,
             NOW,

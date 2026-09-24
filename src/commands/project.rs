@@ -6,6 +6,7 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::{Command, detailed_json_conflict, write_json},
     common::one_line,
     ui::{
@@ -21,7 +22,7 @@ use crate::{
 #[command(about = "Show all tasks in a project")]
 pub struct ProjectArgs {
     /// Project ID (or unique ID prefix)
-    pub project_id: String,
+    pub project_id: IdentifierToken,
     /// Show notes beneath each task
     #[arg(long, short = 'd')]
     pub detailed: bool,

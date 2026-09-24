@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::Deref, str::FromStr};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdentifierToken(String);
@@ -15,20 +15,16 @@ impl FromStr for IdentifierToken {
     fn from_str(value: &str) -> Result<Self, Self::Err> {
         let value = value.trim();
         if value.is_empty() {
-            return Err("identifier cannot be empty".to_string());
+            return Err("The value is empty".to_string());
         }
         Ok(Self(value.to_string()))
     }
 }
 
-impl From<String> for IdentifierToken {
-    fn from(value: String) -> Self {
-        Self(value)
-    }
-}
+impl Deref for IdentifierToken {
+    type Target = str;
 
-impl From<&str> for IdentifierToken {
-    fn from(value: &str) -> Self {
-        Self(value.to_string())
+    fn deref(&self) -> &str {
+        &self.0
     }
 }

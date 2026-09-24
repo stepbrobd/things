@@ -259,7 +259,7 @@ mod tests {
             journal.path().to_str().expect("journal path"),
         ]);
         let args = DeleteArgs {
-            item_ids: vec![IdentifierToken::from(TASK_A)],
+            item_ids: vec![TASK_A.parse().expect("id")],
         };
         let mut out = Vec::new();
 
@@ -321,7 +321,7 @@ mod tests {
     fn delete_payloads_match_snapshot_cases() {
         let single = build_delete_plan(
             &DeleteArgs {
-                item_ids: vec![IdentifierToken::from(TASK_A)],
+                item_ids: vec![TASK_A.parse().expect("id")],
             },
             &build_store(vec![task(TASK_A, "Alpha", false)]),
             1.0,
@@ -334,7 +334,7 @@ mod tests {
 
         let multi = build_delete_plan(
             &DeleteArgs {
-                item_ids: vec![IdentifierToken::from(TASK_A), IdentifierToken::from(AREA_A)],
+                item_ids: vec![TASK_A.parse().expect("id"), AREA_A.parse().expect("id")],
             },
             &build_store(vec![task(TASK_A, "Alpha", false), area(AREA_A, "Work")]),
             1.0,
@@ -355,7 +355,7 @@ mod tests {
         let project_id = "By8mN2qRk5Wv7Xc9Dt3HpL";
         let cascade = build_delete_plan(
             &DeleteArgs {
-                item_ids: vec![IdentifierToken::from(project_id)],
+                item_ids: vec![project_id.parse().expect("id")],
             },
             &build_store(vec![
                 (
@@ -408,7 +408,7 @@ mod tests {
         // the heading alone takes the to-dos under it
         let heading_only = build_delete_plan(
             &DeleteArgs {
-                item_ids: vec![IdentifierToken::from(heading)],
+                item_ids: vec![heading.parse().expect("id")],
             },
             &build_store(vec![
                 (
@@ -447,7 +447,7 @@ mod tests {
         // one bad target fails the batch before anything is trashed
         let trashed_target = build_delete_plan(
             &DeleteArgs {
-                item_ids: vec![IdentifierToken::from(TASK_A), IdentifierToken::from(TASK_B)],
+                item_ids: vec![TASK_A.parse().expect("id"), TASK_B.parse().expect("id")],
             },
             &build_store(vec![
                 task(TASK_A, "Active", false),
@@ -461,7 +461,7 @@ mod tests {
         // a prefix of two to-dos and one area names no single item
         let ambiguous = build_delete_plan(
             &DeleteArgs {
-                item_ids: vec![IdentifierToken::from("Ab")],
+                item_ids: vec!["Ab".parse().expect("id")],
             },
             &build_store(vec![
                 task("Ab11111111111111111111", "Groceries", false),

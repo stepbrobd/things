@@ -5,6 +5,7 @@ use clap::Args;
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::{Command, write_json},
     common::{DIM, ICONS, colored, fmt_date, fmt_date_local, one_line},
     ui::views::json::common::build_tasks_json,
@@ -15,7 +16,7 @@ use crate::{
 #[command(about = "Show one task or project in full")]
 pub struct ShowArgs {
     /// Task or project ID (or unique ID prefix)
-    pub item_id: String,
+    pub item_id: IdentifierToken,
 }
 
 impl Command for ShowArgs {

@@ -7,6 +7,7 @@ use serde_json::json;
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::Command,
     common::{
         DIM, GREEN, ICONS, colored, day_of, day_timestamp, one_line, parse_day, parse_reminder,
@@ -33,7 +34,7 @@ pub struct NewArgs {
         default_value = "inbox",
         help = "Container: inbox, project ID or prefix, or area ID or prefix"
     )]
-    pub in_target: String,
+    pub in_target: IdentifierToken,
     #[arg(
         long,
         short = 'w',
@@ -46,13 +47,13 @@ pub struct NewArgs {
         conflicts_with = "after_id",
         help = "Insert before this sibling task ID or prefix"
     )]
-    pub before_id: Option<String>,
+    pub before_id: Option<IdentifierToken>,
     #[arg(
         long = "after",
         short = 'a',
         help = "Insert after this sibling task ID or prefix"
     )]
-    pub after_id: Option<String>,
+    pub after_id: Option<IdentifierToken>,
     #[arg(long, short = 'n', default_value = "", help = "Task notes")]
     pub notes: String,
     #[arg(
@@ -219,7 +220,7 @@ fn build_new_plan(
         anchor = task;
     }
 
-    let in_target = args.in_target.trim();
+    let in_target = &*args.in_target;
     if !in_target.eq_ignore_ascii_case("inbox") {
         let (project, _, project_candidates) = store.resolve_mark_identifier(in_target);
         let (area, _, area_candidates) = store.resolve_area_identifier(in_target);
@@ -723,7 +724,7 @@ mod tests {
         let bare = build_new_plan(
             &NewArgs {
                 title: "Ship release".to_string(),
-                in_target: "inbox".to_string(),
+                in_target: "inbox".parse().expect("id"),
                 when: None,
                 before_id: None,
                 after_id: None,
@@ -752,7 +753,7 @@ mod tests {
         let when_today = build_new_plan(
             &NewArgs {
                 title: "Task today".to_string(),
-                in_target: "inbox".to_string(),
+                in_target: "inbox".parse().expect("id"),
                 when: Some("today".to_string()),
                 before_id: None,
                 after_id: None,
@@ -784,7 +785,7 @@ mod tests {
         let in_project = build_new_plan(
             &NewArgs {
                 title: "Project task".to_string(),
-                in_target: PROJECT_UUID.to_string(),
+                in_target: PROJECT_UUID.parse().expect("id"),
                 when: None,
                 before_id: None,
                 after_id: None,
@@ -824,10 +825,10 @@ mod tests {
         let gap = build_new_plan(
             &NewArgs {
                 title: "Inserted".to_string(),
-                in_target: "inbox".to_string(),
+                in_target: "inbox".parse().expect("id"),
                 when: None,
                 before_id: None,
-                after_id: Some(INBOX_ANCHOR_UUID.to_string()),
+                after_id: Some(INBOX_ANCHOR_UUID.parse().expect("id")),
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
@@ -854,10 +855,10 @@ mod tests {
         let rebalance = build_new_plan(
             &NewArgs {
                 title: "Inserted".to_string(),
-                in_target: "inbox".to_string(),
+                in_target: "inbox".parse().expect("id"),
                 when: None,
                 before_id: None,
-                after_id: Some(INBOX_ANCHOR_UUID.to_string()),
+                after_id: Some(INBOX_ANCHOR_UUID.parse().expect("id")),
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
@@ -882,7 +883,7 @@ mod tests {
         let mut id_gen = || NEW_UUID.to_string();
         let args = |when: &str| NewArgs {
             title: "Dated".to_string(),
-            in_target: "inbox".to_string(),
+            in_target: "inbox".parse().expect("id"),
             when: Some(when.to_string()),
             before_id: None,
             after_id: None,
@@ -930,10 +931,10 @@ mod tests {
         let plan = build_new_plan(
             &NewArgs {
                 title: "Between".to_string(),
-                in_target: "inbox".to_string(),
+                in_target: "inbox".parse().expect("id"),
                 when: Some("today".to_string()),
                 before_id: None,
-                after_id: Some(INBOX_ANCHOR_UUID.to_string()),
+                after_id: Some(INBOX_ANCHOR_UUID.parse().expect("id")),
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,
@@ -964,7 +965,7 @@ mod tests {
         let empty_title = build_new_plan(
             &NewArgs {
                 title: "   ".to_string(),
-                in_target: "inbox".to_string(),
+                in_target: "inbox".parse().expect("id"),
                 when: None,
                 before_id: None,
                 after_id: None,
@@ -987,7 +988,7 @@ mod tests {
         let unknown_container = build_new_plan(
             &NewArgs {
                 title: "Ship".to_string(),
-                in_target: "nope".to_string(),
+                in_target: "nope".parse().expect("id"),
                 when: None,
                 before_id: None,
                 after_id: None,
@@ -1012,10 +1013,10 @@ mod tests {
         let outside = build_new_plan(
             &NewArgs {
                 title: "Follow up".to_string(),
-                in_target: "inbox".to_string(),
+                in_target: "inbox".parse().expect("id"),
                 when: None,
                 before_id: None,
-                after_id: Some(ANCHOR.to_string()),
+                after_id: Some(ANCHOR.parse().expect("id")),
                 notes: String::new(),
                 tags: None,
                 deadline_date: None,

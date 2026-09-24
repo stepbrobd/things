@@ -6,6 +6,7 @@ use iocraft::prelude::*;
 
 use crate::{
     app::Cli,
+    arg_types::IdentifierToken,
     commands::{Command, detailed_json_conflict, write_json},
     common::{ICONS, one_line},
     ui::{
@@ -19,7 +20,7 @@ use crate::{
 #[command(about = "Show projects and tasks in an area")]
 pub struct AreaArgs {
     /// Area ID (or unique ID prefix)
-    pub area_id: String,
+    pub area_id: IdentifierToken,
     /// Show notes beneath each task/project
     #[arg(long, short = 'd')]
     pub detailed: bool,
