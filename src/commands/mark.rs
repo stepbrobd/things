@@ -145,9 +145,6 @@ fn validate_mark_target(
         return "Task7 repeater tasks are blocked from status changes until repeater bookkeeping is supported."
             .to_string();
     }
-    if task.is_heading() {
-        return "Headings cannot be marked.".to_string();
-    }
     if task.is_recurrence_template() {
         return "A repeat template takes no status, mark one of its instances instead.".to_string();
     }

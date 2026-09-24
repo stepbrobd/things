@@ -1,0 +1,76 @@
+```trycmd
+$ run.sh things new x --in Ha
+? 1
+--in target must be inbox, a project ID, or an area ID.
+
+```
+
+```trycmd
+$ run.sh things edit Ta --move Ha
+? 1
+--move target must be Inbox, clear, a project ID, or an area ID.
+
+```
+
+```trycmd
+$ run.sh things mark Ha --done
+? 1
+Item is a heading: Spring
+
+```
+
+```trycmd
+$ run.sh things edit Ha --title x
+? 1
+Item is a heading: Spring
+
+```
+
+```trycmd
+$ run.sh things new x --in W
+? 1
+Ambiguous --in target 'W' (matches an item and an area).
+
+```
+
+```trycmd
+$ run.sh things edit Ta --move W
+? 1
+Ambiguous --move target 'W' (matches an item and an area).
+
+```
+
+```trycmd
+$ run.sh things projects edit Pa --move Ha
+? 1
+Projects can only be moved to an area or clear.
+
+```
+
+```trycmd
+$ run.sh things new x --in H
+? 1
+Ambiguous --in target 'H' (matches an item and an area).
+
+```
+
+```trycmd
+$ run.sh things projects edit Pa --move H
+? 1
+Ambiguous --move target 'H' (matches an item and an area).
+
+```
+
+```trycmd
+$ run.sh things new x --in Pa --after Tz
+? 1
+Anchor is completed: Buy seeds
+
+```
+
+```trycmd
+$ run.sh things reorder Ta --after-id Tz
+? 1
+Anchor is completed: Buy seeds
+
+```

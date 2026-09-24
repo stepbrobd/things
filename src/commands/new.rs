@@ -238,9 +238,11 @@ fn build_new_plan(
         });
         let area_uuid = area.map(|a| a.uuid);
 
-        if project_uuid.is_some() && area_uuid.is_some() {
+        // an item of any kind and an area under one prefix leave the target open
+        let (any_item, _, item_candidates) = store.resolve_task_identifier(in_target);
+        if (any_item.is_some() || !item_candidates.is_empty()) && area_uuid.is_some() {
             return Err(format!(
-                "Ambiguous --in target '{}' (matches project and area).",
+                "Ambiguous --in target '{}' (matches an item and an area).",
                 in_target
             ));
         }
@@ -270,10 +272,8 @@ fn build_new_plan(
         } else if let Some(area_uuid) = area_uuid {
             props.area_ids = vec![area_uuid];
             props.start_location = TaskStart::Anytime;
-        } else if let (Some(task), _, _) = store.resolve_task_identifier(in_target)
-            && store.in_trash(&task)
-        {
-            return Err(if task.is_project() {
+        } else if let (Some(task), _, _) = store.resolve_task_identifier(in_target) {
+            return Err(if task.is_project() && store.in_trash(&task) {
                 format!("Container is in the Trash: {}", one_line(&task.title))
             } else {
                 "--in target must be inbox, a project ID, or an area ID.".to_string()
@@ -430,7 +430,14 @@ fn build_new_plan(
     {
         let anchor_pos = siblings.iter().position(|t| t.uuid == anchor.uuid);
         let Some(anchor_pos) = anchor_pos else {
-            return Err("Anchor not found in target list.".to_string());
+            let state = if store.in_trash(anchor) {
+                "in the Trash"
+            } else if anchor.status == TaskStatus::Canceled {
+                "canceled"
+            } else {
+                "completed"
+            };
+            return Err(format!("Anchor is {state}: {}", one_line(&anchor.title)));
         };
         structural_insert_at = if args.before_id.is_some() {
             anchor_pos

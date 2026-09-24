@@ -524,9 +524,11 @@ fn build_edit_plan(
             });
             let area_uuid = area_opt.as_ref().map(|a| a.uuid.clone());
 
-            if project_uuid.is_some() && area_uuid.is_some() {
+            // an item of any kind and an area under one prefix leave the target open
+            let (any_item, _, item_candidates) = store.resolve_task_identifier(move_raw);
+            if (any_item.is_some() || !item_candidates.is_empty()) && area_uuid.is_some() {
                 return Err(format!(
-                    "Ambiguous --move target '{}' (matches project and area).",
+                    "Ambiguous --move target '{}' (matches an item and an area).",
                     move_raw
                 ));
             }
@@ -565,10 +567,8 @@ fn build_edit_plan(
                 shared_update.action_group_ids = Some(vec![]);
                 move_from_inbox_st = Some(TaskStart::Anytime);
                 labels.push(format!("move={move_raw}"));
-            } else if let (Some(task), _, _) = store.resolve_task_identifier(move_raw)
-                && store.in_trash(&task)
-            {
-                return Err(if task.is_project() {
+            } else if let (Some(task), _, _) = store.resolve_task_identifier(move_raw) {
+                return Err(if task.is_project() && store.in_trash(&task) {
                     format!("Container is in the Trash: {}", one_line(&task.title))
                 } else {
                     "--move target must be Inbox, clear, a project ID, or an area ID.".to_string()
@@ -1798,7 +1798,7 @@ mod tests {
         .expect_err("ambiguous move target");
         assert_eq!(
             err,
-            "Ambiguous --move target 'ABCD1234' (matches project and area)."
+            "Ambiguous --move target 'ABCD1234' (matches an item and an area)."
         );
     }
 

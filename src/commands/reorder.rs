@@ -362,8 +362,17 @@ fn build_reorder_plan(
         .iter()
         .map(|t| (t.uuid.clone(), t.clone()))
         .collect::<BTreeMap<_, _>>();
-    if !by_uuid.contains_key(&item.uuid) || !by_uuid.contains_key(&anchor.uuid) {
-        return Err("Cannot reorder item in the selected list.".to_string());
+    for (role, task) in [("Item", &item), ("Anchor", &anchor)] {
+        if !by_uuid.contains_key(&task.uuid) {
+            let state = if store.in_trash(task) {
+                "in the Trash"
+            } else if task.status == TaskStatus::Canceled {
+                "canceled"
+            } else {
+                "completed"
+            };
+            return Err(format!("{role} is {state}: {}", one_line(&task.title)));
+        }
     }
 
     let structural_label = |index: i32| {

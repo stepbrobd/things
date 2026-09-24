@@ -34,7 +34,7 @@ Item is in the Trash: Plant bulbs
 ```trycmd
 $ run.sh things delete Tc
 ? 1
-Item already deleted: Plant bulbs
+Item is in the Trash: Plant bulbs
 
 ```
 

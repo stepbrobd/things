@@ -87,7 +87,7 @@ fn build_delete_plan(
                 ));
             }
             if store.in_trash(&task) {
-                return Err(format!("Item already deleted: {}", one_line(&task.title)));
+                return Err(format!("Item is in the Trash: {}", one_line(&task.title)));
             }
             if task.has_repeater() {
                 return Err(format!(
@@ -456,7 +456,7 @@ mod tests {
             1.0,
         )
         .expect_err("a trashed target");
-        assert_eq!(trashed_target, "Item already deleted: Trashed");
+        assert_eq!(trashed_target, "Item is in the Trash: Trashed");
 
         // a prefix of two to-dos and one area names no single item
         let ambiguous = build_delete_plan(

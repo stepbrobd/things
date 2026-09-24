@@ -161,22 +161,18 @@ fn build_projects_edit_plan(
                     "Ambiguous --move target '{move_raw}' (matches several items)."
                 ));
             }
-            let project_uuid = resolved_project.as_ref().and_then(|p| {
-                if p.is_project() {
-                    Some(p.uuid.clone())
-                } else {
-                    None
-                }
-            });
             let area_uuid = area.as_ref().map(|a| a.uuid.clone());
 
-            if project_uuid.is_some() && area_uuid.is_some() {
+            // an item of any kind and an area under one prefix leave the target open
+            let (any_item, _, item_candidates) = store.resolve_task_identifier(move_raw);
+            if (any_item.is_some() || !item_candidates.is_empty()) && area_uuid.is_some() {
                 return Err(format!(
-                    "Ambiguous --move target '{}' (matches project and area).",
+                    "Ambiguous --move target '{}' (matches an item and an area).",
                     move_raw
                 ));
             }
-            if project_uuid.is_some() {
+            // a project, heading or to-do is no place for a project, wherever it is
+            if resolved_project.is_some() || store.resolve_task_identifier(move_raw).0.is_some() {
                 return Err("Projects can only be moved to an area or clear.".to_string());
             }
             if let Some(area_uuid) = area_uuid {

@@ -1,14 +1,14 @@
 ```trycmd
 $ run.sh things reorder Tk --after-id Tc
 ? 1
-Cannot reorder item in the selected list.
+Item is in the Trash: Trashed today
 
 ```
 
 ```trycmd
 $ run.sh things reorder Tm --after-id Tc
 ? 1
-Cannot reorder item in the selected list.
+Item is completed: Completed today
 
 ```
 

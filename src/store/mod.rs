@@ -799,17 +799,25 @@ impl ThingsStore {
             &self.markable_ids_sorted,
             "Item",
         );
-        // an item in the Trash takes no writes and is named as such rather than as missing
+        // an item in the Trash or a heading takes no writes and is named as such rather than as missing
         if resolved.0.is_none()
             && resolved.2.is_empty()
             && let (Some(task), _, _) = self.resolve_task_identifier(identifier)
-            && self.in_trash(&task)
         {
-            return (
-                None,
-                format!("Item is in the Trash: {}", one_line(&task.title)),
-                Vec::new(),
-            );
+            if self.in_trash(&task) {
+                return (
+                    None,
+                    format!("Item is in the Trash: {}", one_line(&task.title)),
+                    Vec::new(),
+                );
+            }
+            if task.is_heading() {
+                return (
+                    None,
+                    format!("Item is a heading: {}", one_line(&task.title)),
+                    Vec::new(),
+                );
+            }
         }
         resolved
     }
