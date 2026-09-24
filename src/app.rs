@@ -83,8 +83,7 @@ pub struct Cli {
 impl Cli {
     /// color goes to a terminal unless NO_COLOR is set
     pub fn no_color(&self) -> bool {
-        !std::io::stdout().is_terminal()
-            || std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
+        !std::io::stdout().is_terminal() || crate::common::no_color_requested()
     }
 
     /// load the state once per run, from the journal file, the sync cache or the server

@@ -1,4 +1,4 @@
-use std::sync::OnceLock;
+use std::{io::IsTerminal, sync::OnceLock};
 
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::{EnvFilter, Layer, prelude::*};
@@ -28,9 +28,11 @@ pub fn init() {
             Ok("json") => LogFormat::Json,
             _ => LogFormat::Auto,
         };
-        let format = match (log_format, console::user_attended()) {
+        let terminal = std::io::stderr().is_terminal();
+        let color = terminal && !crate::common::no_color_requested();
+        let format = match (log_format, terminal) {
             (LogFormat::Auto, true) | (LogFormat::Pretty, _) => {
-                subscriber.compact().without_time().boxed()
+                subscriber.compact().without_time().with_ansi(color).boxed()
             }
             (LogFormat::Auto, false) | (LogFormat::Simplified, _) => {
                 subscriber.with_ansi(false).boxed()

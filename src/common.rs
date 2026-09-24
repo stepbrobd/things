@@ -112,6 +112,11 @@ pub fn counted(count: usize, noun: &str) -> String {
     format!("{count} {noun}{plural}")
 }
 
+/// NO_COLOR with any value but the empty string asks for output without color
+pub fn no_color_requested() -> bool {
+    std::env::var_os("NO_COLOR").is_some_and(|value| !value.is_empty())
+}
+
 pub fn colored<T: ToString>(text: T, codes: &[&str], no_color: bool) -> String {
     let text = text.to_string();
     if no_color {
