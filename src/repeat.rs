@@ -182,8 +182,9 @@ fn weekday_index(day: NaiveDate) -> u32 {
     day.weekday().num_days_from_sunday()
 }
 
-fn week_start(day: NaiveDate) -> NaiveDate {
-    day - Days::new(u64::from(weekday_index(day)))
+/// the sunday that starts the week of `day`, None before the first representable week
+fn week_start(day: NaiveDate) -> Option<NaiveDate> {
+    day.checked_sub_days(Days::new(u64::from(weekday_index(day))))
 }
 
 /// the day of the month, -1 for the last
@@ -259,7 +260,7 @@ impl RepeatSpec {
                 } else {
                     days.clone()
                 };
-                let base = week_start(anchor);
+                let base = week_start(anchor)?;
                 let start = if after < anchor {
                     anchor
                 } else {
@@ -269,7 +270,8 @@ impl RepeatSpec {
                     .filter_map(|ahead| start.checked_add_days(Days::new(ahead as u64)))
                     .find(|day| {
                         days.contains(&weekday_index(*day))
-                            && ((week_start(*day) - base).num_days() / 7) % every == 0
+                            && week_start(*day)
+                                .is_some_and(|week| ((week - base).num_days() / 7) % every == 0)
                     })
             }
             Cadence::Monthly(day) => {

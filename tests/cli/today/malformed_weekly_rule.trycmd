@@ -1,0 +1,11 @@
+```trycmd
+$ run.sh things --id-seed 7 today
+No tasks for today.
+
+```
+
+```trycmd
+$ run.sh things upcoming
+No upcoming tasks.
+
+```
