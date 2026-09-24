@@ -216,7 +216,7 @@ fn build_mark_status_plan(
             (TaskStatus::Canceled, Some(now))
         };
 
-        // a project closes with its open to-dos
+        // a project closes with its incomplete to-dos
         // those to-dos take its status as in the app once it asks
         if task.is_project() && action != "incomplete" {
             let mut open = store
@@ -786,7 +786,7 @@ mod tests {
             uncheck_ids: None,
             check_cancel_ids: None,
         };
-        // a template takes no status, canceled no more than done
+        // a template takes no status, canceled no more than completed
         for done in [true, false] {
             let (plan, _, errs) = build_mark_status_plan(&status(done), &store, NOW);
             assert!(plan.changes.is_empty());

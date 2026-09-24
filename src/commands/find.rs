@@ -379,8 +379,8 @@ fn build_status_set(args: &FindArgs) -> Option<Vec<TaskStatus>> {
         return Some(vec![TaskStatus::Completed]);
     }
     if chosen.is_empty() {
-        // the Trash holds done and canceled items as well
-        // the app lists them alongside open ones
+        // the Trash holds completed and canceled items as well
+        // the app lists them alongside incomplete ones
         return (!args.trashed).then(|| vec![TaskStatus::Incomplete]);
     }
     Some(chosen)

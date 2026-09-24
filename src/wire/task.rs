@@ -441,7 +441,7 @@ impl Default for TaskType {
 #[repr(i32)]
 #[serde(from = "i32", into = "i32")]
 pub enum TaskStatus {
-    /// open/incomplete
+    /// incomplete
     Incomplete = 0,
     /// canceled
     Canceled = 2,

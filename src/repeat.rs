@@ -606,7 +606,8 @@ pub fn due_instances(
                 template.uuid.to_string(),
                 WireObject::update(EntityType::Task7, advance),
             );
-            // the instance gets its own copy of the template's checklist, open again
+            // the instance gets its own copy of the template's checklist
+            // each item of the copy starts incomplete
             let checklist = template
                 .checklist_items
                 .iter()
@@ -642,7 +643,7 @@ pub struct TemplateSource {
 
 /// one checklist item to copy
 ///
-/// every copy starts open
+/// every copy starts incomplete
 pub struct ChecklistCopy {
     pub title: String,
     pub index: i32,

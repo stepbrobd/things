@@ -401,7 +401,7 @@ pub fn fold_item(item: WireItem, state: &mut RawState) {
 /// a `Tombstone2` names an object an Apple client deleted for good, emptying the Trash for instance
 ///
 /// the object goes with what only exists through it, the checklist of a to-do and the to-dos and headings of a project or heading
-/// those would otherwise come back as open items without their container
+/// those would otherwise come back as incomplete items without their container
 /// an area or a tag goes alone
 /// a to-do in an area is not a part of it
 fn purge(state: &mut RawState, target: &ThingsId) {

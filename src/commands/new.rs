@@ -358,7 +358,7 @@ fn build_new_plan(
         props.deadline = Some(day_timestamp(parsed));
     }
 
-    // only an open to-do that Today lists anchors a place in it
+    // only an incomplete to-do that Today lists anchors a place in it
     // `reorder` holds its anchors to the same rule
     let anchor_is_today = anchor
         .as_ref()
@@ -383,7 +383,7 @@ fn build_new_plan(
     let mut index_updates: Vec<(ThingsId, i32)> = Vec::new();
     let mut today_updates: Vec<(ThingsId, i32)> = Vec::new();
     // a project or area view lists its to-dos of every status
-    // the Inbox, Anytime and Someday list open ones
+    // the Inbox, Anytime and Someday list incomplete ones
     // a repeat template shows in no list
     let every_status = matches!(
         target_bucket.first().map(String::as_str),

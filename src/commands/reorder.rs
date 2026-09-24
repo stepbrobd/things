@@ -219,7 +219,7 @@ fn build_reorder_plan(
         ));
     }
 
-    // only an open to-do that Today lists is ordered within it
+    // only an incomplete to-do that Today lists is ordered within it
     // the others are ordered within their own list
     let is_today_orderable = |task: &crate::store::Task| store.in_today(task, &today);
     let is_today_reorder = is_today_orderable(&item) && is_today_orderable(&anchor);
@@ -395,7 +395,7 @@ fn build_reorder_plan(
     }
 
     // a project or area view lists its to-dos, headings and projects of every status
-    // the Inbox, Anytime and Someday list open ones
+    // the Inbox, Anytime and Someday list incomplete ones
     // a repeat template shows in no list
     let every_status = matches!(
         item_bucket.first().map(String::as_str),

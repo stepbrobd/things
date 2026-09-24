@@ -489,7 +489,7 @@ impl ThingsStore {
     /// in the Inbox list as the Inbox view reads it
     ///
     /// a marked object without a create shows here as elsewhere
-    /// a capture that is done, canceled or in the Trash is out of it
+    /// a capture that is completed, canceled or in the Trash is out of it
     /// a repeat template is out of it whatever its schedule
     pub fn in_inbox(&self, task: &Task) -> bool {
         task.status == TaskStatus::Incomplete
@@ -505,7 +505,7 @@ impl ThingsStore {
 
     /// in the Someday list as the Someday view reads it
     ///
-    /// a to-do that is blank, done or canceled, a repeat template, a to-do inside a project and what is in the Trash are out of it
+    /// an item that is blank, completed or canceled, a repeat template, a to-do inside a project and what is in the Trash are out of it
     pub fn in_someday(&self, task: &Task) -> bool {
         task.status == TaskStatus::Incomplete
             && task.in_someday()
@@ -518,7 +518,7 @@ impl ThingsStore {
 
     /// in the Today list as the Today view reads it
     ///
-    /// a to-do that is blank, done or canceled, in the Trash or in a closed project or heading is out of it
+    /// an item that is blank, completed or canceled, in the Trash or in a closed project or heading is out of it
     pub fn in_today(&self, task: &Task, today: &DateTime<Utc>) -> bool {
         task.status == TaskStatus::Incomplete
             && task.is_today(today)
@@ -571,7 +571,7 @@ impl ThingsStore {
             || project.is_some_and(|project| project.trashed)
     }
 
-    /// in a trashed container or a project or heading that is no longer open
+    /// in a trashed container or a project or heading that is no longer incomplete
     ///
     /// that keeps a to-do out of the lists and a template out of the repeat pass
     pub fn in_closed_container(&self, task: &Task) -> bool {

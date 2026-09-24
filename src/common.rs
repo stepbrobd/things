@@ -409,7 +409,7 @@ pub fn resolve_container(
             shown_title(&project.title)
         ));
     }
-    // a closed project lists no open to-do
+    // a closed project lists no incomplete to-do
     // one placed there would show nowhere
     if let Some(state) = store.closed_state(&project) {
         return Err(format!(
@@ -473,7 +473,7 @@ fn resolve_tags(store: &ThingsStore, raw_tags: &str, removable: bool) -> (Vec<Th
             },
         };
         // a tag that did not replay completely may not be what it shows
-        // taking one off an item stays open
+        // taking one off an item stays allowed
         if !removable
             && store
                 .tags_by_uuid
