@@ -142,21 +142,19 @@ impl Cli {
 
         let (email, password) = load_auth()?;
         let mut client = ThingsCloudClient::new(email, password)?;
-        match get_state_with_append_log(&mut client, &cache_dir) {
-            Ok((state, lock)) => {
-                *self.cloud.borrow_mut() = Some(client);
-                *self.cache_lock.borrow_mut() = Some(lock);
-                Ok(state)
-            }
-            Err(err) => {
+        let (state, lock, sync_error) = get_state_with_append_log(&mut client, &cache_dir)?;
+        *self.cache_lock.borrow_mut() = Some(lock);
+        match sync_error {
+            None => *self.cloud.borrow_mut() = Some(client),
+            Some(err) => {
                 eprintln!(
                     "Sync failed, showing the cached state: {}",
                     printable_plain(&format!("{err:#}"))
                 );
                 self.offline.set(true);
-                fold_state_from_append_log(&cache_dir)
             }
         }
+        Ok(state)
     }
 
     pub fn load_store(&self) -> Result<ThingsStore> {

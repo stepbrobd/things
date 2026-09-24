@@ -550,16 +550,42 @@ fn fold_locked(cache_dir: &Path) -> Result<RawState> {
     Ok(state)
 }
 
-/// synchronize the journal with the server and fold it, under the cache lock
+/// synchronize the journal with the server and fold it under the cache lock
 ///
-/// the caller keeps the lock until its writes from this state are committed
+/// the caller holds the lock through the repeat pass's commit
+/// a failed sync still folds the journal on disk
+/// its error comes back beside that state
+/// only a journal that the configured email's sign-in wrote is a fallback
+/// a cursor from before the email was kept vouches for no account
 pub fn get_state_with_append_log(
     client: &mut ThingsCloudClient,
     cache_dir: &Path,
-) -> Result<(RawState, CacheLock)> {
+) -> Result<(RawState, CacheLock, Option<anyhow::Error>)> {
     let lock = lock_cache(cache_dir)?;
-    sync_locked(client, cache_dir)?;
-    Ok((fold_locked(cache_dir)?, lock))
+    let sync_error = match sync_locked(client, cache_dir) {
+        Ok(()) => None,
+        Err(error) => {
+            let cursor = read_cursor(cache_dir);
+            let bound = cursor.email.as_deref() == Some(client.email.as_str());
+            // a journal the repair emptied holds no state either
+            let journal = fs::metadata(cache_dir.join(LOG_FILE)).map_or(0, |meta| meta.len());
+            if !bound || journal == 0 {
+                return Err(error.context(
+                    "Sync failed, and no cached state is known to belong to this account",
+                ));
+            }
+            Some(error)
+        }
+    };
+    // a cache that cannot be read fails the run
+    // the sync failure before it is named too
+    let state = fold_locked(cache_dir).map_err(|error| match &sync_error {
+        Some(sync) => error.context(format!(
+            "Sync failed ({sync:#}), and the sync cache cannot be read"
+        )),
+        None => error,
+    })?;
+    Ok((state, lock, sync_error))
 }
 
 /// the state folded from the journal on disk, without touching the server
