@@ -79,7 +79,6 @@ struct TagsEditPlan {
 fn build_tags_delete_plan(
     identifier: &str,
     store: &crate::store::ThingsStore,
-    now: f64,
 ) -> std::result::Result<(Tag, BTreeMap<String, WireObject>), String> {
     let (tag, err) = resolve_single_tag(store, identifier);
     let Some(tag) = tag else {
@@ -115,7 +114,6 @@ fn build_tags_delete_plan(
                 EntityType::Task7,
                 TaskPatch {
                     tag_ids: Some(without(&task.tags)),
-                    modification_date: Some(Some(now)),
                     ..Default::default()
                 },
             ),
@@ -132,7 +130,6 @@ fn build_tags_delete_plan(
                 EntityType::Area3,
                 AreaPatch {
                     tag_ids: Some(without(&area.tags)),
-                    modification_date: Some(now),
                     ..Default::default()
                 },
             ),
@@ -331,8 +328,7 @@ impl Command for TagsArgs {
             TagsSubcommand::Delete(args) => {
                 let store = cli.load_store()?;
                 let (tag, changes) =
-                    build_tags_delete_plan(&args.tag_id, &store, ctx.now_timestamp())
-                        .map_err(anyhow::Error::msg)?;
+                    build_tags_delete_plan(&args.tag_id, &store).map_err(anyhow::Error::msg)?;
                 let carriers = changes.len() - 1;
                 ctx.commit_changes(changes, None)
                     .map_err(|e| anyhow!("Failed to delete tag: {e}"))?;
@@ -444,13 +440,13 @@ mod tests {
                 ),
             ),
         ]);
-        let (_, changes) = build_tags_delete_plan("Errand", &store, NOW).expect("plan");
+        let (_, changes) = build_tags_delete_plan("Errand", &store).expect("plan");
         assert_eq!(
             serde_json::to_value(&changes).expect("json"),
             json!({
                 TAG_UUID: {"t": 2, "e": "Tag4", "p": {}},
-                TASK: {"t": 1, "e": "Task7", "p": {"tg": [OTHER], "md": NOW}},
-                AREA: {"t": 1, "e": "Area3", "p": {"tg": [], "md": NOW}}
+                TASK: {"t": 1, "e": "Task7", "p": {"tg": [OTHER]}},
+                AREA: {"t": 1, "e": "Area3", "p": {"tg": []}}
             })
         );
 
@@ -458,7 +454,7 @@ mod tests {
             tag(TAG_UUID, "Work", None),
             tag(CHILD_UUID, "Meetings", Some(TAG_UUID)),
         ]);
-        let err = build_tags_delete_plan("Work", &parent, NOW).expect_err("a child tag");
+        let err = build_tags_delete_plan("Work", &parent).expect_err("a child tag");
         assert!(err.contains("has child tags"), "{err}");
     }
 
