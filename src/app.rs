@@ -35,7 +35,7 @@ use crate::{
     after_help = "Environment:\n  THINGS_EMAIL, THINGS_PASSWORD    Things Cloud credentials, over the auth file\n  THINGS_LOG                       Log filter directive, for example debug\n  THINGS_LOG_FORMAT                One of pretty, simplified or json\n  NO_COLOR                         Disable color\n  XDG_CONFIG_HOME, XDG_STATE_HOME  Where the auth file and the sync cache live\n\nExit status:\n  0  Success\n  1  The command failed\n  2  The command line did not parse\n  3  The sync failed and the output comes from the cached state"
 )]
 pub struct Cli {
-    /// Output JSON when supported by the selected command
+    /// Output JSON from the views and show
     #[arg(long, global = true)]
     pub json: bool,
     /// Test hook that disables cloud sync and cloud writes
@@ -87,7 +87,7 @@ impl Cli {
     }
 
     /// load the state once per run, from the journal file, the sync cache or the server
-    fn ensure_state(&self) -> Result<()> {
+    fn load_state_once(&self) -> Result<()> {
         if self.state_cache.borrow().is_some() {
             return Ok(());
         }
@@ -111,7 +111,7 @@ impl Cli {
     ///
     /// borrowed rather than copied
     pub fn with_state<R>(&self, read: impl FnOnce(&RawState) -> R) -> Result<R> {
-        self.ensure_state()?;
+        self.load_state_once()?;
         let cache = self.state_cache.borrow();
         Ok(read(cache.as_ref().expect("the state was loaded")))
     }
@@ -179,7 +179,7 @@ pub fn run() -> Result<ExitCode> {
     let mut ctx = DefaultCmdCtx::from_cli(&cli);
     if !matches!(command, Commands::Auth(_) | Commands::Completions(_)) {
         // a state that does not load fails the run here, once, before the pass and the command ask for it
-        cli.ensure_state()?;
+        cli.load_state_once()?;
         if let Err(err) = materialize_due(&cli, &mut ctx) {
             // the pass stands in for the Apple clients
             // its failure is reported
@@ -218,7 +218,7 @@ pub fn run() -> Result<ExitCode> {
 ///
 /// the Apple clients do the same on their day
 fn materialize_due(cli: &Cli, ctx: &mut dyn CmdCtx) -> Result<()> {
-    cli.ensure_state()?;
+    cli.load_state_once()?;
     if cli.offline.get() {
         return Ok(());
     }

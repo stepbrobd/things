@@ -85,7 +85,7 @@ fn build_tags_delete_plan(
     let Some(tag) = tag else {
         return Err(err);
     };
-    // the app's handling of child tags is not captured
+    // what the app does with child tags is not captured
     // child tags are left to the user
     if store
         .tags_by_uuid

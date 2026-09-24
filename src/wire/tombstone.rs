@@ -11,7 +11,7 @@ use crate::ids::ThingsId;
 /// a tombstone purges what it names whatever that field holds
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct TombstoneProps {
-    /// `dloid`, deleted object UUID
+    /// `dloid`, the id of the deleted object
     #[serde(rename = "dloid")]
     pub deleted_object_id: ThingsId,
 }

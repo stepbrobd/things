@@ -219,7 +219,7 @@ fn apply_schedule(
     }
     if task.has_repeater() {
         return Err(
-            "Task7 repeater tasks are blocked from scheduling until repeater bookkeeping is supported."
+            "Cannot reschedule a to-do with a repeater, whose bookkeeping the Apple clients keep."
                 .to_string(),
         );
     }
@@ -385,7 +385,7 @@ fn apply_schedule(
         let template_id = ThingsId::from_str(&template_uuid).map_err(|e| e.to_string())?;
         update.recurrence_template_ids = Some(vec![template_id.clone()]);
         let template = template(&spec, rule, first, source, now)
-            .ok_or_else(|| format!("The day after {first} cannot be represented"))?;
+            .ok_or_else(|| format!("The day after {first} is out of range"))?;
         changes.insert(
             template_uuid,
             WireObject::create(EntityType::Task7, template),

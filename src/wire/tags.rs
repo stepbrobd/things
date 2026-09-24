@@ -20,7 +20,7 @@ pub struct TagProps {
 
     /// `pn`, parent tag ids
     ///
-    /// supports nesting
+    /// a tag nests under the tag it names
     #[serde(rename = "pn", default)]
     pub parent_ids: Vec<ThingsId>,
 

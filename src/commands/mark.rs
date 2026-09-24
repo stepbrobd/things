@@ -100,7 +100,7 @@ fn validate_recurring_instance(
         return (
             false,
             format!(
-                "Recurring instance has {} template references where exactly one is expected.",
+                "This repeating item names {} templates where one is expected.",
                 task.recurrence_templates.len()
             ),
         );
@@ -118,8 +118,7 @@ fn validate_recurring_instance(
     let Some(rr) = template.recurrence_rule else {
         return (
             false,
-            "Recurring instance template has unsupported recurrence rule shape (expected dict)."
-                .to_string(),
+            "The template of this repeating item has no repeat rule.".to_string(),
         );
     };
 
@@ -127,11 +126,12 @@ fn validate_recurring_instance(
         RecurrenceType::FixedSchedule => (true, String::new()),
         RecurrenceType::AfterCompletion => (
             false,
-            "Recurring 'after completion' templates (rr.tp=1) are blocked: completion requires coupled template writes (acrd/tir) not implemented yet.".to_string(),
+            "Only an Apple client completes or cancels an item that repeats after completion."
+                .to_string(),
         ),
         RecurrenceType::Unknown(v) => (
             false,
-            format!("Recurring template type rr.tp={v:?} is unsupported for safe completion."),
+            format!("The template has a repeat type the CLI does not know: rr.tp={v:?}."),
         ),
     }
 }
@@ -142,7 +142,7 @@ fn validate_mark_target(
     store: &crate::store::ThingsStore,
 ) -> String {
     if task.has_repeater() {
-        return "Task7 repeater tasks are blocked from status changes until repeater bookkeeping is supported."
+        return "Cannot change the status of an item with a repeater, whose bookkeeping the Apple clients keep."
             .to_string();
     }
     if task.is_recurrence_template() {
@@ -620,7 +620,7 @@ mod tests {
         let (plan, _, errors) = build_mark_status_plan(&args, &build_store(vec![repeating]), NOW);
         assert!(plan.changes.is_empty());
         assert_eq!(errors.len(), 1);
-        assert!(errors[0].contains("repeater bookkeeping"));
+        assert!(errors[0].contains("an item with a repeater"));
     }
 
     #[test]
@@ -815,7 +815,7 @@ mod tests {
             assert_eq!(
                 errs,
                 vec![
-                    "Recurring instance has 2 template references where exactly one is expected. (Recurring instance)"
+                    "This repeating item names 2 templates where one is expected. (Recurring instance)"
                 ]
             );
         }

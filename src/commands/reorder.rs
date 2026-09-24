@@ -159,10 +159,7 @@ fn build_reorder_plan(
         return Err(err);
     };
     if !item.entity.can_upgrade_to_task7() {
-        return Err(format!(
-            "Unsupported task entity for reordering: {}",
-            item.entity
-        ));
+        return Err(format!("Cannot reorder an item of kind {}", item.entity));
     }
 
     let anchor_id = args
@@ -176,7 +173,7 @@ fn build_reorder_plan(
     };
     if !anchor.entity.can_upgrade_to_task7() {
         return Err(format!(
-            "Unsupported anchor task entity for reordering: {}",
+            "Cannot reorder next to an item of kind {}",
             anchor.entity
         ));
     }
@@ -431,7 +428,7 @@ fn build_reorder_plan(
             .find(|task| !task.entity.can_upgrade_to_task7())
     {
         return Err(format!(
-            "Cannot rebalance around unsupported task entity: {}",
+            "Cannot rebalance around an item of kind {}",
             task.entity
         ));
     }
@@ -693,7 +690,7 @@ mod tests {
         .expect_err("dense reorder around future-version sibling");
         assert_eq!(
             future_error,
-            "Cannot rebalance around unsupported task entity: Task8"
+            "Cannot rebalance around an item of kind Task8"
         );
 
         let err = build_reorder_plan(

@@ -81,17 +81,14 @@ fn build_delete_plan(
 
         if let Some(task) = task {
             if !task.entity.can_upgrade_to_task7() {
-                return Err(format!(
-                    "Unsupported task entity for deletion: {}",
-                    task.entity
-                ));
+                return Err(format!("Cannot delete an item of kind {}", task.entity));
             }
             if store.in_trash(&task) {
                 return Err(format!("Item is in the Trash: {}", one_line(&task.title)));
             }
             if task.has_repeater() {
                 return Err(format!(
-                    "Task7 repeater tasks are blocked from deletion until repeater bookkeeping is supported: {}",
+                    "Cannot delete an item with a repeater, whose bookkeeping the Apple clients keep: {}",
                     one_line(&task.title)
                 ));
             }
@@ -149,7 +146,7 @@ fn build_delete_plan(
             for child in contents(&parent, in_area, heading) {
                 if child.has_repeater() {
                     return Err(format!(
-                        "Task7 repeater tasks are blocked from deletion until repeater bookkeeping is supported: {}",
+                        "Cannot delete an item with a repeater, whose bookkeeping the Apple clients keep: {}",
                         one_line(&child.title)
                     ));
                 }

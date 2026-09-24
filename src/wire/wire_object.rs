@@ -42,7 +42,9 @@ pub enum Properties {
     Delete,
     /// known entity families we intentionally skip materializing in store state
     Ignored(BTreeMap<String, Value>),
-    /// unknown/unsupported entity payload preserved for forward compatibility
+    /// a payload the CLI holds untyped
+    ///
+    /// that of an unknown kind, of a known kind that did not parse, of an operation the CLI does not know, or of an envelope that did not read
     Unknown(BTreeMap<String, Value>),
 }
 
@@ -296,7 +298,7 @@ fn to_map<T: Serialize>(value: &T) -> BTreeMap<String, Value> {
 pub enum OperationType {
     /// full snapshot/create
     ///
-    /// replace current object state for UUID
+    /// replace the object's current state
     Create = 0,
     /// partial update
     ///

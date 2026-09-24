@@ -37,7 +37,7 @@ pub trait Command {
 
 pub(crate) fn detailed_json_conflict(json: bool, detailed: bool) -> Result<()> {
     if json && detailed {
-        bail!("--detailed is not supported with --json.");
+        bail!("--detailed cannot be combined with --json.");
     }
     Ok(())
 }

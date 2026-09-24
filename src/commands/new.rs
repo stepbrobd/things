@@ -215,7 +215,10 @@ fn build_new_plan(
         if let Some(task) = &task
             && !task.entity.can_upgrade_to_task7()
         {
-            return Err(format!("Unsupported anchor task entity: {}", task.entity));
+            return Err(format!(
+                "Cannot place a to-do next to an item of kind {}",
+                task.entity
+            ));
         }
         anchor = task;
     }
@@ -536,7 +539,7 @@ fn build_new_plan(
             conflict_overrides: props.conflict_overrides.clone(),
         };
         let template = template(&spec, rule, first, source, now)
-            .ok_or_else(|| format!("The day after {first} cannot be represented"))?;
+            .ok_or_else(|| format!("The day after {first} is out of range"))?;
         template_change = Some((template_uuid, template));
     }
 
