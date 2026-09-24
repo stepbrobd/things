@@ -20,8 +20,8 @@ use serde_json::Value;
 use tracing::{debug, warn};
 
 use crate::{
-    client::{HttpStatus, ThingsCloudClient, now_timestamp},
-    common::{eprint_line, printable_plain},
+    client::{HttpStatus, ThingsCloudClient},
+    common::{eprint_line, now_ts_f64, printable_plain},
     dirs::create_private_dir,
     store::{RawState, fold_item},
     wire::wire_object::WireItem,
@@ -264,7 +264,7 @@ fn cursor_for_history(cache_dir: &Path, history_key: &str) -> Result<CursorData>
     let cursor = CursorData {
         history_key: history_key.to_string(),
         log_offset: Some(0),
-        updated_at: Some(now_timestamp()),
+        updated_at: Some(now_ts_f64()),
         ..Default::default()
     };
     write_cursor(cache_dir, &cursor)?;
@@ -439,7 +439,7 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
             cursor.next_start_index += items.len() as i64;
             cursor.log_offset = Some(log.metadata()?.len());
             cursor.head_index = client.head_index;
-            cursor.updated_at = Some(now_timestamp());
+            cursor.updated_at = Some(now_ts_f64());
             write_cursor(cache_dir, &cursor)?;
         }
 
@@ -451,7 +451,7 @@ fn sync_locked(client: &mut ThingsCloudClient, cache_dir: &Path) -> Result<()> {
 
     cursor.head_index = client.head_index;
     if !cursor.same_position(&stored) {
-        cursor.updated_at = Some(now_timestamp());
+        cursor.updated_at = Some(now_ts_f64());
         write_cursor(cache_dir, &cursor)?;
     }
     Ok(())

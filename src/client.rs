@@ -1,8 +1,4 @@
-use std::{
-    collections::BTreeMap,
-    fmt,
-    time::{Instant, SystemTime, UNIX_EPOCH},
-};
+use std::{collections::BTreeMap, fmt, time::Instant};
 
 use anyhow::{Context, Result, anyhow};
 use reqwest::blocking::Client;
@@ -18,21 +14,7 @@ const CLIENT_INFO: &str = "eyJkbSI6Ik1hYzE0LDIiLCJsciI6IlVTIiwibmYiOnRydWUsIm5rI
 const APP_ID: &str = "com.culturedcode.ThingsMac";
 const SCHEMA: &str = "301";
 const WRITE_PUSH_PRIORITY: &str = "10";
-
-fn app_instance_id() -> String {
-    "things".to_string()
-}
-
-fn now_ts() -> f64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs_f64())
-        .unwrap_or(0.0)
-}
-
-pub(crate) fn now_timestamp() -> f64 {
-    now_ts()
-}
+const APP_INSTANCE_ID: &str = "things";
 
 /// an answer with an error status
 ///
@@ -115,7 +97,7 @@ impl ThingsCloudClient {
             .header("things-client-info", CLIENT_INFO)
             .header("App-Id", APP_ID)
             .header("Schema", SCHEMA)
-            .header("App-Instance-Id", app_instance_id());
+            .header("App-Instance-Id", APP_INSTANCE_ID);
 
         for (k, v) in extra_headers {
             req = req.header(*k, v);
@@ -197,16 +179,11 @@ impl ThingsCloudClient {
         let idx = self.head_index;
         let url = format!("{BASE_URL}/history/{history_key}/commit?ancestor-index={idx}&_cnt=1");
 
-        let mut payload = BTreeMap::new();
-        for (uuid, obj) in changes {
-            payload.insert(uuid, obj);
-        }
-
         let result = self.request(
             reqwest::Method::POST,
             &url,
             &format!("the commit on {idx}"),
-            Some(serde_json::to_value(payload)?),
+            Some(serde_json::to_value(changes)?),
             &[("Push-Priority", WRITE_PUSH_PRIORITY.to_string())],
         )?;
 
