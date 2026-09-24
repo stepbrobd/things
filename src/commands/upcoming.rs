@@ -35,7 +35,9 @@ impl Command for UpcomingArgs {
         let mut tasks = Vec::new();
         for t in store.tasks(Some(TaskStatus::Incomplete)) {
             // a template shows through its projection alone
-            if t.in_someday() || t.is_recurrence_template() || store.in_closed_container(&t) {
+            // Upcoming leaves out a blank row
+            // Today, the Inbox, Anytime, Someday and the Logbook leave it out too
+            if t.is_blank() || t.is_recurrence_template() || store.in_closed_container(&t) {
                 continue;
             }
             let Some(start_date) = t.start_date else {

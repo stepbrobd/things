@@ -187,11 +187,18 @@ impl Task {
             .map(|secs| format!("{:02}:{:02}", secs / 3600, secs % 3600 / 60))
     }
 
-    /// a blank row without title or notes
+    /// a blank row with nothing in it
     ///
-    /// a capture of notes alone still counts
+    /// notes, a checklist, a tag or a deadline alone make it a row that counts
+    /// a project always counts
+    /// it holds its to-dos
     pub fn is_blank(&self) -> bool {
-        self.title.trim().is_empty() && self.notes.as_deref().unwrap_or("").trim().is_empty()
+        !self.is_project()
+            && self.title.trim().is_empty()
+            && self.notes.as_deref().unwrap_or("").trim().is_empty()
+            && self.checklist_items.is_empty()
+            && self.tags.is_empty()
+            && self.deadline.is_none()
     }
 
     pub fn is_completed(&self) -> bool {

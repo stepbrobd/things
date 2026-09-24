@@ -309,6 +309,9 @@ impl ThingsStore {
                     && template.status == TaskStatus::Incomplete
                     && !template.instance_creation_paused
                     && !self.in_closed_container(template)
+                    // a blank template projects a blank row
+                    // the lists leave that row out
+                    && !template.is_blank()
             })
             .filter_map(|template| {
                 let rule = template.recurrence_rule.as_ref()?;
@@ -420,6 +423,7 @@ impl ThingsStore {
                     return false;
                 }
                 if task.is_heading()
+                    || task.is_blank()
                     || task.is_recurrence_template()
                     || self.in_trashed_container(task)
                 {

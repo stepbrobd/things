@@ -1252,6 +1252,13 @@ mod tests {
         // the row shows the next one
         let due = store_of(vec![template_object(daily, "2026-03-25", 0)]);
         assert_eq!(projected(&due), vec![day("2026-03-26")]);
+        // a blank template projects a blank row
+        // the lists leave that row out
+        let (uuid, mut blank) = template_object(daily, "2026-03-26", 1);
+        if let crate::wire::wire_object::Properties::TaskCreate(props) = &mut blank.payload {
+            props.title = String::new();
+        }
+        assert!(projected(&store_of(vec![(uuid, blank)])).is_empty());
     }
 
     #[test]
