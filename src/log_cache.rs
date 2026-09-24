@@ -511,23 +511,34 @@ fn fold_locked(cache_dir: &Path) -> Result<RawState> {
         File::open(&log_path).with_context(|| format!("failed to open {}", log_path.display()))?;
     file.seek(SeekFrom::Start(byte_offset))?;
     let mut reader = BufReader::new(file);
-    let mut line = String::new();
+    let mut line = Vec::new();
     let mut safe_offset = byte_offset;
 
     loop {
         let entry_offset = reader.stream_position()?;
         line.clear();
-        let read = reader.read_line(&mut line)?;
+        let read = reader.read_until(b'\n', &mut line)?;
         if read == 0 {
             break;
         }
 
-        if !line.ends_with('\n') {
+        // the bytes of an incomplete last line may end inside a character
+        // they are read once the line is complete
+        if line.last() != Some(&b'\n') {
             break;
         }
-        hasher.update(line.as_bytes());
+        hasher.update(&line);
 
-        let stripped = line.trim();
+        let corrupt = |error: &dyn std::fmt::Display| {
+            anyhow!(
+                "Corrupt journal line at {} byte {}: {}",
+                log_path.display(),
+                entry_offset,
+                error
+            )
+        };
+        let text = std::str::from_utf8(&line).map_err(|error| corrupt(&error))?;
+        let stripped = text.trim();
         if stripped.is_empty() {
             safe_offset = reader.stream_position()?;
             continue;
@@ -539,14 +550,7 @@ fn fold_locked(cache_dir: &Path) -> Result<RawState> {
             continue;
         }
         lines.push(hash);
-        let item: WireItem = serde_json::from_str(stripped).map_err(|error| {
-            anyhow!(
-                "Corrupt log entry at {} byte {}: {}",
-                log_path.display(),
-                entry_offset,
-                error
-            )
-        })?;
+        let item: WireItem = serde_json::from_str(stripped).map_err(|error| corrupt(&error))?;
         fold_item(item, &mut state);
         new_lines += 1;
         safe_offset = reader.stream_position()?;
@@ -719,6 +723,38 @@ mod tests {
             .len();
         let second_offset = read_state_cache(cache_dir).expect("cache").log_offset;
         assert_eq!(second_offset, expected_offset);
+    }
+
+    #[test]
+    fn fold_state_waits_for_a_last_line_cut_inside_a_character() {
+        let temp_dir = tempfile::tempdir().expect("tempdir");
+        let cache_dir = temp_dir.path();
+        let line = format!(
+            "{{\"{TASK_ID}\":{{\"t\":0,\"e\":\"Task7\",\"p\":{{\"tt\":\"Caf\u{e9}\",\"tp\":0,\"st\":1}}}}}}"
+        );
+        // the cut falls between the two bytes of the e with its accent
+        let split_at = line.find('\u{e9}').expect("accent") + 1;
+        let mut bytes = format!("{SETTINGS_ONE}\n").into_bytes();
+        bytes.extend_from_slice(&line.as_bytes()[..split_at]);
+        fs::write(cache_dir.join(LOG_FILE), &bytes).expect("seed log");
+
+        let first_state = fold_state_from_append_log(cache_dir).expect("first fold");
+        assert_eq!(first_state.len(), 1);
+
+        let mut fp = OpenOptions::new()
+            .append(true)
+            .open(cache_dir.join(LOG_FILE))
+            .expect("open log for append");
+        fp.write_all(&line.as_bytes()[split_at..])
+            .expect("append the rest of the line");
+        fp.write_all(b"\n").expect("end the line");
+
+        let second_state = fold_state_from_append_log(cache_dir).expect("second fold");
+        assert_eq!(second_state.len(), 2);
+        let task = crate::store::ThingsStore::from_raw_state(&second_state)
+            .get_task(TASK_ID)
+            .expect("task");
+        assert_eq!(task.title, "Caf\u{e9}");
     }
 
     #[test]

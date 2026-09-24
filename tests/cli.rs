@@ -438,7 +438,7 @@ fn failed_sync_with_a_cache_that_does_not_read() {
     assert_eq!(output.status.code(), Some(1), "{stderr}");
     assert!(stderr.contains("Sync failed ("), "{stderr}");
     assert!(stderr.contains("the sync cache cannot be read"), "{stderr}");
-    assert!(stderr.contains("Corrupt log entry"), "{stderr}");
+    assert!(stderr.contains("Corrupt journal line"), "{stderr}");
     assert_eq!(stderr.lines().count(), 1, "{stderr}");
 }
 
