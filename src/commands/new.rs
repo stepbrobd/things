@@ -24,9 +24,9 @@ use crate::{
 };
 
 #[derive(Debug, Args)]
-#[command(about = "Create a new task")]
+#[command(about = "Create a new to-do")]
 pub struct NewArgs {
-    /// Task title
+    /// To-do title
     pub title: String,
     #[arg(
         long = "in",
@@ -38,23 +38,23 @@ pub struct NewArgs {
     #[arg(
         long,
         short = 'w',
-        help = "Schedule: anytime, someday, today, evening, or YYYY-MM-DD"
+        help = "When: anytime, someday, today, evening, or YYYY-MM-DD"
     )]
     pub when: Option<String>,
     #[arg(
         long = "before",
         short = 'b',
         conflicts_with = "after_id",
-        help = "Insert before this sibling task ID or prefix"
+        help = "Anchor item ID or prefix to place before"
     )]
     pub before_id: Option<IdentifierToken>,
     #[arg(
         long = "after",
         short = 'a',
-        help = "Insert after this sibling task ID or prefix"
+        help = "Anchor item ID or prefix to place after"
     )]
     pub after_id: Option<IdentifierToken>,
-    #[arg(long, short = 'n', default_value = "", help = "Task notes")]
+    #[arg(long, short = 'n', default_value = "", help = "To-do notes")]
     pub notes: String,
     #[arg(
         long,
@@ -189,7 +189,7 @@ fn build_new_plan(
         .unwrap_or_else(Utc::now);
     let title = args.title.trim();
     if title.is_empty() {
-        return Err("Task title cannot be empty.".to_string());
+        return Err("To-do title cannot be empty.".to_string());
     }
 
     let mut props = base_new_props(title, now);
@@ -370,9 +370,10 @@ fn build_new_plan(
         && !(anchor_is_today && new_is_today)
         && task_bucket(anchor, store) != target_bucket
     {
-        return Err(
-            "Cannot place new task relative to an item in a different container/list.".to_string(),
-        );
+        return Err(format!(
+            "Anchor is in another list: {}",
+            one_line(&anchor.title)
+        ));
     }
 
     let mut index_updates: Vec<(ThingsId, i32)> = Vec::new();
@@ -559,7 +560,7 @@ impl Command for NewArgs {
             build_new_plan(self, &store, now, today, &mut id_gen).map_err(anyhow::Error::msg)?;
 
         ctx.commit_changes(plan.changes)
-            .with_context(|| "Failed to create task")?;
+            .with_context(|| "Failed to create to-do")?;
 
         let repeat = plan
             .repeat_label
@@ -953,7 +954,7 @@ mod tests {
             &mut id_gen,
         )
         .expect_err("empty title");
-        assert_eq!(empty_title, "Task title cannot be empty.");
+        assert_eq!(empty_title, "To-do title cannot be empty.");
 
         let unknown_container = build_new_plan(
             &NewArgs {
@@ -1009,6 +1010,6 @@ mod tests {
             &mut id_gen,
         )
         .expect_err("an inbox to-do after a Today anchor");
-        assert!(outside.contains("different container"), "{outside}");
+        assert!(outside.contains("another list"), "{outside}");
     }
 }

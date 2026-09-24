@@ -76,7 +76,7 @@ struct TagsEditPlan {
     labels: Vec<String>,
 }
 
-/// the tag's delete and, in the same commit as the app writes it, the tag taken off every to-do and area that carries it
+/// the tag's delete and, in the same commit as the app writes it, the tag taken off every item and area that carries it
 fn build_tags_delete_plan(
     identifier: &str,
     store: &crate::store::ThingsStore,
@@ -93,7 +93,7 @@ fn build_tags_delete_plan(
         .any(|child| child.parent_uuid.as_ref() == Some(&tag.uuid))
     {
         return Err(format!(
-            "{} has child tags, move or delete them first.",
+            "Tag has child tags, move or delete them first: {}",
             one_line(&store.resolve_tag_title(&tag.uuid))
         ));
     }
@@ -162,7 +162,7 @@ fn build_tags_edit_plan(
     if let Some(name) = &args.name {
         let name = name.trim();
         if name.is_empty() {
-            return Err("Tag name cannot be empty.".to_string());
+            return Err("Tag title cannot be empty.".to_string());
         }
         // a title is how a tag is named on the command line
         // two that differ in case alone name neither
@@ -277,7 +277,7 @@ impl Command for TagsArgs {
             TagsSubcommand::New(args) => {
                 let name = args.name.trim();
                 if name.is_empty() {
-                    bail!("Tag name cannot be empty.");
+                    bail!("Tag title cannot be empty.");
                 }
 
                 let store = cli.load_store()?;
@@ -352,18 +352,28 @@ impl Command for TagsArgs {
                 let store = cli.load_store()?;
                 let (tag, changes) =
                     build_tags_delete_plan(&args.tag_id, &store).map_err(anyhow::Error::msg)?;
-                let carriers = changes.len() - 1;
+                // the tag comes off items and areas, counted apart
+                let areas = changes
+                    .values()
+                    .filter(|change| change.entity_type == Some(EntityType::Area3))
+                    .count();
+                let items = changes.len() - 1 - areas;
                 ctx.commit_changes(changes)
                     .with_context(|| "Failed to delete tag")?;
 
-                let from = if carriers > 0 {
+                let carriers = [(items, "item"), (areas, "area")]
+                    .into_iter()
+                    .filter(|(count, _)| *count > 0)
+                    .map(|(count, noun)| counted(count, noun))
+                    .collect::<Vec<_>>();
+                let from = if carriers.is_empty() {
+                    String::new()
+                } else {
                     colored(
-                        format!("  (from {})", counted(carriers, "item")),
+                        format!("  (from {})", carriers.join(" and ")),
                         &[DIM],
                         cli.no_color(),
                     )
-                } else {
-                    String::new()
                 };
                 writeln!(
                     out,

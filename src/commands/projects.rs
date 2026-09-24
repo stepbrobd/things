@@ -63,7 +63,7 @@ pub struct ProjectsNewArgs {
     #[arg(
         long,
         short = 'w',
-        help = "Schedule: anytime (default), someday, today, or YYYY-MM-DD"
+        help = "When: anytime (default), someday, today, or YYYY-MM-DD"
     )]
     pub when: Option<String>,
     #[arg(long, short = 'n', default_value = "", help = "Project notes")]
@@ -156,9 +156,14 @@ fn build_projects_edit_plan(
         } else {
             let (item, _, item_candidates) = store.resolve_task_identifier(move_raw);
             let (area, _, area_candidates) = store.resolve_area_identifier(move_raw);
-            if !item_candidates.is_empty() || !area_candidates.is_empty() {
+            if !item_candidates.is_empty() {
                 return Err(format!(
                     "Ambiguous --move target '{move_raw}' (matches several items)."
+                ));
+            }
+            if !area_candidates.is_empty() {
+                return Err(format!(
+                    "Ambiguous --move target '{move_raw}' (matches several areas)."
                 ));
             }
             match (item, area) {

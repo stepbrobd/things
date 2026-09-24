@@ -15,6 +15,6 @@ Item is completed: Completed today
 ```trycmd
 $ run.sh things reorder Tc --after-id Tq
 ? 1
-Cannot reorder across different containers/lists.
+Anchor is in another list: Open in closed project
 
 ```

@@ -149,13 +149,13 @@ fn validate_mark_target(
         return "A repeat template takes no status, mark one of its instances instead.".to_string();
     }
     if action == "done" && task.status == TaskStatus::Completed {
-        return "Task is already completed.".to_string();
+        return "Item is already completed.".to_string();
     }
     if action == "incomplete" && task.status == TaskStatus::Incomplete {
-        return "Task is already incomplete/open.".to_string();
+        return "Item is already incomplete.".to_string();
     }
     if action == "canceled" && task.status == TaskStatus::Canceled {
-        return "Task is already canceled.".to_string();
+        return "Item is already canceled.".to_string();
     }
     if task.is_recurrence_instance() {
         let (ok, reason) = validate_recurring_instance(task, store);
@@ -338,7 +338,7 @@ impl Command for MarkArgs {
         if let Some(checklist_raw) = checklist_raw {
             if self.task_ids.len() != 1 {
                 bail!(
-                    "Checklist flags (--check, --uncheck, --check-cancel) require exactly one task ID."
+                    "Checklist flags (--check, --uncheck, --check-cancel) require exactly one to-do ID."
                 );
             }
 
@@ -348,7 +348,7 @@ impl Command for MarkArgs {
             };
 
             if task.checklist_items.is_empty() {
-                bail!("Task has no checklist items: {}", one_line(&task.title));
+                bail!("Item has no checklist: {}", one_line(&task.title));
             }
 
             let (plan, items, label) =

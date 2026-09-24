@@ -30,17 +30,17 @@ use crate::{
 
 #[derive(Debug, Args)]
 #[command(
-    about = "Edit the title, notes, container, tags, checklist, when, deadline, reminder, or repeat of a task"
+    about = "Edit the title, notes, container, tags, checklist, when, deadline, reminder, or repeat of a to-do"
 )]
 pub struct EditArgs {
-    #[arg(required = true, help = "Task ID(s) (or unique ID prefixes)")]
+    #[arg(required = true, help = "To-do ID(s) (or unique ID prefixes)")]
     pub task_ids: Vec<IdentifierToken>,
-    #[arg(long, short = 't', help = "Replace title (single task only)")]
+    #[arg(long, short = 't', help = "Replace title (single to-do only)")]
     pub title: Option<String>,
     #[arg(
         long,
         short = 'n',
-        help = "Replace notes (single task only, an empty string clears them)"
+        help = "Replace notes (single to-do only, an empty string clears them)"
     )]
     pub notes: Option<String>,
     #[arg(
@@ -55,39 +55,39 @@ pub struct EditArgs {
         long = "add-checklist",
         short = 'c',
         value_name = "TITLE",
-        help = "Add a checklist item (repeatable, single task only)"
+        help = "Add a checklist item (repeatable, single to-do only)"
     )]
     pub add_checklist: Vec<String>,
     #[arg(
         long = "remove-checklist",
         short = 'x',
         value_name = "IDS",
-        help = "Remove checklist items by comma-separated short IDs (single task only)"
+        help = "Remove checklist items by comma-separated short IDs (single to-do only)"
     )]
     pub remove_checklist: Option<String>,
     #[arg(
         long = "rename-checklist",
         short = 'k',
         value_name = "ID:TITLE",
-        help = "Rename a checklist item: short-id:new title (repeatable, single task only)"
+        help = "Rename a checklist item: short-id:new title (repeatable, single to-do only)"
     )]
     pub rename_checklist: Vec<String>,
     #[arg(
         long = "completed-on",
         value_name = "DATETIME",
-        help = "Set when a completed or canceled task was closed (single task only, RFC 3339 or YYYY-MM-DD at local midnight)"
+        help = "Set when a completed or canceled to-do was closed (single to-do only, RFC 3339 or YYYY-MM-DD at local midnight)"
     )]
     pub completed_on: Option<String>,
     #[arg(
         long = "created-on",
         value_name = "DATETIME",
-        help = "Set when the task was created (single task only, RFC 3339 or YYYY-MM-DD at local midnight)"
+        help = "Set when the to-do was created (single to-do only, RFC 3339 or YYYY-MM-DD at local midnight)"
     )]
     pub created_on: Option<String>,
     #[arg(
         long,
         short = 'w',
-        help = "When: anytime, today, evening, someday, or YYYY-MM-DD"
+        help = "When: anytime, someday, today, evening, or YYYY-MM-DD"
     )]
     pub when: Option<String>,
     #[arg(
@@ -111,7 +111,7 @@ pub struct EditArgs {
     #[arg(
         long = "repeat",
         value_name = "RULE",
-        help = "Repeat: daily, weekly[:mon,thu], monthly[:15|last], yearly[:MM-DD] or after:2w, with /N for every N (single task only)"
+        help = "Repeat: daily, weekly[:mon,thu], monthly[:15|last], yearly[:MM-DD] or after:2w, with /N for every N (single to-do only)"
     )]
     pub repeat: Option<String>,
     #[arg(
@@ -442,16 +442,16 @@ fn build_edit_plan(
 ) -> std::result::Result<EditPlan, String> {
     let multiple = args.task_ids.len() > 1;
     if multiple && args.title.is_some() {
-        return Err("--title requires a single task ID.".to_string());
+        return Err("--title requires a single to-do ID.".to_string());
     }
     if multiple && args.notes.is_some() {
-        return Err("--notes requires a single task ID.".to_string());
+        return Err("--notes requires a single to-do ID.".to_string());
     }
     if multiple && (args.completed_on.is_some() || args.created_on.is_some()) {
-        return Err("--completed-on/--created-on require a single task ID.".to_string());
+        return Err("--completed-on/--created-on require a single to-do ID.".to_string());
     }
     if multiple && args.repeat.is_some() {
-        return Err("--repeat requires a single task ID.".to_string());
+        return Err("--repeat requires a single to-do ID.".to_string());
     }
     if multiple
         && (!args.add_checklist.is_empty()
@@ -459,7 +459,7 @@ fn build_edit_plan(
             || !args.rename_checklist.is_empty())
     {
         return Err(
-            "--add-checklist/--remove-checklist/--rename-checklist require a single task ID."
+            "--add-checklist/--remove-checklist/--rename-checklist require a single to-do ID."
                 .to_string(),
         );
     }
@@ -573,15 +573,15 @@ fn build_edit_plan(
                 || move_l == "inbox")
         {
             return Err(format!(
-                "{} is the template of a repeating to-do and takes no --when, --deadline or --move inbox. Edit an instance instead.",
-                task.uuid
+                "Item is a repeat template and takes no --when, --deadline or --move inbox, which belong to its instances: {}",
+                one_line(&task.title)
             ));
         }
 
         if let Some(title) = &args.title {
             let title = title.trim();
             if title.is_empty() {
-                return Err("Task title cannot be empty.".to_string());
+                return Err("To-do title cannot be empty.".to_string());
             }
             update.title = Some(title.to_string());
             if !labels.iter().any(|l| l == "title") {
@@ -591,7 +591,7 @@ fn build_edit_plan(
 
         if let Some(completed_on) = &args.completed_on {
             if !task.is_completed() && !task.is_canceled() {
-                return Err("--completed-on needs a completed or canceled task.".to_string());
+                return Err("--completed-on needs a completed or canceled to-do.".to_string());
             }
             update.stop_date = Some(Some(parse_instant(completed_on, "--completed-on")?));
             labels.push("completed-on".to_string());
@@ -1388,7 +1388,7 @@ mod tests {
                 &mut id_gen,
             )
             .expect_err("a template has no day");
-            assert!(err.contains("template of a repeating to-do"), "{err}");
+            assert!(err.contains("is a repeat template"), "{err}");
         }
         let plan = build_edit_plan(
             &args(None, None, Some("08:00")),
@@ -1480,7 +1480,7 @@ mod tests {
             &mut id_gen,
         )
         .expect_err("title should reject");
-        assert_eq!(err, "--title requires a single task ID.");
+        assert_eq!(err, "--title requires a single to-do ID.");
     }
 
     #[test]
@@ -1781,10 +1781,10 @@ mod tests {
             TODAY,
             &mut id_gen,
         )
-        .expect_err("single task constraint");
+        .expect_err("single to-do constraint");
         assert_eq!(
             err,
-            "--add-checklist/--remove-checklist/--rename-checklist require a single task ID."
+            "--add-checklist/--remove-checklist/--rename-checklist require a single to-do ID."
         );
 
         let store = build_store(vec![task(TASK_UUID, "A")]);
@@ -1818,7 +1818,7 @@ mod tests {
             &mut id_gen,
         )
         .expect_err("empty title");
-        assert_eq!(err, "Task title cannot be empty.");
+        assert_eq!(err, "To-do title cannot be empty.");
     }
 
     #[test]

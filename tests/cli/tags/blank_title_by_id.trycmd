@@ -19,7 +19,7 @@ $ run.sh things --now-ts 1774400000.0 tags edit 7fTdNw446YPi1bXzHtudjm --name Na
 
 ```trycmd
 $ run.sh things --now-ts 1774400000.0 tags delete 7sZ73
-× Deleted 7sZ73dPdLCHdzLnyVZC3KF  7sZ73dPdLCHdzLnyVZC3KF  (from 1 item)
+× Deleted 7sZ73dPdLCHdzLnyVZC3KF  7sZ73dPdLCHdzLnyVZC3KF  (from 1 area)
 {
   "ancestor_index": 0,
   "changes": {

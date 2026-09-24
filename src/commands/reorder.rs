@@ -378,7 +378,10 @@ fn build_reorder_plan(
     let item_bucket = bucket(&item);
     let anchor_bucket = bucket(&anchor);
     if item_bucket != anchor_bucket {
-        return Err("Cannot reorder across different containers/lists.".to_string());
+        return Err(format!(
+            "Anchor is in another list: {}",
+            one_line(&anchor.title)
+        ));
     }
 
     // a project or area view lists its to-dos, headings and projects of every status

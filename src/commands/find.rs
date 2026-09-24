@@ -169,7 +169,7 @@ pub struct FindArgs {
     pub has_deadline: bool,
     #[arg(long = "no-deadline", short = 'N', help = "No deadline set")]
     pub no_deadline: bool,
-    #[arg(long, short = 'r', help = "Only recurring tasks")]
+    #[arg(long, short = 'r', help = "Only repeat templates")]
     pub recurring: bool,
     #[arg(long, help = "Search the Trash, of any status unless one is given")]
     pub trashed: bool,

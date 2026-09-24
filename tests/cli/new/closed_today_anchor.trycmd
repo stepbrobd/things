@@ -15,6 +15,6 @@ Anchor is in the Trash: Open in trashed project today
 ```trycmd
 $ run.sh things new x --when today --after Tq
 ? 1
-Cannot place new task relative to an item in a different container/list.
+Anchor is in another list: Open in closed project
 
 ```

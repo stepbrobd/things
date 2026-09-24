@@ -19,7 +19,7 @@ use crate::{
 #[derive(Debug, Args)]
 #[command(about = "Move to-dos, projects, and headings to the Trash, or delete an area")]
 pub struct DeleteArgs {
-    /// Item ID(s) (or unique ID prefixes)
+    /// Item or area ID(s) (or unique ID prefixes)
     #[arg(required = true)]
     pub item_ids: Vec<IdentifierToken>,
 }
@@ -64,7 +64,7 @@ fn build_delete_plan(
 
         if task_match && area_match {
             return Err(format!(
-                "Ambiguous identifier '{}' (matches tasks and areas).",
+                "Ambiguous identifier '{}' (matches an item and an area).",
                 identifier.as_str()
             ));
         }
