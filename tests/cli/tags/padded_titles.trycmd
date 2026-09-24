@@ -1,0 +1,14 @@
+```trycmd
+$ run.sh things find --tag Errand
+⌕ Find  (1 task)
+
+  T ▢ Post the letter  [Errand ]
+
+```
+
+```trycmd
+$ run.sh things tags new errand
+? 1
+A tag named errand exists already.
+
+```

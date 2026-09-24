@@ -499,7 +499,7 @@ fn resolve_tags(store: &ThingsStore, raw_tags: &str, removable: bool) -> (Vec<Th
 fn resolve_single_tag_id(tags: &[Tag], token: &str) -> Result<ThingsId, String> {
     let exact = tags
         .iter()
-        .filter(|tag| tag.title.to_lowercase() == token.to_lowercase())
+        .filter(|tag| tag.title.trim().to_lowercase() == token.to_lowercase())
         .map(|tag| tag.uuid.clone())
         .collect::<Vec<_>>();
     if exact.len() == 1 {

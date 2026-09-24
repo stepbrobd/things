@@ -191,7 +191,7 @@ fn build_tags_edit_plan(
         // a title is how a tag is named on the command line
         // two that differ in case alone name neither
         if store.tags_by_uuid.values().any(|other| {
-            other.uuid != tag.uuid && other.title.to_lowercase() == name.to_lowercase()
+            other.uuid != tag.uuid && other.title.trim().to_lowercase() == name.to_lowercase()
         }) {
             return Err(format!("A tag named {name} exists already."));
         }
@@ -207,7 +207,7 @@ fn build_tags_edit_plan(
             && store
                 .tags_by_uuid
                 .values()
-                .any(|other| other.title.to_lowercase() == move_raw.to_lowercase())
+                .any(|other| other.title.trim().to_lowercase() == move_raw.to_lowercase())
         {
             return Err(format!(
                 "Ambiguous --move target '{move_raw}' (matches clear and a tag, name the tag by its ID)."
@@ -311,7 +311,7 @@ impl Command for TagsArgs {
                 if store
                     .tags_by_uuid
                     .values()
-                    .any(|tag| tag.title.to_lowercase() == name.to_lowercase())
+                    .any(|tag| tag.title.trim().to_lowercase() == name.to_lowercase())
                 {
                     bail!("A tag named {name} exists already.");
                 }
