@@ -43,9 +43,18 @@ impl Command for LogbookArgs {
         let store = Arc::new(cli.load_store()?);
         let today = ctx.today();
 
-        let from_day =
-            parse_day(self.from_date.as_deref(), "--from").map_err(anyhow::Error::msg)?;
-        let to_day = parse_day(self.to_date.as_deref(), "--to").map_err(anyhow::Error::msg)?;
+        let from_day = self
+            .from_date
+            .as_deref()
+            .map(|day| parse_day(day, "--from"))
+            .transpose()
+            .map_err(anyhow::Error::msg)?;
+        let to_day = self
+            .to_date
+            .as_deref()
+            .map(|day| parse_day(day, "--to"))
+            .transpose()
+            .map_err(anyhow::Error::msg)?;
 
         if let (Some(from), Some(to)) = (from_day, to_day)
             && from > to

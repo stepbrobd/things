@@ -247,16 +247,12 @@ fn apply_schedule(
             update.evening_bit = Some(if when_l == "evening" { 1 } else { 0 });
             label(format!("when={when_l}"));
         } else {
-            let when_day = match parse_day(Some(when), "--when") {
-                Ok(Some(day)) => day,
-                Ok(None) => {
-                    return Err(
-                        "--when requires anytime, someday, today, evening, or YYYY-MM-DD"
-                            .to_string(),
-                    );
-                }
-                Err(e) => return Err(e),
-            };
+            let when_day = parse_day(when, "--when").map_err(|_| {
+                format!(
+                    "Invalid --when: {} (expected anytime, someday, today, evening or YYYY-MM-DD)",
+                    one_line(when)
+                )
+            })?;
             let day_ts = day_timestamp(when_day);
             update.start_location = Some(if day_ts <= today_ts {
                 TaskStart::Anytime
@@ -271,11 +267,7 @@ fn apply_schedule(
     }
 
     if let Some(deadline) = &args.deadline_date {
-        let day = match parse_day(Some(deadline), "--deadline") {
-            Ok(Some(day)) => day,
-            Ok(None) => return Err("--deadline requires YYYY-MM-DD".to_string()),
-            Err(e) => return Err(e),
-        };
+        let day = parse_day(deadline, "--deadline")?;
         update.deadline = Some(Some(day_timestamp(day) as f64));
         label(format!("deadline={deadline}"));
     }

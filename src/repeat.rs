@@ -171,9 +171,7 @@ pub fn bound(times: Option<i32>, until: Option<&str>) -> Result<Bound, String> {
         (Some(_), Some(_)) => Err("--times and --until exclude each other".to_string()),
         (Some(times), None) if times >= 1 => Ok(Bound::Times(times)),
         (Some(times), None) => Err(format!("--times {times}: expected a positive number")),
-        (None, Some(until)) => Ok(Bound::Until(
-            parse_day(Some(until), "--until")?.expect("a day was given"),
-        )),
+        (None, Some(until)) => Ok(Bound::Until(parse_day(until, "--until")?)),
         (None, None) => Ok(Bound::Never),
     }
 }

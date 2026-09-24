@@ -290,12 +290,12 @@ fn parse_date_value(
         _ => {
             let parsed = NaiveDate::parse_from_str(&lowered, "%Y-%m-%d").map_err(|_| {
                 format!(
-                    "Invalid date for {flag}: {value:?}. Expected YYYY-MM-DD, 'today', 'tomorrow', or 'yesterday'."
+                    "Invalid {flag} date: {value} (expected YYYY-MM-DD, today, tomorrow or yesterday)"
                 )
             })?;
             let ndt = parsed.and_hms_opt(0, 0, 0).ok_or_else(|| {
                 format!(
-                    "Invalid date for {flag}: {value:?}. Expected YYYY-MM-DD, 'today', 'tomorrow', or 'yesterday'."
+                    "Invalid {flag} date: {value} (expected YYYY-MM-DD, today, tomorrow or yesterday)"
                 )
             })?;
             Ok(Utc.from_utc_datetime(&ndt))
@@ -321,7 +321,7 @@ fn parse_date_expr(
         ("=", rest)
     } else {
         return Err(format!(
-            "Invalid date expression for {flag}: {raw:?}. Expected an operator prefix: >, <, >=, <=, or =  (e.g. '<=2026-03-31')"
+            "Invalid {flag} expression: {raw} (expected >, <, >=, <= or = before the day, such as <=2026-03-31)"
         ));
     };
     let date = parse_date_value(date_part, flag, today)?;

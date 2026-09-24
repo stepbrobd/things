@@ -168,12 +168,8 @@ pub fn day_of(timestamp: i64) -> Option<NaiveDate> {
 /// no time zone takes part
 /// the day goes on the wire at UTC midnight through `day_timestamp`
 /// the local offset of today or of that day cannot move it to the day before
-pub fn parse_day(day: Option<&str>, label: &str) -> Result<Option<NaiveDate>, String> {
-    let Some(day) = day else {
-        return Ok(None);
-    };
+pub fn parse_day(day: &str, label: &str) -> Result<NaiveDate, String> {
     NaiveDate::parse_from_str(day, "%Y-%m-%d")
-        .map(Some)
         .map_err(|_| format!("Invalid {label} date: {day} (expected YYYY-MM-DD)"))
 }
 
@@ -185,8 +181,8 @@ pub fn parse_instant(text: &str, label: &str) -> Result<f64, String> {
     if let Ok(instant) = DateTime::parse_from_rfc3339(text) {
         return Ok(instant.timestamp_millis() as f64 / 1000.0);
     }
-    let day = parse_day(Some(text), label)?
-        .ok_or_else(|| format!("Invalid {label}: {text} (expected RFC 3339 or YYYY-MM-DD)"))?;
+    let day = parse_day(text, label)
+        .map_err(|_| format!("Invalid {label}: {text} (expected RFC 3339 or YYYY-MM-DD)"))?;
     Local
         .from_local_datetime(&day.and_hms_opt(0, 0, 0).expect("midnight"))
         .earliest()
@@ -497,12 +493,11 @@ mod tests {
     #[test]
     fn a_day_flag_goes_on_the_wire_at_utc_midnight_in_winter_and_summer() {
         // the values the app writes for these days, whatever offset the process runs under today and whatever offset holds on the day itself
-        let wire = |text: &str| parse_day(Some(text), "--when").map(|day| day.map(day_timestamp));
-        assert_eq!(wire("2027-01-15"), Ok(Some(1_799_971_200)));
-        assert_eq!(wire("2027-01-20"), Ok(Some(1_800_403_200)));
-        assert_eq!(wire("2027-07-15"), Ok(Some(1_815_609_600)));
-        assert_eq!(parse_day(None, "--when"), Ok(None));
-        assert!(parse_day(Some("2027-13-01"), "--when").is_err());
+        let wire = |text: &str| parse_day(text, "--when").map(day_timestamp);
+        assert_eq!(wire("2027-01-15"), Ok(1_799_971_200));
+        assert_eq!(wire("2027-01-20"), Ok(1_800_403_200));
+        assert_eq!(wire("2027-07-15"), Ok(1_815_609_600));
+        assert!(parse_day("2027-13-01", "--when").is_err());
     }
 
     #[test]

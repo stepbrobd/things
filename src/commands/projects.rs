@@ -345,12 +345,11 @@ impl Command for ProjectsArgs {
                         props.scheduled_date = Some(ts);
                         props.today_index_reference = Some(ts);
                     } else {
-                        let day = match parse_day(Some(when_raw), "--when") {
-                            Ok(Some(day)) => day,
-                            Ok(None) => return Ok(()),
-                            Err(e) => {
-                                bail!("{e}");
-                            }
+                        let Ok(day) = parse_day(when_raw.trim(), "--when") else {
+                            bail!(
+                                "Invalid --when: {} (expected anytime, someday, today or YYYY-MM-DD)",
+                                one_line(when_raw)
+                            );
                         };
                         let ts = day_timestamp(day);
                         // a day that has come puts the project in Anytime
@@ -374,13 +373,7 @@ impl Command for ProjectsArgs {
                 }
 
                 if let Some(deadline) = &args.deadline_date {
-                    let day = match parse_day(Some(deadline), "--deadline") {
-                        Ok(Some(day)) => day,
-                        Ok(None) => return Ok(()),
-                        Err(e) => {
-                            bail!("{e}");
-                        }
-                    };
+                    let day = parse_day(deadline, "--deadline").map_err(anyhow::Error::msg)?;
                     props.deadline = Some(day_timestamp(day));
                 }
 

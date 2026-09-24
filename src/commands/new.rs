@@ -300,16 +300,12 @@ fn build_new_plan(
             props.today_index_reference = Some(today_ts);
             props.evening_bit = i32::from(when.eq_ignore_ascii_case("evening"));
         } else {
-            let parsed = match parse_day(Some(when), "--when") {
-                Ok(Some(day)) => day,
-                Ok(None) => {
-                    return Err(
-                        "--when requires anytime, someday, today, evening, or YYYY-MM-DD"
-                            .to_string(),
-                    );
-                }
-                Err(err) => return Err(err),
-            };
+            let parsed = parse_day(when, "--when").map_err(|_| {
+                format!(
+                    "Invalid --when: {} (expected anytime, someday, today, evening or YYYY-MM-DD)",
+                    one_line(when)
+                )
+            })?;
             let day_ts = day_timestamp(parsed);
             // a day that has come starts in Anytime
             // the app files a to-do dated today that way
@@ -383,11 +379,7 @@ fn build_new_plan(
     }
 
     if let Some(deadline_date) = &args.deadline_date {
-        let parsed = match parse_day(Some(deadline_date), "--deadline") {
-            Ok(Some(day)) => day,
-            Ok(None) => return Err("--deadline requires YYYY-MM-DD".to_string()),
-            Err(err) => return Err(err),
-        };
+        let parsed = parse_day(deadline_date, "--deadline")?;
         props.deadline = Some(day_timestamp(parsed));
     }
 
@@ -814,11 +806,7 @@ mod tests {
         )
         .expect("in project");
         let p = &serde_json::to_value(in_project.changes).expect("to value")[NEW_UUID]["p"];
-        let deadline_ts = day_timestamp(
-            parse_day(Some("2032-05-06"), "--deadline")
-                .expect("parse")
-                .expect("day"),
-        );
+        let deadline_ts = day_timestamp(parse_day("2032-05-06", "--deadline").expect("parse"));
         assert_eq!(p["pr"], json!([PROJECT_UUID]));
         assert_eq!(p["st"], json!(1));
         assert_eq!(p["tg"], json!([TAG_A_UUID, TAG_B_UUID]));
