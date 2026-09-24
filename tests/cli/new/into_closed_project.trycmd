@@ -1,0 +1,13 @@
+```trycmd
+$ run.sh things new Call --in Pc --when today
+? 1
+Container is completed: Closed project
+
+```
+
+```trycmd
+$ run.sh things edit Ta --move Px
+? 1
+Container is canceled: Canceled project
+
+```

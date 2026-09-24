@@ -247,6 +247,21 @@ fn build_new_plan(
         if project.is_some() && project_uuid.is_none() {
             return Err("--in target must be inbox, a project ID, or an area ID.".to_string());
         }
+        // a closed project lists no open to-do
+        // one placed there would show nowhere
+        if let Some(project) = project.as_ref().filter(|p| p.is_project())
+            && project.status != TaskStatus::Incomplete
+        {
+            return Err(format!(
+                "Container is {}: {}",
+                if project.status == TaskStatus::Canceled {
+                    "canceled"
+                } else {
+                    "completed"
+                },
+                one_line(&project.title)
+            ));
+        }
 
         if let Some(project_uuid) = project_uuid {
             props.parent_project_ids = vec![project_uuid];

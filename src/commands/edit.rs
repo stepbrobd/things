@@ -533,6 +533,21 @@ fn build_edit_plan(
                     "--move target must be Inbox, clear, a project ID, or an area ID.".to_string(),
                 );
             }
+            // a closed project lists no open to-do
+            // one placed there would show nowhere
+            if let Some(project) = project_opt.as_ref().filter(|p| p.is_project())
+                && project.status != TaskStatus::Incomplete
+            {
+                return Err(format!(
+                    "Container is {}: {}",
+                    if project.status == TaskStatus::Canceled {
+                        "canceled"
+                    } else {
+                        "completed"
+                    },
+                    one_line(&project.title)
+                ));
+            }
 
             if let Some(project_uuid) = project_uuid {
                 let project_id = project_uuid;
