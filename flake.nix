@@ -43,7 +43,7 @@
 
         checks.default = crane.cargoNextest (args // {
           inherit cargoArtifacts;
-          nativeBuildInputs = with pkgs; [ jq writableTmpDirAsHomeHook ];
+          nativeBuildInputs = with pkgs; [ cacert jq writableTmpDirAsHomeHook ];
           preBuild = ''
             patchShebangs tests/cli/run.sh
           '';
